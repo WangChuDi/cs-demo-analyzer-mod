@@ -98,10 +98,9 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	}
 
 	var isVictimInspectingWeapon bool
-	if analyzer.isSource2 {
-		isVictimInspectingWeapon = event.Victim.PlayerPawnEntity().PropertyValueMust("m_pWeaponServices.m_bIsLookingAtWeapon").BoolVal()
-	} else if event.Victim.Entity != nil {
-		isVictimInspectingWeapon = event.Victim.Entity.PropertyValueMust("m_bIsLookingAtWeapon").BoolVal()
+	victim := analyzer.match.PlayersBySteamID[event.Victim.SteamID64]
+	if victim != nil {
+		isVictimInspectingWeapon = victim.IsInspectingWeapon(analyzer)
 	}
 
 	var isTradeKill bool

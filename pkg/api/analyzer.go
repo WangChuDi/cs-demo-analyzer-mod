@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 
@@ -327,50 +326,8 @@ func (analyzer *Analyzer) registerPlayer(player *common.Player, teamState *commo
 		return
 	}
 
-	var team *Team
-	if *match.TeamA.CurrentSide == playerTeam {
-		team = match.TeamA
-	} else {
-		team = match.TeamB
-	}
-
-	color, _ := player.ColorOrErr()
-	rank := player.Rank()
-	userID := 0
-	if player.UserID <= math.MaxUint16 {
-		userID = player.UserID & 0xff
-	}
-
-	newPlayer := &Player{
-		match:              match,
-		SteamID64:          player.SteamID64,
-		UserID:             userID,
-		Name:               strings.ReplaceUTF8ByteSequences(player.Name),
-		Team:               team,
-		CrosshairShareCode: player.CrosshairCode(),
-		Color:              color,
-		RankType:           player.RankType(),
-		Rank:               rank,
-		OldRank:            rank,
-		WinCount:           player.CompetitiveWins(),
-	}
+	newPlayer := NewPlayer(analyzer, playerTeam, *player)
 	match.PlayersBySteamID[player.SteamID64] = newPlayer
-
-	// TODO PR demoinfocs but m_bIsLookingAtWeapon doesn't updates on CS2 demos :/
-	var inspectingWeaponProp st.Property
-	if analyzer.isSource2 {
-		inspectingWeaponProp = player.PlayerPawnEntity().Property("m_pWeaponServices.m_bIsLookingAtWeapon")
-	} else if player.Entity != nil {
-		inspectingWeaponProp = player.Entity.Property("m_bIsLookingAtWeapon")
-	}
-
-	if inspectingWeaponProp != nil {
-		inspectingWeaponProp.OnUpdate(func(val st.PropertyValue) {
-			if val.BoolVal() {
-				newPlayer.InspectWeaponCount += 1
-			}
-		})
-	}
 }
 
 func (analyzer *Analyzer) registerUnknownPlayers() {
@@ -1122,6 +1079,66 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		chatMessage := newChatMessageFromGameEvent(analyzer, event)
 		match.ChatMessages = append(match.ChatMessages, chatMessage)
+	})
+
+	// CS:GO only
+	parser.RegisterEventHandler(func(event events.PlayerInspectingWeapon) {
+		if !analyzer.matchStarted() || event.Player == nil {
+			return
+		}
+
+		player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+		if player == nil {
+			return
+		}
+
+		player.startWeaponInspection(analyzer.currentTick())
+	})
+
+	// CS:GO only
+	parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
+		if !analyzer.matchStarted() || event.Player == nil {
+			return
+		}
+
+		player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+		if player == nil {
+			return
+		}
+
+		player.stopWeaponInspection(analyzer.currentTick())
+	})
+
+	// weaponInspectCancelButtons are the buttons (actions) that cancel an ongoing weapon inspection.
+	var weaponInspectCancelButtons = []common.ButtonBitMask{
+		common.ButtonAttack,
+		common.ButtonAttack2,
+		common.ButtonReload,
+		common.ButtonZoom,
+	}
+
+	// CS2 only
+	parser.RegisterEventHandler(func(event events.PlayerButtonsStateUpdate) {
+		if !analyzer.matchStarted() || event.Player == nil {
+			return
+		}
+
+		player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+		if player == nil {
+			return
+		}
+
+		if event.Player.IsPressingButton(common.ButtonLookAtWeapon) {
+			player.startWeaponInspection(analyzer.currentTick())
+			return
+		}
+
+		for _, button := range weaponInspectCancelButtons {
+			if event.Player.IsPressingButton(button) {
+				player.stopWeaponInspection(analyzer.currentTick())
+				break
+			}
+		}
 	})
 
 	parser.RegisterEventHandler(func(event events.ConVarsUpdated) {
