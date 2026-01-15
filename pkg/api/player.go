@@ -30,6 +30,7 @@ type Player struct {
 	CrosshairShareCode   string       `json:"crosshairShareCode"`
 	Color                common.Color `json:"color"`
 	InspectWeaponCount   int          `json:"inspectWeaponCount"`
+	TeammateDropValue    int          `json:"teammateDropValue"`
 	lastWeaponInspection weaponInspectionData
 }
 
@@ -82,6 +83,9 @@ type PlayerJSON struct {
 	FiveKillCount         int     `json:"fiveKillCount"`
 	HltvRating            float32 `json:"hltvRating"`
 	HltvRating2           float32 `json:"hltvRating2"`
+	AwpKillCount          int     `json:"awpKillCount"`
+	DeathHoldingAwpCount  int     `json:"deathHoldingAwpCount"`
+	TeammateDropValue     int     `json:"teammateDropValue"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -132,6 +136,9 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		FiveKillCount:         player.FiveKillCount(),
 		HltvRating2:           player.HltvRating2(),
 		HltvRating:            player.HltvRating(),
+		AwpKillCount:          player.AwpKillCount(),
+		DeathHoldingAwpCount:  player.DeathHoldingAwpCount(),
+		TeammateDropValue:     player.TeammateDropValue,
 	})
 }
 
@@ -734,6 +741,28 @@ func (player *Player) oneVsXClutchesLostCount(opponentCount int) int {
 	return count
 }
 
+func (player *Player) AwpKillCount() int {
+	var awpKillCount int
+	for _, kill := range player.kills() {
+		if kill.WeaponName == constants.WeaponAWP {
+			awpKillCount++
+		}
+	}
+
+	return awpKillCount
+}
+
+func (player *Player) DeathHoldingAwpCount() int {
+	var deathHoldingAwpCount int
+	for _, kill := range player.Deaths() {
+		if kill.VictimWeaponName == constants.WeaponAWP {
+			deathHoldingAwpCount++
+		}
+	}
+
+	return deathHoldingAwpCount
+}
+
 func (player *Player) getXKillCount(count int) int {
 	var xKillCount int
 	for _, kills := range player.match.KillsByRound() {
@@ -795,6 +824,7 @@ func (player *Player) reset() {
 	player.Score = 0
 	player.MvpCount = 0
 	player.InspectWeaponCount = 0
+	player.TeammateDropValue = 0
 	player.lastWeaponInspection = weaponInspectionData{
 		tick:          -1,
 		cancelledTick: -1,

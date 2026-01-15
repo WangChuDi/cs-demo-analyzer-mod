@@ -1,0 +1,41 @@
+package constants
+
+var WeaponPrices = map[WeaponName]int{
+	WeaponP2000:        200,
+	WeaponUSP:          200,
+	WeaponGlock:        200,
+	WeaponP250:         300,
+	WeaponTec9:         500,
+	WeaponFiveSeven:    500,
+	WeaponCZ75:         500,
+	WeaponDeagle:       700,
+	WeaponRevolver:     600,
+	WeaponDualBerettas: 300,
+
+	WeaponMac10:   1050,
+	WeaponMP9:     1250,
+	WeaponMP7:     1500,
+	WeaponMP5:     1500,
+	WeaponUMP45:   1200,
+	WeaponP90:     2350,
+	WeaponPPBizon: 1400,
+
+	WeaponGalilAR: 1800,
+	WeaponFamas:   2050,
+	WeaponAK47:    2700,
+	WeaponM4A4:    3100,
+	WeaponM4A1:    2900,
+	WeaponScout:   1700,
+	WeaponSG553:   3000,
+	WeaponAUG:     3300,
+	WeaponAWP:     4750,
+	WeaponG3SG1:   5000,
+	WeaponScar20:  5000,
+
+	WeaponNova:     1050,
+	WeaponXM1014:   2000,
+	WeaponSawedOff: 1100,
+	WeaponMAG7:     1300,
+	WeaponM249:     5200,
+	WeaponNegev:    1700,
+}

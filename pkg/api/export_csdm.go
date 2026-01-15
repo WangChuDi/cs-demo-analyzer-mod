@@ -138,6 +138,9 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				player.CrosshairShareCode,
 				converters.ColorToString(player.Color),
 				converters.IntToString(player.InspectWeaponCount),
+				converters.IntToString(player.AwpKillCount()),
+				converters.IntToString(player.DeathHoldingAwpCount()),
+				converters.IntToString(player.TeammateDropValue),
 				match.Checksum,
 			}
 			lines = append(lines, line)

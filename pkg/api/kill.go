@@ -37,6 +37,8 @@ type Kill struct {
 	IsVictimBlinded          bool                 `json:"is_victim_blinded"`
 	IsVictimControllingBot   bool                 `json:"isVictimControllingBot"`
 	IsVictimInspectingWeapon bool                 `json:"isVictimInspectingWeapon"`
+	VictimWeaponName         constants.WeaponName `json:"victimWeaponName"`
+	VictimWeaponType         constants.WeaponType `json:"victimWeaponType"`
 	AssisterName             string               `json:"assisterName"`
 	AssisterSteamID64        uint64               `json:"assisterSteamId"`
 	AssisterSide             common.Team          `json:"assisterSide"`
@@ -149,6 +151,13 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 
 	victimPosition := event.Victim.Position()
 
+	var victimWeaponName constants.WeaponName
+	var victimWeaponType constants.WeaponType
+	if event.Victim.ActiveWeapon() != nil {
+		victimWeaponName = equipmentToWeaponName[event.Victim.ActiveWeapon().Type]
+		victimWeaponType = getEquipmentWeaponType(*event.Victim.ActiveWeapon())
+	}
+
 	return &Kill{
 		Frame:                    parser.CurrentFrame(),
 		Tick:                     analyzer.currentTick(),
@@ -183,6 +192,8 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		IsVictimAirborne:         event.Victim.IsAirborne(),
 		IsVictimBlinded:          event.Victim.IsBlinded(),
 		IsVictimInspectingWeapon: isVictimInspectingWeapon,
+		VictimWeaponName:         victimWeaponName,
+		VictimWeaponType:         victimWeaponType,
 		AssisterX:                assisterX,
 		AssisterY:                assisterY,
 		AssisterZ:                assisterZ,

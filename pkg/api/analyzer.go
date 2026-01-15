@@ -57,7 +57,10 @@ type Analyzer struct {
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
 	playersUntyingAnHostage map[uint64]int
-	chickenEntities         []st.Entity
+	// used to detect who dropped a weapon.
+	// Map Weapon UniqueID -> Dropper SteamID
+	droppedWeapons  map[uint64]uint64
+	chickenEntities []st.Entity
 }
 
 type AnalyzeDemoOptions struct {
@@ -121,6 +124,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		bombPlantPosition:         r3.Vector{},
 		lastGrenadeThrownByPlayer: make(map[uint64]*Shot),
 		playersUntyingAnHostage:   make(map[uint64]int),
+		droppedWeapons:            make(map[uint64]uint64),
 		postProcess:               defaultPostProcess,
 	}
 
@@ -269,6 +273,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.lastFreezeTimeEndTick = -1
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
+	analyzer.droppedWeapons = make(map[uint64]uint64)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
@@ -414,6 +419,7 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
+	analyzer.droppedWeapons = make(map[uint64]uint64)
 	roundNumber := analyzer.currentRound.Number + 1
 
 	analyzer.currentRound = newRound(roundNumber, analyzer)
@@ -591,6 +597,14 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		analyzer.match.ChickenDeaths = append(analyzer.match.ChickenDeaths, chickenDeath)
 	})
 
+	parser.RegisterEventHandler(func(event events.ItemDrop) {
+		if !analyzer.matchStarted() || event.Player == nil {
+			return
+		}
+
+		analyzer.droppedWeapons[uint64(event.Weapon.UniqueID())] = event.Player.SteamID64
+	})
+
 	parser.RegisterEventHandler(func(event events.ItemPickup) {
 		if !analyzer.matchStarted() || event.Player == nil || event.Player.IsBot || !event.Player.IsInBuyZone() {
 			return
@@ -625,6 +639,36 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		currentRound.weaponsBoughtUniqueIds = append(currentRound.weaponsBoughtUniqueIds, event.Weapon.UniqueID2().String())
 		match.PlayersBuy = append(match.PlayersBuy, newPlayerBuy(analyzer, event))
+
+		// Check if it's a teammate drop
+		dropperSteamID, ok := analyzer.droppedWeapons[uint64(event.Weapon.UniqueID())]
+		if !ok {
+			return
+		}
+
+		// Remove from map after pickup so it's not counted again
+		delete(analyzer.droppedWeapons, uint64(event.Weapon.UniqueID()))
+
+		// Check if dropped by a teammate
+		if dropperSteamID == 0 || dropperSteamID == event.Player.SteamID64 {
+			return
+		}
+
+		dropper := match.PlayersBySteamID[dropperSteamID]
+		if dropper == nil || *dropper.Team.CurrentSide != event.Player.Team {
+			return
+		}
+
+		player := match.PlayersBySteamID[event.Player.SteamID64]
+		if player == nil {
+			return
+		}
+
+		weaponName := equipmentToWeaponName[event.Weapon.Type]
+		price := constants.WeaponPrices[weaponName]
+		if price > 0 {
+			player.TeammateDropValue += price
+		}
 	})
 
 	parser.RegisterEventHandler(func(event events.PlayerHurt) {
