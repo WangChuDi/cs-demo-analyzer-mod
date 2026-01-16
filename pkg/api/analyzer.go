@@ -656,7 +656,9 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 							price := constants.WeaponPrices[weaponName]
 							if price > 0 {
 								player.LeechValue += price
+								player.LeechCount++
 								dropper.FeedValue += price
+								dropper.FeedCount++
 							}
 						}
 					}

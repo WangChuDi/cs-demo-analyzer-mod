@@ -193,6 +193,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"inspect weapon count",
 			"leech value",
 			"feed value",
+			"leech count",
+			"feed count",
 			"match checksum",
 		}
 
@@ -258,6 +260,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.InspectWeaponCount),
 				converters.IntToString(player.LeechValue),
 				converters.IntToString(player.FeedValue),
+				converters.IntToString(player.LeechCount),
+				converters.IntToString(player.FeedCount),
 				match.Checksum,
 			}
 			lines = append(lines, line)

@@ -32,6 +32,8 @@ type Player struct {
 	InspectWeaponCount   int          `json:"inspectWeaponCount"`
 	LeechValue           int          `json:"leechValue"`
 	FeedValue            int          `json:"feedValue"`
+	LeechCount           int          `json:"leechCount"`
+	FeedCount            int          `json:"feedCount"`
 	lastWeaponInspection weaponInspectionData
 }
 
@@ -86,6 +88,8 @@ type PlayerJSON struct {
 	HltvRating2           float32 `json:"hltvRating2"`
 	LeechValue            int     `json:"leechValue"`
 	FeedValue             int     `json:"feedValue"`
+	LeechCount            int     `json:"leechCount"`
+	FeedCount             int     `json:"feedCount"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -138,6 +142,8 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		HltvRating:            player.HltvRating(),
 		LeechValue:            player.LeechValue,
 		FeedValue:             player.FeedValue,
+		LeechCount:            player.LeechCount,
+		FeedCount:             player.FeedCount,
 	})
 }
 
