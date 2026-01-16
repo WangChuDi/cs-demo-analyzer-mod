@@ -30,6 +30,8 @@ type Player struct {
 	CrosshairShareCode   string       `json:"crosshairShareCode"`
 	Color                common.Color `json:"color"`
 	InspectWeaponCount   int          `json:"inspectWeaponCount"`
+	LeechValue           int          `json:"leechValue"`
+	FeedValue            int          `json:"feedValue"`
 	lastWeaponInspection weaponInspectionData
 }
 
@@ -82,6 +84,8 @@ type PlayerJSON struct {
 	FiveKillCount         int     `json:"fiveKillCount"`
 	HltvRating            float32 `json:"hltvRating"`
 	HltvRating2           float32 `json:"hltvRating2"`
+	LeechValue            int     `json:"leechValue"`
+	FeedValue             int     `json:"feedValue"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -132,6 +136,8 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		FiveKillCount:         player.FiveKillCount(),
 		HltvRating2:           player.HltvRating2(),
 		HltvRating:            player.HltvRating(),
+		LeechValue:            player.LeechValue,
+		FeedValue:             player.FeedValue,
 	})
 }
 
@@ -795,6 +801,8 @@ func (player *Player) reset() {
 	player.Score = 0
 	player.MvpCount = 0
 	player.InspectWeaponCount = 0
+	player.LeechValue = 0
+	player.FeedValue = 0
 	player.lastWeaponInspection = weaponInspectionData{
 		tick:          -1,
 		cancelledTick: -1,

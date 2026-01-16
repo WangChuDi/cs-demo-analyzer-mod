@@ -191,6 +191,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"crosshair share code",
 			"color",
 			"inspect weapon count",
+			"leech value",
+			"feed value",
 			"match checksum",
 		}
 
@@ -254,6 +256,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				player.CrosshairShareCode,
 				converters.ColorToString(player.Color),
 				converters.IntToString(player.InspectWeaponCount),
+				converters.IntToString(player.LeechValue),
+				converters.IntToString(player.FeedValue),
 				match.Checksum,
 			}
 			lines = append(lines, line)
