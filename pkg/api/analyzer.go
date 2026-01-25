@@ -57,7 +57,12 @@ type Analyzer struct {
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
 	playersUntyingAnHostage map[uint64]int
-	chickenEntities         []st.Entity
+	// used to detect who dropped a weapon.
+	// Map Weapon UniqueID -> Dropper SteamID
+	droppedWeapons map[uint64]uint64
+	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
+	roundWeaponOwners map[int]uint64
+	chickenEntities   []st.Entity
 }
 
 type AnalyzeDemoOptions struct {
@@ -121,6 +126,8 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		bombPlantPosition:         r3.Vector{},
 		lastGrenadeThrownByPlayer: make(map[uint64]*Shot),
 		playersUntyingAnHostage:   make(map[uint64]int),
+		droppedWeapons:            make(map[uint64]uint64),
+		roundWeaponOwners:         make(map[int]uint64),
 		postProcess:               defaultPostProcess,
 	}
 
@@ -269,6 +276,8 @@ func (analyzer *Analyzer) reset() {
 	analyzer.lastFreezeTimeEndTick = -1
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
+	analyzer.droppedWeapons = make(map[uint64]uint64)
+	analyzer.roundWeaponOwners = make(map[int]uint64)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
@@ -414,9 +423,27 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
+	analyzer.droppedWeapons = make(map[uint64]uint64)
+	analyzer.roundWeaponOwners = make(map[int]uint64)
+
 	roundNumber := analyzer.currentRound.Number + 1
 
 	analyzer.currentRound = newRound(roundNumber, analyzer)
+
+	// Restore ownership of saved weapons to the NEW round
+	for _, player := range analyzer.parser.GameState().Participants().Playing() {
+		if player == nil || player.IsBot {
+			continue
+		}
+		for _, weapon := range player.Weapons() {
+			if weapon.UniqueID() != -1 {
+				id := int(weapon.UniqueID())
+				analyzer.roundWeaponOwners[id] = player.SteamID64
+				analyzer.currentRound.weaponsBoughtUniqueIds = append(analyzer.currentRound.weaponsBoughtUniqueIds, weapon.UniqueID2().String())
+			}
+		}
+	}
+
 	analyzer.createPlayersEconomies()
 }
 
@@ -611,10 +638,35 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		if isDefaultCounterTerroristsPistol {
 			return
 		}
-
 		currentRound := analyzer.currentRound
 		isDroppedWeapon := slice.Contains(currentRound.weaponsBoughtUniqueIds, event.Weapon.UniqueID2().String())
 		if isDroppedWeapon {
+			// Logic for picking up an existing weapon (potential Leech/Feed)
+			if analyzer.parser.GameState().IsFreezetimePeriod() {
+				weaponID := int(event.Weapon.UniqueID())
+				if previousOwnerID, ok := analyzer.roundWeaponOwners[weaponID]; ok {
+					if previousOwnerID != 0 && previousOwnerID != event.Player.SteamID64 {
+						// It's a transfer
+						dropper := match.PlayersBySteamID[previousOwnerID]
+						player := match.PlayersBySteamID[event.Player.SteamID64]
+
+						// Verify teammates
+						if dropper != nil && player != nil && *dropper.Team.CurrentSide == event.Player.Team {
+							weaponName := equipmentToWeaponName[event.Weapon.Type]
+							price := constants.WeaponPrices[weaponName]
+							if price > 0 {
+								player.LeechValue += price
+								player.LeechCount++
+								dropper.FeedValue += price
+								dropper.FeedCount++
+							}
+						}
+					}
+					// Update owner to current player (daisy chain logic: A->B->C)
+					// If event.Player picked it up, they are now the owner for future transfers (e.g. they drop it for C)
+					analyzer.roundWeaponOwners[weaponID] = event.Player.SteamID64
+				}
+			}
 			return
 		}
 
@@ -624,6 +676,8 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 
 		currentRound.weaponsBoughtUniqueIds = append(currentRound.weaponsBoughtUniqueIds, event.Weapon.UniqueID2().String())
+		// Mark this player as the owner of this newly bought weapon
+		analyzer.roundWeaponOwners[int(event.Weapon.UniqueID())] = event.Player.SteamID64
 		match.PlayersBuy = append(match.PlayersBuy, newPlayerBuy(analyzer, event))
 	})
 
