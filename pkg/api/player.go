@@ -34,6 +34,7 @@ type Player struct {
 	FeedValue            int          `json:"feedValue"`
 	LeechCount           int          `json:"leechCount"`
 	FeedCount            int          `json:"feedCount"`
+	WastedUtilityValue   int          `json:"wastedUtilityValue"`
 	lastWeaponInspection weaponInspectionData
 }
 
@@ -90,6 +91,7 @@ type PlayerJSON struct {
 	FeedValue             int     `json:"feedValue"`
 	LeechCount            int     `json:"leechCount"`
 	FeedCount             int     `json:"feedCount"`
+	WastedUtilityValue    int     `json:"wastedUtilityValue"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -144,6 +146,7 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		FeedValue:             player.FeedValue,
 		LeechCount:            player.LeechCount,
 		FeedCount:             player.FeedCount,
+		WastedUtilityValue:    player.WastedUtilityValue,
 	})
 }
 
@@ -809,6 +812,9 @@ func (player *Player) reset() {
 	player.InspectWeaponCount = 0
 	player.LeechValue = 0
 	player.FeedValue = 0
+	player.LeechCount = 0
+	player.FeedCount = 0
+	player.WastedUtilityValue = 0
 	player.lastWeaponInspection = weaponInspectionData{
 		tick:          -1,
 		cancelledTick: -1,

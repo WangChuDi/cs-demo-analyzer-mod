@@ -38,4 +38,12 @@ var WeaponPrices = map[WeaponName]int{
 	WeaponMAG7:     1300,
 	WeaponM249:     5200,
 	WeaponNegev:    1700,
+
+	// Grenades
+	WeaponDecoy:      50,
+	WeaponFlashbang:  200,
+	WeaponHEGrenade:  300,
+	WeaponIncendiary: 500,
+	WeaponMolotov:    400,
+	WeaponSmoke:      300,
 }
