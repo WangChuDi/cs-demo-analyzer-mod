@@ -14,11 +14,11 @@ var WeaponPrices = map[WeaponName]int{
 
 	WeaponMac10:   1050,
 	WeaponMP9:     1250,
-	WeaponMP7:     1500,
-	WeaponMP5:     1500,
+	WeaponMP7:     1400,
+	WeaponMP5:     1400,
 	WeaponUMP45:   1200,
 	WeaponP90:     2350,
-	WeaponPPBizon: 1400,
+	WeaponPPBizon: 1300,
 
 	WeaponGalilAR: 1800,
 	WeaponFamas:   2050,
