@@ -37,6 +37,16 @@ Tracks the value of unused utility items (grenades/equipment) held by a player w
 
 ---
 
+### Usage
+
+Ready-to-use binaries are available on the [releases page](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases).
+
+
+## How to build
+
+1. Clone the repository
+2. Run `$env:CGO_ENABLED=0; go build -ldflags="-s -w" -trimpath -o csda_mod.exe ./cmd/cli` in cmd.
+
 <details><summary><h2>Original Documentation</h2></summary>
 
 ### Usage
