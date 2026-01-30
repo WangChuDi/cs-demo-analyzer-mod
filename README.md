@@ -1,12 +1,49 @@
-# CS Demo Analyzer
+# CS Demo Analyzer (Modified Version)
 
-A CLI to analyze and export CS2/CS:GO demos.
+This is a modified fork of the original [CS Demo Analyzer](https://github.com/akiver/cs-demo-analyzer), designed to extract additional "fun" statistics from CS2 demos.
 
-## Usage
+## 🚀 Added Features
+
+### 🧛 Leech & Feed Statistics
+Analyze weapon economy interactions between teammates during freezetime:
+- **Leech**: Tracks when a player picks up a weapon dropped by a teammate.
+  - `LeechCount`: Number of weapons picked up.
+  - `LeechValue`: Total monetary value of picked up weapons.
+- **Feed**: Tracks when a player drops a weapon that is picked up by a teammate.
+  - `FeedCount`: Number of weapons dropped for teammates.
+  - `FeedValue`: Total monetary value of dropped weapons.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `leech value`, `leech count`
+  - `feed value`, `feed count`
+
+### 💸 Waste Utility Money
+Tracks the value of unused utility items (grenades/equipment) held by a player when they die. This represents investment in utility that was lost without being deployed.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `wasted utility value`: Total value of unused utility across the entire match.
+
+- **Player Economy Table (`_players_economy.csv`)**:
+  - Breakdown of specific wasted grenades per player per round:
+    - `wasted smoke`
+    - `wasted flash`
+    - `wasted he`
+    - `wasted incendiary`
+    - `wasted decoy`
+
+---
+
+<details><summary><h2>Original Documentation</h2></summary>
+
+### Usage
 
 Ready-to-use binaries are available on the [releases page](https://github.com/akiver/cs-demo-analyzer/releases).
 
-### Options
+#### Options
 
 ```
 csda -help
@@ -26,7 +63,7 @@ Usage of csda:
         Force demo's source, valid values: [challengermode,ebot,esea,esl,esportal,faceit,fastcup,5eplay,perfectworld,popflash,valve]
 ```
 
-### Examples
+#### Examples
 
 Export a demo into CSV files in the current folder.
 
@@ -36,13 +73,13 @@ Export a demo in a specific folder into a minified JSON file including entities 
 
 `csda -demo-path=/path/to/myDemo.dem -output=/path/to/folder -format=json -positions -minify`
 
-## API
+### API
 
-### GO API
+#### GO API
 
 This API exposes functions to analyze/export a demo using the Go language.
 
-#### Analyze
+##### Analyze
 
 This function analyzes the demo located at the given path and returns a `Match`.
 
@@ -74,7 +111,7 @@ func main() {
 }
 ```
 
-#### Analyze and export
+##### Analyze and export
 
 This function analyzes and exports a demo into the given output path.
 
@@ -109,7 +146,7 @@ func main() {
 }
 ```
 
-### CLI
+#### CLI
 
 This API exposes the command-line interface.
 
@@ -127,7 +164,7 @@ func main() {
 }
 ```
 
-### Node.js API
+#### Node.js API
 
 A Node.js module called `@akiver/cs-demo-analyzer` is available on NPM.  
 It exposes a function that under the hood is a wrapper around the Go CLI.  
@@ -158,33 +195,33 @@ async function main() {
 main();
 ```
 
-## Developing
+### Developing
 
-### Requirements
+#### Requirements
 
 - [Go](https://golang.org/dl/)
 - [Make](https://www.gnu.org/software/make/)
 
-### Build
+#### Build
 
-#### Windows
+##### Windows
 
 `make build-windows`
 
-#### macOS
+##### macOS
 
 `make build-darwin` / `make build-darwin-arm64`
 
-#### Linux
+##### Linux
 
 `make build-linux` / `make build-linux-arm64`
 
-### Tests
+#### Tests
 
 1. `./download-demos.sh` it will download the demos used for the tests
 2. `make test`
 
-### VSCode debugger
+#### VSCode debugger
 
 1. Inside the `.vscode` folder, copy/paste the file `launch.template.json` and name it `launch.json`
 2. Place a demo in the `debug` folder
@@ -192,10 +229,12 @@ main();
 4. Adjust the other arguments as you wish
 5. Start the debugger from VSCode
 
-## Acknowledgements
+### Acknowledgements
 
 This project uses the demo parser [demoinfocs-golang](https://github.com/markus-wa/demoinfocs-golang) created by [@markus-wa](https://github.com/markus-wa) and maintained by him and [@akiver](https://github.com/akiver).
 
-## License
+### License
 
 [MIT](https://github.com/akiver/cs-demo-analyzer/blob/main/LICENSE.md)
+
+</details>
