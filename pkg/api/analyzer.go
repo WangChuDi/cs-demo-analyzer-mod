@@ -793,6 +793,38 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			match.Kills = append(match.Kills, kill)
 		}
 
+		// Calculate wasted utility value for the victim
+		if event.Victim != nil && !event.Victim.IsBot {
+			victimPlayer := match.PlayersBySteamID[event.Victim.SteamID64]
+			if victimPlayer != nil {
+				for _, weapon := range event.Victim.Weapons() {
+					if weapon == nil {
+						continue
+					}
+					weaponName := equipmentToWeaponName[weapon.Type]
+					if price, ok := constants.WeaponPrices[weaponName]; ok && weapon.Class() == common.EqClassGrenade {
+						victimPlayer.WastedUtilityValue += price
+
+						economy := match.GetPlayerEconomyAtRound(victimPlayer.Name, victimPlayer.SteamID64, analyzer.currentRound.Number)
+						if economy != nil {
+							switch weapon.Type {
+							case common.EqSmoke:
+								economy.WastedSmoke++
+							case common.EqFlash:
+								economy.WastedFlash++
+							case common.EqHE:
+								economy.WastedHE++
+							case common.EqIncendiary, common.EqMolotov:
+								economy.WastedIncendiary++
+							case common.EqDecoy:
+								economy.WastedDecoy++
+							}
+						}
+					}
+				}
+			}
+		}
+
 		if analyzer.clutch1 != nil {
 			clutcherSteamId := analyzer.clutch1.ClutcherSteamID64
 			if clutcherSteamId == victimSteamID64 {

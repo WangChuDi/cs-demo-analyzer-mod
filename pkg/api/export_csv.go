@@ -195,6 +195,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"feed value",
 			"leech count",
 			"feed count",
+			"wasted utility value",
 			"match checksum",
 		}
 
@@ -262,6 +263,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.FeedValue),
 				converters.IntToString(player.LeechCount),
 				converters.IntToString(player.FeedCount),
+				converters.IntToString(player.WastedUtilityValue),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -493,6 +495,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"equipment value",
 			"type",
 			"round",
+			"wasted smoke",
+			"wasted flash",
+			"wasted he",
+			"wasted incendiary",
+			"wasted decoy",
 			"match checksum",
 		}
 
@@ -507,6 +514,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(economy.EquipmentValue),
 				economy.Type.String(),
 				converters.IntToString(economy.RoundNumber),
+				converters.IntToString(economy.WastedSmoke),
+				converters.IntToString(economy.WastedFlash),
+				converters.IntToString(economy.WastedHE),
+				converters.IntToString(economy.WastedIncendiary),
+				converters.IntToString(economy.WastedDecoy),
 				match.Checksum,
 			}
 			lines = append(lines, line)

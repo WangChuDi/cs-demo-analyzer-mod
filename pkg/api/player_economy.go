@@ -6,14 +6,19 @@ import (
 )
 
 type PlayerEconomy struct {
-	RoundNumber    int                   `json:"roundNumber"`
-	Name           string                `json:"name"`
-	SteamID64      uint64                `json:"steamId"`
-	StartMoney     int                   `json:"startMoney"`
-	MoneySpent     int                   `json:"moneySpent"`
-	EquipmentValue int                   `json:"equipmentValue"`
-	Type           constants.EconomyType `json:"type"`
-	PlayerSide     common.Team           `json:"playerSide"`
+	RoundNumber      int                   `json:"roundNumber"`
+	Name             string                `json:"name"`
+	SteamID64        uint64                `json:"steamId"`
+	StartMoney       int                   `json:"startMoney"`
+	MoneySpent       int                   `json:"moneySpent"`
+	EquipmentValue   int                   `json:"equipmentValue"`
+	Type             constants.EconomyType `json:"type"`
+	PlayerSide       common.Team           `json:"playerSide"`
+	WastedSmoke      int                   `json:"wastedSmoke"`
+	WastedFlash      int                   `json:"wastedFlash"`
+	WastedHE         int                   `json:"wastedHE"`
+	WastedIncendiary int                   `json:"wastedIncendiary"`
+	WastedDecoy      int                   `json:"wastedDecoy"`
 }
 
 func newPlayerEconomy(analyzer *Analyzer, player *common.Player) *PlayerEconomy {
