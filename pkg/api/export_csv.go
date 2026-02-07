@@ -775,6 +775,36 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		csv.WriteLinesIntoCsvFile(outputPath+"_kills.csv", lines)
 	}
 
+	var writePlayerButtons = func() {
+		header := []string{
+			"frame",
+			"tick",
+			"round",
+			"steamid",
+			"name",
+			"buttons",
+			"button_names",
+			"match checksum",
+		}
+
+		lines := [][]string{header}
+		for _, pb := range match.PlayerButtons {
+			line := []string{
+				converters.IntToString(pb.Frame),
+				converters.IntToString(pb.Tick),
+				converters.IntToString(pb.RoundNumber),
+				converters.Uint64ToString(pb.SteamID64),
+				pb.Name,
+				converters.Uint64ToString(pb.Buttons),
+				pb.ButtonNames,
+				match.Checksum,
+			}
+			lines = append(lines, line)
+		}
+
+		csv.WriteLinesIntoCsvFile(outputPath+"_player_buttons.csv", lines)
+	}
+
 	var writeBombsPlanted = func() {
 		header := []string{
 			"frame",
@@ -1633,6 +1663,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		writeHostagePickUpStart,
 		writeHostagePickedUp,
 		writeHostageRescued,
+		writePlayerButtons,
 	}
 	var wg sync.WaitGroup
 
