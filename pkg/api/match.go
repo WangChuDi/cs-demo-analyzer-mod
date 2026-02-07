@@ -9,6 +9,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
@@ -71,6 +72,7 @@ type Match struct {
 	PlayerPositions           []*PlayerPosition           `json:"playerPositions"`
 	PlayersBuy                []*PlayerBuy                `json:"playersBuy"`
 	PlayerEconomies           []*PlayerEconomy            `json:"playerEconomies"`
+	PlayerButtons             []*funData.PlayerButtons    `json:"playerButtons"`
 	ChatMessages              []*ChatMessage              `json:"chatMessages"`
 	scoreTeamA                *int
 	scoreTeamB                *int
@@ -318,6 +320,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		ChatMessages:              []*ChatMessage{},
 		ChickenDeaths:             []*ChickenDeath{},
 		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
+		PlayerButtons:             []*funData.PlayerButtons{},
 	}
 
 	match.initTeams()
@@ -356,6 +359,7 @@ func (match *Match) reset() {
 	match.ChickenDeaths = []*ChickenDeath{}
 	match.GrenadeProjectilesDestroy = []*GrenadeProjectileDestroy{}
 	match.PlayerEconomies = []*PlayerEconomy{}
+	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.initTeams()
 }
 
@@ -442,6 +446,9 @@ func (match *Match) resetRound(roundNumber int) {
 		return event.RoundNumber != roundNumber
 	})
 	match.SmokesStart = slice.Filter(match.SmokesStart, func(event *SmokeStart, index int) bool {
+		return event.RoundNumber != roundNumber
+	})
+	match.PlayerButtons = slice.Filter(match.PlayerButtons, func(event *funData.PlayerButtons, index int) bool {
 		return event.RoundNumber != roundNumber
 	})
 }

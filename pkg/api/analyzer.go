@@ -11,6 +11,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
 	dem "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
 	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
@@ -745,6 +746,17 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		analyzer.handleRoundEnd(event.Winner)
 		analyzer.currentRound.updateEndReasonFromRoundEndEvent(event, analyzer.match.MapName)
+	})
+
+	parser.RegisterEventHandler(func(event events.PlayerButtonsStateUpdate) {
+		if !analyzer.matchStarted() {
+			return
+		}
+
+		playerButtons := funData.NewPlayerButtons(parser.CurrentFrame(), analyzer.currentTick(), analyzer.currentRound.Number, event)
+		if playerButtons != nil {
+			match.PlayerButtons = append(match.PlayerButtons, playerButtons)
+		}
 	})
 
 	missingGameEventDescriptorsWarnCount := 0

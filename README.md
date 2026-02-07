@@ -35,6 +35,15 @@ Tracks the value of unused utility items (grenades/equipment) held by a player w
     - `wasted incendiary`
     - `wasted decoy`
 
+### 🎮 Player Buttons
+Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
+
+**Introduced Data Columns:**
+
+- **Player Buttons Table (`_player_buttons.csv`)**:
+  - `buttons`: Bitmask of pressed buttons.
+  - `button_names`: Comma-separated list of pressed buttons (e.g. "Attack,Jump").
+
 ---
 
 ### Usage
