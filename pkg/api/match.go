@@ -74,6 +74,7 @@ type Match struct {
 	PlayerEconomies           []*PlayerEconomy            `json:"playerEconomies"`
 	PlayerButtons             []*funData.PlayerButtons    `json:"playerButtons"`
 	ChatMessages              []*ChatMessage              `json:"chatMessages"`
+	Footsteps                 []*Footstep                 `json:"footsteps"`
 	scoreTeamA                *int
 	scoreTeamB                *int
 }
@@ -321,6 +322,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		ChickenDeaths:             []*ChickenDeath{},
 		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
 		PlayerButtons:             []*funData.PlayerButtons{},
+		Footsteps:                 []*Footstep{},
 	}
 
 	match.initTeams()
@@ -360,6 +362,7 @@ func (match *Match) reset() {
 	match.GrenadeProjectilesDestroy = []*GrenadeProjectileDestroy{}
 	match.PlayerEconomies = []*PlayerEconomy{}
 	match.PlayerButtons = []*funData.PlayerButtons{}
+	match.Footsteps = []*Footstep{}
 	match.initTeams()
 }
 
@@ -449,6 +452,9 @@ func (match *Match) resetRound(roundNumber int) {
 		return event.RoundNumber != roundNumber
 	})
 	match.PlayerButtons = slice.Filter(match.PlayerButtons, func(event *funData.PlayerButtons, index int) bool {
+		return event.RoundNumber != roundNumber
+	})
+	match.Footsteps = slice.Filter(match.Footsteps, func(event *Footstep, index int) bool {
 		return event.RoundNumber != roundNumber
 	})
 }

@@ -35,6 +35,20 @@ Tracks the value of unused utility items (grenades/equipment) held by a player w
     - `wasted incendiary`
     - `wasted decoy`
 
+### 👣 Footsteps
+Tracks player movement sounds (footsteps).
+
+**Introduced Data Columns:**
+
+- **Footsteps Table (`_footsteps.csv`)**:
+  - `frame`, `tick`, `round`
+  - `x`, `y`, `z` (Player Position)
+  - `player velocity x`, `player velocity y`, `player velocity z` (Player Velocity)
+  - `yaw`, `pitch` (View Angles)
+  - `player name`, `player steamid`, `player team name`, `player side`
+
+> **Note**: In CS2 demos, player velocity fields (`player velocity x/y/z`) may appear as `0` for footstep events. This is due to the current behavior of the demo parsing library where velocity updates (via packet entities) might occur after the footstep event is dispatched in the same tick.
+
 ### 🎮 Player Buttons
 Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
 
