@@ -933,6 +933,17 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		match.Shots = append(match.Shots, shot)
 	})
 
+	parser.RegisterEventHandler(func(event events.Footstep) {
+		if !analyzer.matchStarted() {
+			return
+		}
+
+		footstep := newFootstep(analyzer, event)
+		if footstep != nil {
+			match.Footsteps = append(match.Footsteps, footstep)
+		}
+	})
+
 	parser.RegisterEventHandler(func(event events.BombPlanted) {
 		if !analyzer.matchStarted() {
 			return

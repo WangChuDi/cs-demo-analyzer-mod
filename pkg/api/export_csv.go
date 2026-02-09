@@ -1630,6 +1630,54 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		csv.WriteLinesIntoCsvFile(outputPath+"_hostage_rescued.csv", lines)
 	}
 
+	var writeFootsteps = func() {
+		header := []string{
+			"frame",
+			"tick",
+			"round",
+			"x",
+			"y",
+			"z",
+			"player name",
+			"player steamid",
+			"player team name",
+			"player side",
+			"is player controlling bot",
+			"player velocity x",
+			"player velocity y",
+			"player velocity z",
+			"yaw",
+			"pitch",
+			"match checksum",
+		}
+
+		lines := [][]string{header}
+		for _, footstep := range match.Footsteps {
+			line := []string{
+				converters.IntToString(footstep.Frame),
+				converters.IntToString(footstep.Tick),
+				converters.IntToString(footstep.RoundNumber),
+				converters.Float64ToString(footstep.X),
+				converters.Float64ToString(footstep.Y),
+				converters.Float64ToString(footstep.Z),
+				footstep.PlayerName,
+				converters.Uint64ToString(footstep.PlayerSteamID64),
+				footstep.PlayerTeamName,
+				converters.TeamToString(footstep.PlayerSide),
+				converters.BoolToString(footstep.IsPlayerControllingBot),
+				converters.Float64ToString(footstep.PlayerVelocityX),
+				converters.Float64ToString(footstep.PlayerVelocityY),
+				converters.Float64ToString(footstep.PlayerVelocityZ),
+				converters.Float32ToString(footstep.Yaw),
+				converters.Float32ToString(footstep.Pitch),
+				match.Checksum,
+			}
+			lines = append(lines, line)
+		}
+
+		csv.WriteLinesIntoCsvFile(outputPath+"_footsteps.csv", lines)
+	}
+
 	var functions = []func(){
 		writeMatch,
 		writeTeams,
@@ -1664,6 +1712,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		writeHostagePickedUp,
 		writeHostageRescued,
 		writePlayerButtons,
+		writeFootsteps,
 	}
 	var wg sync.WaitGroup
 
