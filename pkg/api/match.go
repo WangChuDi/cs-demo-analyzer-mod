@@ -10,12 +10,8 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
-<<<<<<< HEAD
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-=======
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
->>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 // Match is the root struct that contains relevant data from a demo.

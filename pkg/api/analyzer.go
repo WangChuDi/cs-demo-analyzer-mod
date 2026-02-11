@@ -58,21 +58,13 @@ type Analyzer struct {
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
 	playersUntyingAnHostage map[uint64]int
-<<<<<<< HEAD
 	// used to detect who dropped a weapon.
 	// Map Weapon UniqueID -> Dropper SteamID
 	droppedWeapons map[uint64]uint64
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
 	roundWeaponOwners map[int]uint64
 	chickenEntities   []st.Entity
-=======
-	chickenEntities         []st.Entity
-	droppedWeapons          map[ulid.ULID]uint64
-	roundWeaponOwners       map[ulid.ULID]uint64
-	previousPlayerPositions map[uint64]r3.Vector
-	previousPlayerTicks     map[uint64]int
-	pendingFootsteps        []events.Footstep
->>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
+	pendingFootsteps  []events.Footstep
 }
 
 type AnalyzeDemoOptions struct {
@@ -1246,26 +1238,8 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-<<<<<<< HEAD
 		player.stopWeaponInspection(analyzer.currentTick())
 	})
-=======
-	// 	player.startWeaponInspection(analyzer.currentTick())
-	// })
-
-	// parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
-	// 	if !analyzer.matchStarted() || event.Player == nil {
-	// 		return
-	// 	}
-
-	// 	player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
-	// 	if player == nil {
-	// 		return
-	// 	}
-
-	// 	player.stopWeaponInspection(analyzer.currentTick())
-	// })
->>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
 
 	// weaponInspectCancelButtons are the buttons (actions) that cancel an ongoing weapon inspection.
 	var weaponInspectCancelButtons = []common.ButtonBitMask{
