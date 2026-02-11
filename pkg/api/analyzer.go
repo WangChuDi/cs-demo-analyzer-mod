@@ -58,12 +58,21 @@ type Analyzer struct {
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
 	playersUntyingAnHostage map[uint64]int
+<<<<<<< HEAD
 	// used to detect who dropped a weapon.
 	// Map Weapon UniqueID -> Dropper SteamID
 	droppedWeapons map[uint64]uint64
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
 	roundWeaponOwners map[int]uint64
 	chickenEntities   []st.Entity
+=======
+	chickenEntities         []st.Entity
+	droppedWeapons          map[ulid.ULID]uint64
+	roundWeaponOwners       map[ulid.ULID]uint64
+	previousPlayerPositions map[uint64]r3.Vector
+	previousPlayerTicks     map[uint64]int
+	pendingFootsteps        []events.Footstep
+>>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
 }
 
 type AnalyzeDemoOptions struct {
@@ -694,11 +703,36 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	})
 
 	parser.RegisterEventHandler(func(event events.FrameDone) {
-		shouldComputeEconomy := analyzer.lastFreezeTimeEndTick != -1 && analyzer.secondsHasPassedSinceTick(equipmentValueDelaySeconds, analyzer.lastFreezeTimeEndTick)
-		if shouldComputeEconomy {
-			analyzer.computePlayersEconomies()
-			analyzer.currentRound.computeTeamsEconomy()
-			analyzer.lastFreezeTimeEndTick = -1
+		if !analyzer.matchStarted() {
+			return
+		}
+
+		tickTime := parser.TickTime().Seconds()
+		for _, event := range analyzer.pendingFootsteps {
+			player := event.Player
+			if player == nil {
+				continue
+			}
+
+			playerPos := player.Position()
+			lastPos, ok := match.lastPlayersPosition[player.SteamID64]
+			var velocityX, velocityY, velocityZ float64
+
+			if ok && tickTime > 0 {
+				velocityX = (playerPos.X - lastPos.X) / tickTime
+				velocityY = (playerPos.Y - lastPos.Y) / tickTime
+				velocityZ = (playerPos.Z - lastPos.Z) / tickTime
+			}
+
+			footstep := newFootstep(analyzer, event, velocityX, velocityY, velocityZ)
+			if footstep != nil {
+				match.Footsteps = append(match.Footsteps, footstep)
+			}
+		}
+		analyzer.pendingFootsteps = nil
+
+		for _, player := range parser.GameState().Participants().Playing() {
+			match.lastPlayersPosition[player.SteamID64] = player.Position()
 		}
 	})
 
@@ -938,10 +972,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		footstep := newFootstep(analyzer, event)
-		if footstep != nil {
-			match.Footsteps = append(match.Footsteps, footstep)
-		}
+		analyzer.pendingFootsteps = append(analyzer.pendingFootsteps, event)
 	})
 
 	parser.RegisterEventHandler(func(event events.BombPlanted) {
@@ -1215,8 +1246,26 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
+<<<<<<< HEAD
 		player.stopWeaponInspection(analyzer.currentTick())
 	})
+=======
+	// 	player.startWeaponInspection(analyzer.currentTick())
+	// })
+
+	// parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
+	// 	if !analyzer.matchStarted() || event.Player == nil {
+	// 		return
+	// 	}
+
+	// 	player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+	// 	if player == nil {
+	// 		return
+	// 	}
+
+	// 	player.stopWeaponInspection(analyzer.currentTick())
+	// })
+>>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
 
 	// weaponInspectCancelButtons are the buttons (actions) that cancel an ongoing weapon inspection.
 	var weaponInspectCancelButtons = []common.ButtonBitMask{

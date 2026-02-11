@@ -10,7 +10,12 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
+<<<<<<< HEAD
 	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+=======
+	"github.com/golang/geo/r3"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+>>>>>>> d86ec75 (fix: restore delayed velocity calc and fix compilation errors)
 )
 
 // Match is the root struct that contains relevant data from a demo.
@@ -77,6 +82,7 @@ type Match struct {
 	Footsteps                 []*Footstep                 `json:"footsteps"`
 	scoreTeamA                *int
 	scoreTeamB                *int
+	lastPlayersPosition       map[uint64]r3.Vector
 }
 
 type MatchAlias Match
@@ -323,6 +329,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
 		PlayerButtons:             []*funData.PlayerButtons{},
 		Footsteps:                 []*Footstep{},
+		lastPlayersPosition:       make(map[uint64]r3.Vector),
 	}
 
 	match.initTeams()
@@ -363,6 +370,7 @@ func (match *Match) reset() {
 	match.PlayerEconomies = []*PlayerEconomy{}
 	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.Footsteps = []*Footstep{}
+	match.lastPlayersPosition = make(map[uint64]r3.Vector)
 	match.initTeams()
 }
 
