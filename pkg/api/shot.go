@@ -71,6 +71,8 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 	}
 
 	velocity := getPlayerVelocity(shooter)
+	yaw := shooter.ViewDirectionX()
+	pitch := shooter.ViewDirectionY()
 
 	return &Shot{
 		Frame:                  analyzer.parser.CurrentFrame(),
@@ -89,8 +91,8 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		PlayerVelocityX:        velocity.X,
 		PlayerVelocityY:        velocity.Y,
 		PlayerVelocityZ:        velocity.Z,
-		Yaw:                    shooter.ViewDirectionX(),
-		Pitch:                  shooter.ViewDirectionY(),
+		Yaw:                    yaw,
+		Pitch:                  pitch,
 		RecoilIndex:            recoilIndex,
 		AimPunchAngleX:         aimPunchAngle.X,
 		AimPunchAngleY:         aimPunchAngle.Y,
