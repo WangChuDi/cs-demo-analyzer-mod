@@ -8,8 +8,8 @@ import (
 	"github.com/akiver/cs-demo-analyzer/tests/assertion"
 	"github.com/akiver/cs-demo-analyzer/tests/fake"
 	"github.com/akiver/cs-demo-analyzer/tests/testsutils"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 // https://www.challengermode.com/s/CsgoAllstars/games/b4d31195-bae0-42c0-bbcc-08dbf6b17863

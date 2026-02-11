@@ -13,10 +13,11 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
-	dem "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	dem "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	"github.com/oklog/ulid/v2"
 )
 
 const (
@@ -60,9 +61,11 @@ type Analyzer struct {
 	playersUntyingAnHostage map[uint64]int
 	// used to detect who dropped a weapon.
 	// Map Weapon UniqueID -> Dropper SteamID
-	droppedWeapons map[uint64]uint64
+	// used to detect who dropped a weapon.
+	// Map Weapon UniqueID -> Dropper SteamID
+	droppedWeapons map[ulid.ULID]uint64
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
-	roundWeaponOwners map[int]uint64
+	roundWeaponOwners map[ulid.ULID]uint64
 	chickenEntities   []st.Entity
 	pendingFootsteps  []events.Footstep
 }
@@ -95,16 +98,10 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	defer file.Close()
 
 	parserConfig := dem.DefaultParserConfig
-	parserConfig.NetMessageDecryptionKey = demo.NetMessageDecryptionPublicKey
 	parserConfig.DisableMimicSource1Events = demo.Type == constants.DemoTypePOV
 
 	parser := dem.NewParserWithConfig(file, parserConfig)
 	defer parser.Close()
-
-	_, err = parser.ParseHeader()
-	if err != nil {
-		return nil, err
-	}
 
 	source := options.Source
 	if source == "" {
@@ -128,8 +125,8 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		bombPlantPosition:         r3.Vector{},
 		lastGrenadeThrownByPlayer: make(map[uint64]*Shot),
 		playersUntyingAnHostage:   make(map[uint64]int),
-		droppedWeapons:            make(map[uint64]uint64),
-		roundWeaponOwners:         make(map[int]uint64),
+		droppedWeapons:            make(map[ulid.ULID]uint64),
+		roundWeaponOwners:         make(map[ulid.ULID]uint64),
 		postProcess:               defaultPostProcess,
 	}
 
@@ -196,26 +193,13 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		return nil, err
 	}
 
-	// Required for CS2 demos, the following data are available only at the end of the parsing in the CDemoFileInfo message.
-	// The parser updates the header values when the CDemoFileInfo message is parsed.
-	// Unfortunately, some CS2 demos may not contain this message and so the header values are not updated.
-	// We fallback to the parser's internal values in such cases.
-	header := parser.Header()
-	match.TickCount = header.PlaybackTicks
-	if match.TickCount == 0 {
-		match.TickCount = analyzer.currentTick()
-	}
+	// Required for CS2 demos, the following data are available only at the end of the parsing.
+	// We rely on the parser's internal state after parsing to get these values.
+	match.TickCount = analyzer.currentTick()
 
-	match.Duration = header.PlaybackTime
-	if match.Duration == 0 {
-		match.Duration = parser.CurrentTime()
-	}
+	match.Duration = parser.CurrentTime()
 	if match.Duration > 0 {
-		frames := int(header.PlaybackFrames)
-		if frames == 0 {
-			frames = parser.CurrentFrame()
-		}
-		match.FrameRate = float64(frames) / match.Duration.Seconds()
+		match.FrameRate = float64(parser.CurrentFrame()) / match.Duration.Seconds()
 	}
 
 	analyzer.postProcess(analyzer)
@@ -278,8 +262,8 @@ func (analyzer *Analyzer) reset() {
 	analyzer.lastFreezeTimeEndTick = -1
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
-	analyzer.droppedWeapons = make(map[uint64]uint64)
-	analyzer.roundWeaponOwners = make(map[int]uint64)
+	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
+	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
@@ -425,8 +409,8 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
-	analyzer.droppedWeapons = make(map[uint64]uint64)
-	analyzer.roundWeaponOwners = make(map[int]uint64)
+	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
+	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
 
 	roundNumber := analyzer.currentRound.Number + 1
 
@@ -438,11 +422,9 @@ func (analyzer *Analyzer) createRound() {
 			continue
 		}
 		for _, weapon := range player.Weapons() {
-			if weapon.UniqueID() != -1 {
-				id := int(weapon.UniqueID())
-				analyzer.roundWeaponOwners[id] = player.SteamID64
-				analyzer.currentRound.weaponsBoughtUniqueIds = append(analyzer.currentRound.weaponsBoughtUniqueIds, weapon.UniqueID2().String())
-			}
+			id := weapon.UniqueID2()
+			analyzer.roundWeaponOwners[id] = player.SteamID64
+			analyzer.currentRound.weaponsBoughtUniqueIds = append(analyzer.currentRound.weaponsBoughtUniqueIds, id.String())
 		}
 	}
 
@@ -645,7 +627,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		if isDroppedWeapon {
 			// Logic for picking up an existing weapon (potential Leech/Feed)
 			if analyzer.parser.GameState().IsFreezetimePeriod() {
-				weaponID := int(event.Weapon.UniqueID())
+				weaponID := event.Weapon.UniqueID2()
 				if previousOwnerID, ok := analyzer.roundWeaponOwners[weaponID]; ok {
 					if previousOwnerID != 0 && previousOwnerID != event.Player.SteamID64 {
 						// It's a transfer
@@ -679,7 +661,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		currentRound.weaponsBoughtUniqueIds = append(currentRound.weaponsBoughtUniqueIds, event.Weapon.UniqueID2().String())
 		// Mark this player as the owner of this newly bought weapon
-		analyzer.roundWeaponOwners[int(event.Weapon.UniqueID())] = event.Player.SteamID64
+		analyzer.roundWeaponOwners[event.Weapon.UniqueID2()] = event.Player.SteamID64
 		match.PlayersBuy = append(match.PlayersBuy, newPlayerBuy(analyzer, event))
 	})
 
@@ -979,7 +961,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		analyzer.bombPlantPosition = event.Player.LastAlivePosition
+		analyzer.bombPlantPosition = event.Player.Position()
 
 		bombPlanted := newBombPlanted(analyzer, event)
 		match.BombsPlanted = append(match.BombsPlanted, bombPlanted)
@@ -1221,32 +1203,35 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	})
 
 	// CS:GO only
-	parser.RegisterEventHandler(func(event events.PlayerInspectingWeapon) {
-		if !analyzer.matchStarted() || event.Player == nil {
-			return
-		}
-
-		player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
-		if player == nil {
-			return
-		}
-
-		player.startWeaponInspection(analyzer.currentTick())
-	})
-
 	// CS:GO only
-	parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
-		if !analyzer.matchStarted() || event.Player == nil {
-			return
-		}
+	// Check if PlayerInspectingWeapon is supported in v5, if not remove
+	// parser.RegisterEventHandler(func(event events.PlayerInspectingWeapon) {
+	// 	if !analyzer.matchStarted() || event.Player == nil {
+	// 		return
+	// 	}
 
-		player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
-		if player == nil {
-			return
-		}
+	// 	player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+	// 	if player == nil {
+	// 		return
+	// 	}
 
-		player.stopWeaponInspection(analyzer.currentTick())
-	})
+	// 	player.startWeaponInspection(analyzer.currentTick())
+	// })
+
+
+
+	// parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
+	// 	if !analyzer.matchStarted() || event.Player == nil {
+	// 		return
+	// 	}
+
+	// 	player := analyzer.match.PlayersBySteamID[event.Player.SteamID64]
+	// 	if player == nil {
+	// 		return
+	// 	}
+
+	// 	player.stopWeaponInspection(analyzer.currentTick())
+	// })
 
 	// weaponInspectCancelButtons are the buttons (actions) that cancel an ongoing weapon inspection.
 	var weaponInspectCancelButtons = []common.ButtonBitMask{

@@ -8,8 +8,8 @@ import (
 	"github.com/akiver/cs-demo-analyzer/tests/assertion"
 	"github.com/akiver/cs-demo-analyzer/tests/fake"
 	"github.com/akiver/cs-demo-analyzer/tests/testsutils"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 // https://www.hltv.org/matches/2367504/monte-vs-og-roobet-cup-2023

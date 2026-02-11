@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 type DecoyStart struct {
@@ -49,7 +49,7 @@ func newDecoyStartFromGameEvent(analyzer *Analyzer, event events.DecoyStart) *De
 		}
 	}
 
-	velocity := thrower.Velocity()
+	velocity := getPlayerVelocity(thrower)
 
 	return &DecoyStart{
 		Frame:            parser.CurrentFrame(),

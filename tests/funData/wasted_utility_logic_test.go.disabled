@@ -1,4 +1,4 @@
-package tests
+package funData
 
 import (
 	"fmt"
@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	demoinfocs "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
-	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	demoinfocs "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs"
+	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 // Map equipment type to generic weapon name string matching keys in constants.WeaponPrices

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
 type GrenadeBounce struct {
@@ -49,7 +49,7 @@ func newGrenadeBounceFromProjectile(analyzer *Analyzer, projectile *common.Grena
 		}
 	}
 
-	velocity := thrower.Velocity()
+	velocity := getPlayerVelocity(thrower)
 
 	parser := analyzer.parser
 	throwerTeam := thrower.Team

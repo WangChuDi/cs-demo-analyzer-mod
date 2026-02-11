@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/golang/geo/r2"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
 type InfernoPosition struct {

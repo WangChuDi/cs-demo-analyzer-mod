@@ -6,8 +6,8 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 type Kill struct {
@@ -140,8 +140,8 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 			killerPosition = event.Killer.Position()
 			victimPosition = event.Victim.Position()
 		} else {
-			killerPosition = event.Killer.PositionEyes()
-			victimPosition = event.Victim.PositionEyes()
+			killerPosition = getPlayerPositionEyes(event.Killer)
+			victimPosition = getPlayerPositionEyes(event.Victim)
 		}
 
 		distance = float32(math.GetDistanceBetweenVectors(killerPosition, victimPosition))
