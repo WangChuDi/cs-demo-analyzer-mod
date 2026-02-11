@@ -3,9 +3,9 @@ package api
 import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
 )
 
 type Shot struct {
@@ -70,7 +70,9 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		viewPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_viewPunchAngle").R3Vec()
 	}
 
-	velocity := shooter.Velocity()
+	velocity := getPlayerVelocity(shooter)
+	yaw := shooter.ViewDirectionX()
+	pitch := shooter.ViewDirectionY()
 
 	return &Shot{
 		Frame:                  analyzer.parser.CurrentFrame(),
@@ -89,8 +91,8 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		PlayerVelocityX:        velocity.X,
 		PlayerVelocityY:        velocity.Y,
 		PlayerVelocityZ:        velocity.Z,
-		Yaw:                    shooter.ViewDirectionX(),
-		Pitch:                  shooter.ViewDirectionY(),
+		Yaw:                    yaw,
+		Pitch:                  pitch,
 		RecoilIndex:            recoilIndex,
 		AimPunchAngleX:         aimPunchAngle.X,
 		AimPunchAngleY:         aimPunchAngle.Y,

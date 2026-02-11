@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 type FlashbangExplode struct {
@@ -49,7 +49,7 @@ func newFlashbangExplodeFromGameEvent(analyzer *Analyzer, event events.FlashExpl
 		}
 	}
 
-	velocity := thrower.Velocity()
+	velocity := getPlayerVelocity(thrower)
 
 	return &FlashbangExplode{
 		Frame:            parser.CurrentFrame(),

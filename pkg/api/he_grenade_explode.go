@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 type HeGrenadeExplode struct {
@@ -49,7 +49,7 @@ func newHeGrenadeExplodeFromGameEvent(analyzer *Analyzer, event events.HeExplode
 		}
 	}
 
-	velocity := thrower.Velocity()
+	velocity := getPlayerVelocity(thrower)
 
 	return &HeGrenadeExplode{
 		Frame:            parser.CurrentFrame(),

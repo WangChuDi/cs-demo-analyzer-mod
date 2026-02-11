@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
 )
 
 type SmokeStart struct {
@@ -50,7 +50,7 @@ func newSmokeStartFromGameEvent(analyzer *Analyzer, event events.SmokeStart) *Sm
 		}
 	}
 
-	velocity := thrower.Velocity()
+	velocity := getPlayerVelocity(thrower)
 
 	return &SmokeStart{
 		Frame:            parser.CurrentFrame(),

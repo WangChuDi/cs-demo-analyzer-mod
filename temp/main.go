@@ -411,7 +411,7 @@ func calculateDemoChecksum(demoPath string) (string, string, string, error) {
 		mapName,
 		serverName,
 		clientName,
-		header.GetNetworkProtocol(),
+		header.GetPatchVersion(),
 		header.GetBuildNum(),
 		header.GetDemoVersionGuid(),
 		header.GetDemoVersionName(),

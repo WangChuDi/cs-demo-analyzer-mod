@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
 type PlayerPosition struct {

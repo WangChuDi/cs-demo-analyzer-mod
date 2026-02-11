@@ -11,7 +11,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/converters"
 	"github.com/akiver/cs-demo-analyzer/internal/csv"
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
 func exportMatchToCSV(match *Match, outputPath string) error {
@@ -396,11 +396,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				shot.PlayerTeamName,
 				converters.TeamToString(shot.PlayerSide),
 				converters.BoolToString(shot.IsPlayerControllingBot),
-				converters.Float32ToString(shot.Yaw),
-				converters.Float32ToString(shot.Pitch),
 				converters.Float64ToString(shot.PlayerVelocityX),
 				converters.Float64ToString(shot.PlayerVelocityY),
 				converters.Float64ToString(shot.PlayerVelocityZ),
+				converters.Float32ToString(shot.Yaw),
+				converters.Float32ToString(shot.Pitch),
 				converters.Float32ToString(shot.RecoilIndex),
 				converters.Float64ToString(shot.AimPunchAngleX),
 				converters.Float64ToString(shot.AimPunchAngleY),
