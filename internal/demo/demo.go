@@ -129,7 +129,7 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 		var header msg.CDemoFileHeader
 		err := proto.Unmarshal(bytes, &header)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse CMsgPlayerInfo msg")
+			return nil, fmt.Errorf("failed to parse CDemoFileHeader msg")
 		}
 
 		mapName = header.GetMapName()
