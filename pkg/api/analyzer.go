@@ -695,6 +695,13 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	})
 
 	parser.RegisterEventHandler(func(event events.FrameDone) {
+		shouldComputeEconomy := analyzer.lastFreezeTimeEndTick != -1 && analyzer.secondsHasPassedSinceTick(equipmentValueDelaySeconds, analyzer.lastFreezeTimeEndTick)
+		if shouldComputeEconomy {
+			analyzer.computePlayersEconomies()
+			analyzer.currentRound.computeTeamsEconomy()
+			analyzer.lastFreezeTimeEndTick = -1
+		}
+
 		if !analyzer.matchStarted() {
 			return
 		}
