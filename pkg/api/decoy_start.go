@@ -49,7 +49,7 @@ func newDecoyStartFromGameEvent(analyzer *Analyzer, event events.DecoyStart) *De
 		}
 	}
 
-	velocity := getPlayerVelocity(thrower)
+	velocity := getPlayerVelocity(thrower, analyzer)
 
 	return &DecoyStart{
 		Frame:            parser.CurrentFrame(),

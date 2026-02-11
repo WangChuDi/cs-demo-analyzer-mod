@@ -70,7 +70,8 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		viewPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_viewPunchAngle").R3Vec()
 	}
 
-	velocity := getPlayerVelocity(shooter)
+	velocity := getPlayerVelocity(shooter, analyzer)
+
 	yaw := shooter.ViewDirectionX()
 	pitch := shooter.ViewDirectionY()
 

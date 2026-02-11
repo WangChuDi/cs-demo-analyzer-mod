@@ -49,7 +49,7 @@ func newHeGrenadeExplodeFromGameEvent(analyzer *Analyzer, event events.HeExplode
 		}
 	}
 
-	velocity := getPlayerVelocity(thrower)
+	velocity := getPlayerVelocity(thrower, analyzer)
 
 	return &HeGrenadeExplode{
 		Frame:            parser.CurrentFrame(),

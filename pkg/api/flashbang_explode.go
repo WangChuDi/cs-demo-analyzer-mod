@@ -49,7 +49,7 @@ func newFlashbangExplodeFromGameEvent(analyzer *Analyzer, event events.FlashExpl
 		}
 	}
 
-	velocity := getPlayerVelocity(thrower)
+	velocity := getPlayerVelocity(thrower, analyzer)
 
 	return &FlashbangExplode{
 		Frame:            parser.CurrentFrame(),

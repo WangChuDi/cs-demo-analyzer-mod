@@ -44,7 +44,7 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 		}
 	}
 
-	velocity := getPlayerVelocity(thrower)
+	velocity := getPlayerVelocity(thrower, analyzer)
 
 	parser := analyzer.parser
 	throwerTeam := thrower.Team

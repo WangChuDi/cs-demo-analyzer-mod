@@ -50,7 +50,7 @@ func newSmokeStartFromGameEvent(analyzer *Analyzer, event events.SmokeStart) *Sm
 		}
 	}
 
-	velocity := getPlayerVelocity(thrower)
+	velocity := getPlayerVelocity(thrower, analyzer)
 
 	return &SmokeStart{
 		Frame:            parser.CurrentFrame(),

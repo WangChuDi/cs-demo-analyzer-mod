@@ -63,6 +63,17 @@ Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
 Ready-to-use binaries are available on the [releases page](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases).
 
 
+## ⚠️ Known Issues
+
+Due to limitations in `demoinfocs-golang v5` regarding reliable velocity property access for some events (specifically `HeGrenadeExplode` and `SmokeStart`), we have implemented a manual velocity calculation workaround using player position deltas between ticks.
+
+While this workaround provides accurate velocity for most events (like `Footstep` and `Shot`), there might still be edge cases where velocity is unavailable (e.g., first tick of the match).
+
+This affects only:
+- `HeGrenadeExplode` (thrower velocity)
+- `SmokeStart` (thrower velocity)
+
+
 ## How to build
 
 1. Clone the repository
