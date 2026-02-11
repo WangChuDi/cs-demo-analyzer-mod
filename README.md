@@ -47,8 +47,6 @@ Tracks player movement sounds (footsteps).
   - `yaw`, `pitch` (View Angles)
   - `player name`, `player steamid`, `player team name`, `player side`
 
-> **Note**: In CS2 demos, player velocity fields (`player velocity x/y/z`) may appear as `0` for footstep events. This is due to the current behavior of the demo parsing library where velocity updates (via packet entities) might occur after the footstep event is dispatched in the same tick.
-
 ### 🎮 Player Buttons
 Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
 

@@ -24,29 +24,29 @@ type Footstep struct {
 	Pitch                  float32     `json:"pitch"`
 }
 
-func newFootstep(analyzer *Analyzer, event events.Footstep) *Footstep {
+func newFootstep(analyzer *Analyzer, event events.Footstep, velocityX, velocityY, velocityZ float64) *Footstep {
 	player := event.Player
 	if player == nil {
 		return nil
 	}
 
-	velocity := player.Velocity()
+	playerPos := player.Position()
 
 	return &Footstep{
 		Frame:                  analyzer.parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
-		X:                      player.Position().X,
-		Y:                      player.Position().Y,
-		Z:                      player.Position().Z,
+		X:                      playerPos.X,
+		Y:                      playerPos.Y,
+		Z:                      playerPos.Z,
 		PlayerName:             player.Name,
 		PlayerSteamID64:        player.SteamID64,
 		PlayerTeamName:         analyzer.match.Team(player.Team).Name,
 		PlayerSide:             player.Team,
 		IsPlayerControllingBot: player.IsControllingBot(),
-		PlayerVelocityX:        velocity.X,
-		PlayerVelocityY:        velocity.Y,
-		PlayerVelocityZ:        velocity.Z,
+		PlayerVelocityX:        velocityX,
+		PlayerVelocityY:        velocityY,
+		PlayerVelocityZ:        velocityZ,
 		Yaw:                    player.ViewDirectionX(),
 		Pitch:                  player.ViewDirectionY(),
 	}

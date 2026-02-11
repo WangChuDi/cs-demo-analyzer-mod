@@ -10,6 +10,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
+	"github.com/golang/geo/r3"
 	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
@@ -77,6 +78,7 @@ type Match struct {
 	Footsteps                 []*Footstep                 `json:"footsteps"`
 	scoreTeamA                *int
 	scoreTeamB                *int
+	lastPlayersPosition       map[uint64]r3.Vector
 }
 
 type MatchAlias Match
@@ -323,6 +325,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
 		PlayerButtons:             []*funData.PlayerButtons{},
 		Footsteps:                 []*Footstep{},
+		lastPlayersPosition:       make(map[uint64]r3.Vector),
 	}
 
 	match.initTeams()
@@ -363,6 +366,7 @@ func (match *Match) reset() {
 	match.PlayerEconomies = []*PlayerEconomy{}
 	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.Footsteps = []*Footstep{}
+	match.lastPlayersPosition = make(map[uint64]r3.Vector)
 	match.initTeams()
 }
 

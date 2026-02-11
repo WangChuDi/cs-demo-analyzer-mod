@@ -64,6 +64,7 @@ type Analyzer struct {
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
 	roundWeaponOwners map[int]uint64
 	chickenEntities   []st.Entity
+	pendingFootsteps  []events.Footstep
 }
 
 type AnalyzeDemoOptions struct {
@@ -700,6 +701,38 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			analyzer.currentRound.computeTeamsEconomy()
 			analyzer.lastFreezeTimeEndTick = -1
 		}
+
+		if !analyzer.matchStarted() {
+			return
+		}
+
+		tickTime := parser.TickTime().Seconds()
+		for _, event := range analyzer.pendingFootsteps {
+			player := event.Player
+			if player == nil {
+				continue
+			}
+
+			playerPos := player.Position()
+			lastPos, ok := match.lastPlayersPosition[player.SteamID64]
+			var velocityX, velocityY, velocityZ float64
+
+			if ok && tickTime > 0 {
+				velocityX = (playerPos.X - lastPos.X) / tickTime
+				velocityY = (playerPos.Y - lastPos.Y) / tickTime
+				velocityZ = (playerPos.Z - lastPos.Z) / tickTime
+			}
+
+			footstep := newFootstep(analyzer, event, velocityX, velocityY, velocityZ)
+			if footstep != nil {
+				match.Footsteps = append(match.Footsteps, footstep)
+			}
+		}
+		analyzer.pendingFootsteps = nil
+
+		for _, player := range parser.GameState().Participants().Playing() {
+			match.lastPlayersPosition[player.SteamID64] = player.Position()
+		}
 	})
 
 	if includePositions {
@@ -938,10 +971,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		footstep := newFootstep(analyzer, event)
-		if footstep != nil {
-			match.Footsteps = append(match.Footsteps, footstep)
-		}
+		analyzer.pendingFootsteps = append(analyzer.pendingFootsteps, event)
 	})
 
 	parser.RegisterEventHandler(func(event events.BombPlanted) {
