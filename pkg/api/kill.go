@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	stdmath "math"
 
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
@@ -25,6 +26,7 @@ type Kill struct {
 	KillerZ                  float64              `json:"killerZ"`
 	IsKillerAirborne         bool                 `json:"is_killer_airborne"`
 	IsKillerBlinded          bool                 `json:"is_killer_blinded"`
+	IsKillerRunning          bool                 `json:"is_killer_running"`
 	IsKillerControllingBot   bool                 `json:"isKillerControllingBot"`
 	VictimName               string               `json:"victimName"`
 	VictimSteamID64          uint64               `json:"victimSteamId"`
@@ -81,6 +83,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	var isKillerControllingBot bool
 	var isKillerAirborne bool
 	var isKillerBlinded bool
+	var isKillerRunning bool
 	var killerX float64
 	var killerY float64
 	var killerZ float64
@@ -95,6 +98,24 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		killerZ = event.Killer.Position().Z
 		isKillerAirborne = event.Killer.IsAirborne()
 		isKillerBlinded = event.Killer.IsBlinded()
+
+		lastPos, ok := match.lastPlayersPosition[killerSteamID]
+		tickTime := parser.TickTime().Seconds()
+		if ok && tickTime > 0 {
+			dx := killerX - lastPos.X
+			dy := killerY - lastPos.Y
+			speed2D := stdmath.Sqrt(dx*dx+dy*dy) / tickTime
+
+			// Check against weapon's accurate speed threshold
+			wName := equipmentToWeaponName[event.Weapon.Type]
+			if threshold, ok := constants.WeaponAccurateSpeed[wName]; ok {
+				if speed2D > threshold {
+					isKillerRunning = true
+				}
+			} else {
+				fmt.Printf("Error: Weapon '%s' not found in accurate speed constants\n", wName)
+			}
+		}
 	}
 
 	var isVictimInspectingWeapon bool
@@ -177,6 +198,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		KillerZ:                  killerZ,
 		IsKillerAirborne:         isKillerAirborne,
 		IsKillerBlinded:          isKillerBlinded,
+		IsKillerRunning:          isKillerRunning,
 		VictimX:                  victimPosition.X,
 		VictimY:                  victimPosition.Y,
 		VictimZ:                  victimPosition.Z,

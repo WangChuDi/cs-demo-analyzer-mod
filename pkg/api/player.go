@@ -42,112 +42,205 @@ type PlayerAlias Player
 
 type PlayerJSON struct {
 	*PlayerAlias
-	KillCount             int     `json:"killCount"`
-	DeathCount            int     `json:"deathCount"`
-	AssistCount           int     `json:"assistCount"`
-	KillDeathRatio        float32 `json:"killDeathRatio"`
-	KAST                  float32 `json:"kast"`
-	BombDefusedCount      int     `json:"bombDefusedCount"`
-	BombPlantedCount      int     `json:"bombPlantedCount"`
-	HealthDamage          int     `json:"healthDamage"`
-	ArmorDamage           int     `json:"armorDamage"`
-	UtilityDamage         int     `json:"utilityDamage"`
-	HeadshotCount         int     `json:"headshotCount"`
-	HeadshotPercent       int     `json:"headshotPercent"`
-	OneVsOneCount         int     `json:"oneVsOneCount"`
-	OneVsOneWonCount      int     `json:"oneVsOneWonCount"`
-	OneVsOneLostCount     int     `json:"oneVsOneLostCount"`
-	OneVsTwoCount         int     `json:"oneVsTwoCount"`
-	OneVsTwoWonCount      int     `json:"oneVsTwoWonCount"`
-	OneVsTwoLostCount     int     `json:"oneVsTwoLostCount"`
-	OneVsThreeCount       int     `json:"oneVsThreeCount"`
-	OneVsThreeWonCount    int     `json:"oneVsThreeWonCount"`
-	OneVsThreeLostCount   int     `json:"oneVsThreeLostCount"`
-	OneVsFourCount        int     `json:"oneVsFourCount"`
-	OneVsFourWonCount     int     `json:"oneVsFourWonCount"`
-	OneVsFourLostCount    int     `json:"oneVsFourLostCount"`
-	OneVsFiveCount        int     `json:"oneVsFiveCount"`
-	OneVsFiveWonCount     int     `json:"oneVsFiveWonCount"`
-	OneVsFiveLostCount    int     `json:"oneVsFiveLostCount"`
-	HostageRescuedCount   int     `json:"hostageRescuedCount"`
-	AverageKillPerRound   float32 `json:"averageKillPerRound"`
-	AverageDeathPerRound  float32 `json:"averageDeathPerRound"`
-	AverageDamagePerRound float32 `json:"averageDamagePerRound"`
-	UtilityDamagePerRound float32 `json:"utilityDamagePerRound"`
-	FirstKillCount        int     `json:"firstKillCount"`
-	FirstDeathCount       int     `json:"firstDeathCount"`
-	FirstTradeDeathCount  int     `json:"firstTradeDeathCount"`
-	TradeDeathCount       int     `json:"tradeDeathCount"`
-	TradeKillCount        int     `json:"tradeKillCount"`
-	FirstTradeKillCount   int     `json:"firstTradeKillCount"`
-	OneKillCount          int     `json:"oneKillCount"`
-	TwoKillCount          int     `json:"twoKillCount"`
-	ThreeKillCount        int     `json:"threeKillCount"`
-	FourKillCount         int     `json:"fourKillCount"`
-	FiveKillCount         int     `json:"fiveKillCount"`
-	HltvRating            float32 `json:"hltvRating"`
-	HltvRating2           float32 `json:"hltvRating2"`
-	LeechValue            int     `json:"leechValue"`
-	FeedValue             int     `json:"feedValue"`
-	LeechCount            int     `json:"leechCount"`
-	FeedCount             int     `json:"feedCount"`
-	WastedUtilityValue    int     `json:"wastedUtilityValue"`
+	KillCount                   int     `json:"killCount"`
+	DeathCount                  int     `json:"deathCount"`
+	AssistCount                 int     `json:"assistCount"`
+	KillDeathRatio              float32 `json:"killDeathRatio"`
+	KAST                        float32 `json:"kast"`
+	BombDefusedCount            int     `json:"bombDefusedCount"`
+	BombPlantedCount            int     `json:"bombPlantedCount"`
+	HealthDamage                int     `json:"healthDamage"`
+	ArmorDamage                 int     `json:"armorDamage"`
+	UtilityDamage               int     `json:"utilityDamage"`
+	HeadshotCount               int     `json:"headshotCount"`
+	HeadshotPercent             int     `json:"headshotPercent"`
+	OneVsOneCount               int     `json:"oneVsOneCount"`
+	OneVsOneWonCount            int     `json:"oneVsOneWonCount"`
+	OneVsOneLostCount           int     `json:"oneVsOneLostCount"`
+	OneVsTwoCount               int     `json:"oneVsTwoCount"`
+	OneVsTwoWonCount            int     `json:"oneVsTwoWonCount"`
+	OneVsTwoLostCount           int     `json:"oneVsTwoLostCount"`
+	OneVsThreeCount             int     `json:"oneVsThreeCount"`
+	OneVsThreeWonCount          int     `json:"oneVsThreeWonCount"`
+	OneVsThreeLostCount         int     `json:"oneVsThreeLostCount"`
+	OneVsFourCount              int     `json:"oneVsFourCount"`
+	OneVsFourWonCount           int     `json:"oneVsFourWonCount"`
+	OneVsFourLostCount          int     `json:"oneVsFourLostCount"`
+	OneVsFiveCount              int     `json:"oneVsFiveCount"`
+	OneVsFiveWonCount           int     `json:"oneVsFiveWonCount"`
+	OneVsFiveLostCount          int     `json:"oneVsFiveLostCount"`
+	HostageRescuedCount         int     `json:"hostageRescuedCount"`
+	AverageKillPerRound         float32 `json:"averageKillPerRound"`
+	AverageDeathPerRound        float32 `json:"averageDeathPerRound"`
+	AverageDamagePerRound       float32 `json:"averageDamagePerRound"`
+	UtilityDamagePerRound       float32 `json:"utilityDamagePerRound"`
+	FirstKillCount              int     `json:"firstKillCount"`
+	FirstDeathCount             int     `json:"firstDeathCount"`
+	FirstTradeDeathCount        int     `json:"firstTradeDeathCount"`
+	TradeDeathCount             int     `json:"tradeDeathCount"`
+	TradeKillCount              int     `json:"tradeKillCount"`
+	FirstTradeKillCount         int     `json:"firstTradeKillCount"`
+	OneKillCount                int     `json:"oneKillCount"`
+	TwoKillCount                int     `json:"twoKillCount"`
+	ThreeKillCount              int     `json:"threeKillCount"`
+	FourKillCount               int     `json:"fourKillCount"`
+	FiveKillCount               int     `json:"fiveKillCount"`
+	HltvRating                  float32 `json:"hltvRating"`
+	HltvRating2                 float32 `json:"hltvRating2"`
+	LeechValue                  int     `json:"leechValue"`
+	FeedValue                   int     `json:"feedValue"`
+	LeechCount                  int     `json:"leechCount"`
+	FeedCount                   int     `json:"feedCount"`
+	WastedUtilityValue          int     `json:"wastedUtilityValue"`
+	UtilityDamageTaken          int     `json:"utilityDamageTaken"`
+	WallbangDamageTaken         int     `json:"wallbangDamageTaken"`
+	TeamDamageTaken             int     `json:"teamDamageTaken"`
+	FallDamageTaken             int     `json:"fallDamageTaken"`
+	AirDamageTaken              int     `json:"airDamageTaken"`
+	RunAndGunOrAirKilledByCount int     `json:"runAndGunOrAirKilledByCount"`
+	ThroughSmokeKillCount       int     `json:"throughSmokeKillCount"`
+	WallbangKillCount           int     `json:"wallbangKillCount"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
 	return json.Marshal(PlayerJSON{
-		PlayerAlias:           (*PlayerAlias)(player),
-		KillCount:             player.KillCount(),
-		DeathCount:            player.DeathCount(),
-		AssistCount:           player.AssistCount(),
-		KillDeathRatio:        player.KillDeathRatio(),
-		KAST:                  player.KAST(),
-		BombDefusedCount:      player.BombDefusedCount(),
-		BombPlantedCount:      player.BombPlantedCount(),
-		HealthDamage:          player.HealthDamage(),
-		ArmorDamage:           player.ArmorDamage(),
-		UtilityDamage:         player.UtilityDamage(),
-		HeadshotCount:         player.HeadshotCount(),
-		HeadshotPercent:       player.HeadshotPercent(),
-		OneVsOneCount:         player.OneVsOneCount(),
-		OneVsOneWonCount:      player.OneVsOneWonCount(),
-		OneVsOneLostCount:     player.OneVsOneLostCount(),
-		OneVsTwoCount:         player.OneVsTwoCount(),
-		OneVsTwoWonCount:      player.OneVsTwoWonCount(),
-		OneVsTwoLostCount:     player.OneVsTwoLostCount(),
-		OneVsThreeCount:       player.OneVsThreeCount(),
-		OneVsThreeWonCount:    player.OneVsThreeWonCount(),
-		OneVsThreeLostCount:   player.OneVsThreeLostCount(),
-		OneVsFourCount:        player.OneVsFourCount(),
-		OneVsFourWonCount:     player.OneVsFourWonCount(),
-		OneVsFourLostCount:    player.OneVsFourLostCount(),
-		OneVsFiveCount:        player.OneVsFiveCount(),
-		OneVsFiveWonCount:     player.OneVsFiveWonCount(),
-		OneVsFiveLostCount:    player.OneVsFiveLostCount(),
-		HostageRescuedCount:   player.HostageRescuedCount(),
-		AverageKillPerRound:   player.AverageKillPerRound(),
-		AverageDeathPerRound:  player.AverageDeathPerRound(),
-		AverageDamagePerRound: player.AverageDamagePerRound(),
-		UtilityDamagePerRound: player.UtilityDamagePerRound(),
-		FirstKillCount:        player.FirstKillCount(),
-		FirstDeathCount:       player.FirstDeathCount(),
-		FirstTradeDeathCount:  player.FirstTradeDeathCount(),
-		TradeDeathCount:       player.TradeDeathCount(),
-		TradeKillCount:        player.TradeKillCount(),
-		FirstTradeKillCount:   player.FirstTradeKillCount(),
-		OneKillCount:          player.OneKillCount(),
-		TwoKillCount:          player.TwoKillCount(),
-		ThreeKillCount:        player.ThreeKillCount(),
-		FourKillCount:         player.FourKillCount(),
-		FiveKillCount:         player.FiveKillCount(),
-		HltvRating2:           player.HltvRating2(),
-		HltvRating:            player.HltvRating(),
-		LeechValue:            player.LeechValue,
-		FeedValue:             player.FeedValue,
-		LeechCount:            player.LeechCount,
-		FeedCount:             player.FeedCount,
-		WastedUtilityValue:    player.WastedUtilityValue,
+		PlayerAlias:                 (*PlayerAlias)(player),
+		KillCount:                   player.KillCount(),
+		DeathCount:                  player.DeathCount(),
+		AssistCount:                 player.AssistCount(),
+		KillDeathRatio:              player.KillDeathRatio(),
+		KAST:                        player.KAST(),
+		BombDefusedCount:            player.BombDefusedCount(),
+		BombPlantedCount:            player.BombPlantedCount(),
+		HealthDamage:                player.HealthDamage(),
+		ArmorDamage:                 player.ArmorDamage(),
+		UtilityDamage:               player.UtilityDamage(),
+		HeadshotCount:               player.HeadshotCount(),
+		HeadshotPercent:             player.HeadshotPercent(),
+		OneVsOneCount:               player.OneVsOneCount(),
+		OneVsOneWonCount:            player.OneVsOneWonCount(),
+		OneVsOneLostCount:           player.OneVsOneLostCount(),
+		OneVsTwoCount:               player.OneVsTwoCount(),
+		OneVsTwoWonCount:            player.OneVsTwoWonCount(),
+		OneVsTwoLostCount:           player.OneVsTwoLostCount(),
+		OneVsThreeCount:             player.OneVsThreeCount(),
+		OneVsThreeWonCount:          player.OneVsThreeWonCount(),
+		OneVsThreeLostCount:         player.OneVsThreeLostCount(),
+		OneVsFourCount:              player.OneVsFourCount(),
+		OneVsFourWonCount:           player.OneVsFourWonCount(),
+		OneVsFourLostCount:          player.OneVsFourLostCount(),
+		OneVsFiveCount:              player.OneVsFiveCount(),
+		OneVsFiveWonCount:           player.OneVsFiveWonCount(),
+		OneVsFiveLostCount:          player.OneVsFiveLostCount(),
+		HostageRescuedCount:         player.HostageRescuedCount(),
+		AverageKillPerRound:         player.AverageKillPerRound(),
+		AverageDeathPerRound:        player.AverageDeathPerRound(),
+		AverageDamagePerRound:       player.AverageDamagePerRound(),
+		UtilityDamagePerRound:       player.UtilityDamagePerRound(),
+		FirstKillCount:              player.FirstKillCount(),
+		FirstDeathCount:             player.FirstDeathCount(),
+		FirstTradeDeathCount:        player.FirstTradeDeathCount(),
+		TradeDeathCount:             player.TradeDeathCount(),
+		TradeKillCount:              player.TradeKillCount(),
+		FirstTradeKillCount:         player.FirstTradeKillCount(),
+		OneKillCount:                player.OneKillCount(),
+		TwoKillCount:                player.TwoKillCount(),
+		ThreeKillCount:              player.ThreeKillCount(),
+		FourKillCount:               player.FourKillCount(),
+		FiveKillCount:               player.FiveKillCount(),
+		HltvRating2:                 player.HltvRating2(),
+		HltvRating:                  player.HltvRating(),
+		LeechValue:                  player.LeechValue,
+		FeedValue:                   player.FeedValue,
+		LeechCount:                  player.LeechCount,
+		FeedCount:                   player.FeedCount,
+		WastedUtilityValue:          player.WastedUtilityValue,
+		UtilityDamageTaken:          player.UtilityDamageTaken(),
+		WallbangDamageTaken:         player.WallbangDamageTaken(),
+		TeamDamageTaken:             player.TeamDamageTaken(),
+		FallDamageTaken:             player.FallDamageTaken(),
+		AirDamageTaken:              player.AirDamageTaken(),
+		RunAndGunOrAirKilledByCount: player.RunAndGunOrAirKilledByCount(),
+		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
+		WallbangKillCount:           player.WallbangKillCount(),
 	})
+}
+
+func (player *Player) UtilityDamageTaken() int {
+	var utilityDamageTaken int
+	for _, damage := range player.match.Damages {
+		if damage.VictimSteamID64 == player.SteamID64 && damage.IsGrenadeWeapon() {
+			utilityDamageTaken += damage.HealthDamage
+		}
+	}
+	return utilityDamageTaken
+}
+
+func (player *Player) WallbangDamageTaken() int {
+	// Not implemented as PlayerHurt event lacks penetration info
+	return 0
+}
+
+func (player *Player) TeamDamageTaken() int {
+	var teamDamageTaken int
+	for _, damage := range player.match.Damages {
+		if damage.VictimSteamID64 == player.SteamID64 && damage.AttackerSteamID64 != 0 && damage.AttackerSide == damage.VictimSide && damage.AttackerSteamID64 != damage.VictimSteamID64 {
+			teamDamageTaken += damage.HealthDamage
+		}
+	}
+	return teamDamageTaken
+}
+
+func (player *Player) FallDamageTaken() int {
+	var fallDamageTaken int
+	for _, damage := range player.match.Damages {
+		if damage.VictimSteamID64 == player.SteamID64 && damage.WeaponName == constants.WeaponWorld {
+			fallDamageTaken += damage.HealthDamage
+		}
+	}
+	return fallDamageTaken
+}
+
+func (player *Player) AirDamageTaken() int {
+	var airDamageTaken int
+	for _, damage := range player.match.Damages {
+		if damage.VictimSteamID64 == player.SteamID64 && damage.IsAttackerAirborne {
+			airDamageTaken += damage.HealthDamage
+		}
+	}
+	return airDamageTaken
+}
+
+func (player *Player) ThroughSmokeKillCount() int {
+	var count int
+	for _, kill := range player.Deaths() {
+		if kill.KillerSteamID64 != 0 && kill.KillerSteamID64 != player.SteamID64 && kill.IsThroughSmoke {
+			count++
+		}
+	}
+	return count
+}
+
+func (player *Player) WallbangKillCount() int {
+	var count int
+	for _, kill := range player.Deaths() {
+		if kill.KillerSteamID64 != 0 && kill.KillerSteamID64 != player.SteamID64 && kill.PenetratedObjects > 0 {
+			count++
+		}
+	}
+	return count
+}
+
+func (player *Player) RunAndGunOrAirKilledByCount() int {
+	var count int
+	for _, kill := range player.Deaths() {
+		if kill.KillerSteamID64 != 0 && kill.KillerSteamID64 != player.SteamID64 {
+			if kill.IsKillerRunning || kill.IsKillerAirborne {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 func (player *Player) TeamName() string {

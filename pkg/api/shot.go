@@ -1,7 +1,11 @@
 package api
 
 import (
+	"fmt"
+	stdmath "math"
+
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+
 	"github.com/golang/geo/r3"
 	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
@@ -33,6 +37,7 @@ type Shot struct {
 	AimPunchAngleY         float64              `json:"aimPunchAngleY"`
 	ViewPunchAngleX        float64              `json:"viewPunchAngleX"`
 	ViewPunchAngleY        float64              `json:"viewPunchAngleY"`
+	IsPlayerRunning        bool                 `json:"isPlayerRunning"`
 }
 
 func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
@@ -75,11 +80,23 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 	yaw := shooter.ViewDirectionX()
 	pitch := shooter.ViewDirectionY()
 
+	var isPlayerRunning bool
+	speed2D := stdmath.Sqrt(velocity.X*velocity.X + velocity.Y*velocity.Y)
+
+	wName := equipmentToWeaponName[event.Weapon.Type]
+	if threshold, ok := constants.WeaponAccurateSpeed[wName]; ok {
+		if speed2D > threshold {
+			isPlayerRunning = true
+		}
+	} else {
+		fmt.Printf("Error: Weapon '%s' not found in accurate speed constants\n", wName)
+	}
+
 	return &Shot{
 		Frame:                  analyzer.parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
-		WeaponName:             equipmentToWeaponName[event.Weapon.Type],
+		WeaponName:             wName,
 		WeaponID:               event.Weapon.UniqueID2().String(),
 		X:                      shooter.Position().X,
 		Y:                      shooter.Position().Y,
@@ -99,5 +116,6 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		AimPunchAngleY:         aimPunchAngle.Y,
 		ViewPunchAngleX:        viewPunchAngle.X,
 		ViewPunchAngleY:        viewPunchAngle.Y,
+		IsPlayerRunning:        isPlayerRunning,
 	}
 }

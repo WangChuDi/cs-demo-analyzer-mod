@@ -56,6 +56,23 @@ Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
   - `buttons`: Bitmask of pressed buttons.
   - `button_names`: Comma-separated list of pressed buttons (e.g. "Attack,Jump").
 
+### 🍀 Unlucky Statistics
+Tracks unfortunate events and specific kill/damage circumstances.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `utility damage taken`: Damage received from grenades/molotovs.
+  - `team damage taken`: Damage received from teammates.
+  - `fall damage taken`: Damage received from falling.
+  - `air damage taken`: Damage received from airborne attackers.
+  - `run and gun or air killed by count`: Number of times killed by an attacker who was running (moving faster than accurate speed) or airborne.
+  - `through smoke kill count`: Number of times killed through smoke.
+  - `wallbang kill count`: Number of times killed through walls.
+
+- **Shots Table (`_shots.csv`)**:
+  - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
+
 ---
 
 ### Usage

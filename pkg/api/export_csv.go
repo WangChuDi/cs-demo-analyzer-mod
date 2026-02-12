@@ -196,6 +196,14 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"leech count",
 			"feed count",
 			"wasted utility value",
+			"utility damage taken",
+			"wallbang damage taken",
+			"team damage taken",
+			"fall damage taken",
+			"air damage taken",
+			"run and gun or air killed by count",
+			"through smoke kill count",
+			"wallbang kill count",
 			"match checksum",
 		}
 
@@ -264,6 +272,14 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.LeechCount),
 				converters.IntToString(player.FeedCount),
 				converters.IntToString(player.WastedUtilityValue),
+				converters.IntToString(player.UtilityDamageTaken()),
+				converters.IntToString(player.WallbangDamageTaken()),
+				converters.IntToString(player.TeamDamageTaken()),
+				converters.IntToString(player.FallDamageTaken()),
+				converters.IntToString(player.AirDamageTaken()),
+				converters.IntToString(player.RunAndGunOrAirKilledByCount()),
+				converters.IntToString(player.ThroughSmokeKillCount()),
+				converters.IntToString(player.WallbangKillCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -376,6 +392,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"aim punch angle y",
 			"view punch angle x",
 			"view punch angle y",
+			"is player running",
 			"match checksum",
 		}
 
@@ -406,6 +423,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(shot.AimPunchAngleY),
 				converters.Float64ToString(shot.ViewPunchAngleX),
 				converters.Float64ToString(shot.ViewPunchAngleY),
+				converters.BoolToString(shot.IsPlayerRunning),
 				match.Checksum,
 			}
 			lines = append(lines, line)

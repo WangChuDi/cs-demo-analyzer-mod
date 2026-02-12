@@ -31,6 +31,8 @@ type Damage struct {
 	WeaponName               constants.WeaponName `json:"weaponName"`
 	WeaponType               constants.WeaponType `json:"weaponType"`
 	WeaponUniqueID           string               `json:"weaponUniqueId"`
+	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
+	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
 }
 
 func (damage *Damage) IsGrenadeWeapon() bool {
@@ -68,11 +70,13 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 	attackerSide := common.TeamUnassigned
 	attackerTeamName := "World"
 	isAttackerControllingBot := false
+	var isAttackerAirborne bool
 	if event.Attacker != nil {
 		attackerSteamID = event.Attacker.SteamID64
 		attackerSide = event.Attacker.Team
 		attackerTeamName = match.Team(event.Attacker.Team).Name
 		isAttackerControllingBot = event.Attacker.IsControllingBot()
+		isAttackerAirborne = event.Attacker.IsAirborne()
 	}
 
 	return &Damage{
@@ -97,5 +101,7 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		WeaponType:               getEquipmentWeaponType(*event.Weapon),
 		HitGroup:                 event.HitGroup,
 		WeaponUniqueID:           event.Weapon.UniqueID2().String(),
+		IsVictimAirborne:         event.Player.IsAirborne(),
+		IsAttackerAirborne:       isAttackerAirborne,
 	}
 }
