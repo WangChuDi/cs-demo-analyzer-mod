@@ -69,6 +69,7 @@ Tracks unfortunate events and specific kill/damage circumstances.
   - `run and gun or air killed by count`: Number of times killed by an attacker who was running (moving faster than accurate speed) or airborne.
   - `through smoke kill count`: Number of times killed through smoke.
   - `wallbang kill count`: Number of times killed through walls.
+  - `wallbang damage taken`: Damage received from wallbangs (Note: non-lethal wallbang damage might not be tracked if the event data is insufficient).
 
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
