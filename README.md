@@ -91,6 +91,18 @@ This affects only:
 - `HeGrenadeExplode` (thrower velocity)
 - `SmokeStart` (thrower velocity)
 
+### Unlucky Statistics
+- **Wallbang Damage**: Non-lethal wallbang damage might not be tracked correctly if the demo event data is insufficient.
+
+
+## 📝 TODO
+
+### 🤡 Clown Moments
+- [ ] 🔫 **Team Attack / Friendly Fire**
+- [ ] 🧗 **Fall Damage**
+- [ ] 💣 **Team Utility Damage** (Flashing teammates, HE/Molotov friendly fire)
+- [ ] 💩 **Failed Utility** (Missed smokes/flashes, bad throws)
+
 
 ## How to build
 
