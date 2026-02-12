@@ -204,6 +204,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"run and gun or air killed by count",
 			"through smoke kill count",
 			"wallbang kill count",
+			"team attack damage",
+			"team utility damage",
+			"team flash duration",
 			"match checksum",
 		}
 
@@ -276,6 +279,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.WallbangDamageTaken()),
 				converters.IntToString(player.TeamDamageTaken()),
 				converters.IntToString(player.FallDamageTaken()),
+				converters.IntToString(player.TeamAttackDamage()),
+				converters.IntToString(player.TeamUtilityDamage()),
+				converters.Float32ToString(player.TeamFlashDuration()),
 				converters.IntToString(player.AirDamageTaken()),
 				converters.IntToString(player.RunAndGunOrAirKilledByCount()),
 				converters.IntToString(player.ThroughSmokeKillCount()),

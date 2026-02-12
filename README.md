@@ -98,9 +98,9 @@ This affects only:
 ## 📝 TODO
 
 ### 🤡 Clown Moments
-- [ ] 🔫 **Team Attack / Friendly Fire**
-- [ ] 🧗 **Fall Damage**
-- [ ] 💣 **Team Utility Damage** (Flashing teammates, HE/Molotov friendly fire)
+- [x] 🔫 **Team Attack / Friendly Fire**
+- [x] 🧗 **Fall Damage**
+- [x] 💣 **Team Utility Damage** (Flashing teammates, HE/Molotov friendly fire)
 - [ ] 💩 **Failed Utility** (Missed smokes/flashes, bad throws)
 
 

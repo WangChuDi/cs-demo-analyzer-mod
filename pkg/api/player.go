@@ -100,6 +100,9 @@ type PlayerJSON struct {
 	RunAndGunOrAirKilledByCount int     `json:"runAndGunOrAirKilledByCount"`
 	ThroughSmokeKillCount       int     `json:"throughSmokeKillCount"`
 	WallbangKillCount           int     `json:"wallbangKillCount"`
+	TeamAttackDamage            int     `json:"teamAttackDamage"`
+	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
+	TeamFlashDuration           float32 `json:"teamFlashDuration"`
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -160,6 +163,9 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		TeamDamageTaken:             player.TeamDamageTaken(),
 		FallDamageTaken:             player.FallDamageTaken(),
 		AirDamageTaken:              player.AirDamageTaken(),
+		TeamAttackDamage:            player.TeamAttackDamage(),
+		TeamUtilityDamage:           player.TeamUtilityDamage(),
+		TeamFlashDuration:           player.TeamFlashDuration(),
 		RunAndGunOrAirKilledByCount: player.RunAndGunOrAirKilledByCount(),
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
@@ -963,4 +969,34 @@ func NewPlayer(analyzer *Analyzer, currentTeam common.Team, player common.Player
 	}
 
 	return newPlayer
+}
+
+func (player *Player) TeamAttackDamage() int {
+	var teamAttackDamage int
+	for _, damage := range player.match.Damages {
+		if damage.AttackerSteamID64 == player.SteamID64 && damage.VictimSteamID64 != 0 && damage.AttackerSide == damage.VictimSide && damage.AttackerSteamID64 != damage.VictimSteamID64 && !damage.IsGrenadeWeapon() {
+			teamAttackDamage += damage.HealthDamage
+		}
+	}
+	return teamAttackDamage
+}
+
+func (player *Player) TeamUtilityDamage() int {
+	var teamUtilityDamage int
+	for _, damage := range player.match.Damages {
+		if damage.AttackerSteamID64 == player.SteamID64 && damage.VictimSteamID64 != 0 && damage.AttackerSide == damage.VictimSide && damage.AttackerSteamID64 != damage.VictimSteamID64 && damage.IsGrenadeWeapon() {
+			teamUtilityDamage += damage.HealthDamage
+		}
+	}
+	return teamUtilityDamage
+}
+
+func (player *Player) TeamFlashDuration() float32 {
+	var teamFlashDuration float32
+	for _, flashed := range player.match.PlayersFlashed {
+		if flashed.FlasherSteamID64 == player.SteamID64 && flashed.FlashedSteamID64 != 0 && flashed.FlasherSide == flashed.FlashedSide && flashed.FlasherSteamID64 != flashed.FlashedSteamID64 {
+			teamFlashDuration += flashed.Duration
+		}
+	}
+	return teamFlashDuration
 }
