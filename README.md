@@ -74,6 +74,16 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🤡 Clown Moments
+Tracks embarassing or counter-productive moments from the perpetrator's perspective (e.g., attacking teammates).
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `team attack damage`: Health damage dealt to teammates (excluding utility).
+  - `team utility damage`: Health damage dealt to teammates using grenades.
+  - `team flash duration`: Total duration teammates were blinded by the player's flashes.
+
 ---
 
 ### Usage
@@ -98,9 +108,6 @@ This affects only:
 ## 📝 TODO
 
 ### 🤡 Clown Moments
-- [x] 🔫 **Team Attack / Friendly Fire**
-- [x] 🧗 **Fall Damage**
-- [x] 💣 **Team Utility Damage** (Flashing teammates, HE/Molotov friendly fire)
 - [ ] 💩 **Failed Utility** (Missed smokes/flashes, bad throws)
 
 
