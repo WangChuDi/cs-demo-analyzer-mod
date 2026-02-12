@@ -1,7 +1,7 @@
 package constants
 
 var WeaponAccurateSpeed = map[WeaponName]float64{
-	WeaponAK47:         73.1,
+	WeaponAK47:         73.1, // 215 * 0.34
 	WeaponAUG:          74.8, // 220 * 0.34
 	WeaponAWP:          68.0, // 200 * 0.34 (unscoped)
 	WeaponBomb:         250.0,
@@ -45,4 +45,8 @@ var WeaponAccurateSpeed = map[WeaponName]float64{
 	WeaponUSP:          81.6, // 240 * 0.34
 	WeaponXM1014:       74.8, // 220 * 0.34
 	WeaponZeus:         74.8, // 220 * 0.34
+	WeaponUnknown:      0.0,  // defensive placeholder
+	WeaponWorld:        0.0,  // defensive placeholder
+	WeaponHelmet:       0.0,  // defensive placeholder
+	WeaponKevlar:       0.0,  // defensive placeholder
 }

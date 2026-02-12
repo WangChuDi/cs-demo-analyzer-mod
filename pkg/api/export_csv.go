@@ -658,6 +658,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"weapon class",
 			"hitgroup",
 			"weapon unique id",
+			"is attacker airborne",
+			"is victim airborne",
 			"match checksum",
 		}
 
@@ -685,6 +687,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				string(damage.WeaponType),
 				converters.HitgroupToString(damage.HitGroup),
 				damage.WeaponUniqueID,
+				converters.BoolToString(damage.IsAttackerAirborne),
+				converters.BoolToString(damage.IsVictimAirborne),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -736,6 +740,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"is trade death",
 			"is through smoke",
 			"is no scope",
+			"is killer running",
 			"distance",
 			"match checksum",
 		}
@@ -784,6 +789,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(kill.IsTradeDeath),
 				converters.BoolToString(kill.IsThroughSmoke),
 				converters.BoolToString(kill.IsNoScope),
+				converters.BoolToString(kill.IsKillerRunning),
 				converters.Float32ToString(kill.Distance),
 				match.Checksum,
 			}
