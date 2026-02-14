@@ -1,0 +1,13 @@
+## Agent Behavior Policy: Worktree First
+
+ALWAYS prioritize using `worktree_create` for ANY new feature development, refactoring, or complex task.
+
+### Worktree Workflow
+1.  **Check**: If the user asks for a new feature or significant change.
+2.  **Create**: Immediately create a new worktree using `worktree_create` tool.
+    - Base branch: `main` or current branch (unless specified).
+    - Branch name: `feat/[description]` or `fix/[issue]`.
+3.  **Develop**: Perform all file edits, tests, and builds WITHIN the worktree directory.
+4.  **Cleanup**: Once merged or approved, remove the worktree using `worktree_delete`.
+
+DO NOT ask for permission to create a worktree. JUST DO IT.
