@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/golang/geo/r3"
 	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
@@ -48,7 +49,7 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 	}
 
 	velocity := getPlayerVelocity(thrower, analyzer)
-	projectileVelocity := projectile.Velocity()
+	projectileVelocity := getGrenadeProjectileVelocity(projectile)
 
 	parser := analyzer.parser
 	throwerTeam := thrower.Team
@@ -74,5 +75,30 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 		VelocityX:        projectileVelocity.X,
 		VelocityY:        projectileVelocity.Y,
 		VelocityZ:        projectileVelocity.Z,
+	}
+}
+
+func getGrenadeProjectileVelocity(projectile *common.GrenadeProjectile) r3.Vector {
+	if projectile == nil || projectile.Entity == nil {
+		return r3.Vector{}
+	}
+	if val, ok := projectile.Entity.PropertyValue("m_vecVelocity"); ok {
+		return val.R3Vec()
+	}
+
+	trajectory := projectile.Trajectory
+	if len(trajectory) < 2 {
+		return r3.Vector{}
+	}
+	last := trajectory[len(trajectory)-1]
+	prev := trajectory[len(trajectory)-2]
+	seconds := last.Time.Seconds() - prev.Time.Seconds()
+	if seconds <= 0 {
+		return r3.Vector{}
+	}
+	return r3.Vector{
+		X: (last.Position.X - prev.Position.X) / seconds,
+		Y: (last.Position.Y - prev.Position.Y) / seconds,
+		Z: (last.Position.Z - prev.Position.Z) / seconds,
 	}
 }
