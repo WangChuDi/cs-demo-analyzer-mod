@@ -551,6 +551,58 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		csv.WriteLinesIntoCsvFile(outputPath+"_players_economy.csv", lines)
 	}
 
+	var writeDataUtility = func() {
+		header := []string{
+			"frame",
+			"tick",
+			"round",
+			"utility type",
+			"grenade id",
+			"projectile id",
+			"x",
+			"y",
+			"z",
+			"thrower steamid",
+			"thrower name",
+			"thrower side",
+			"thrower team name",
+			"thrower velocity x",
+			"thrower velocity y",
+			"thrower velocity z",
+			"thrower yaw",
+			"thrower pitch",
+			"match checksum",
+		}
+
+		lines := [][]string{header}
+		for _, utility := range match.Utilities {
+			line := []string{
+				converters.IntToString(utility.Frame),
+				converters.IntToString(utility.Tick),
+				converters.IntToString(utility.RoundNumber),
+				string(utility.UtilityType),
+				utility.GrenadeID,
+				converters.Int64ToString(utility.ProjectileID),
+				converters.Float64ToString(utility.X),
+				converters.Float64ToString(utility.Y),
+				converters.Float64ToString(utility.Z),
+				converters.Uint64ToString(utility.ThrowerSteamID64),
+				utility.ThrowerName,
+				converters.TeamToString(utility.ThrowerSide),
+				utility.ThrowerTeamName,
+				converters.Float64ToString(utility.ThrowerVelocityX),
+				converters.Float64ToString(utility.ThrowerVelocityY),
+				converters.Float64ToString(utility.ThrowerVelocityZ),
+				converters.Float32ToString(utility.ThrowerYaw),
+				converters.Float32ToString(utility.ThrowerPitch),
+				match.Checksum,
+			}
+			lines = append(lines, line)
+		}
+
+		csv.WriteLinesIntoCsvFile(outputPath+"_data_utility.csv", lines)
+	}
+
 	var writeClutches = func() {
 		header := []string{
 			"frame",
@@ -1716,6 +1768,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		writeShots,
 		writeRounds,
 		writeRoundEconomies,
+		writeDataUtility,
 		writeClutches,
 		writeChickenDeaths,
 		writeChickenPositions,
