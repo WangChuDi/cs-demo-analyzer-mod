@@ -25,6 +25,9 @@ type GrenadePosition struct {
 	ThrowerVelocityZ float64              `json:"throwerVelocityZ"`
 	ThrowerPitch     float32              `json:"throwerPitch"`
 	ThrowerYaw       float32              `json:"throwerYaw"`
+	VelocityX        float64              `json:"velocityX"`
+	VelocityY        float64              `json:"velocityY"`
+	VelocityZ        float64              `json:"velocityZ"`
 	GrenadeName      constants.WeaponName `json:"grenadeName"`
 }
 
@@ -45,6 +48,7 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 	}
 
 	velocity := getPlayerVelocity(thrower, analyzer)
+	projectileVelocity := projectile.Velocity()
 
 	parser := analyzer.parser
 	throwerTeam := thrower.Team
@@ -67,5 +71,8 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 		ThrowerVelocityZ: velocity.Z,
 		ThrowerYaw:       thrower.ViewDirectionX(),
 		ThrowerPitch:     thrower.ViewDirectionY(),
+		VelocityX:        projectileVelocity.X,
+		VelocityY:        projectileVelocity.Y,
+		VelocityZ:        projectileVelocity.Z,
 	}
 }
