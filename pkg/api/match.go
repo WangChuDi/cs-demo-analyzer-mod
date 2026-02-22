@@ -63,6 +63,7 @@ type Match struct {
 	HostagePositions          []*HostagePosition          `json:"hostagePositions"`
 	SmokesStart               []*SmokeStart               `json:"smokesStart"`
 	DecoysStart               []*DecoyStart               `json:"decoysStart"`
+	Utilities                 []*Utility                  `json:"utilities"`
 	HeGrenadesExplode         []*HeGrenadeExplode         `json:"heGrenadesExplode"`
 	FlashbangsExplode         []*FlashbangExplode         `json:"flashbangsExplode"`
 	GrenadeBounces            []*GrenadeBounce            `json:"grenadeBounces"`
@@ -313,6 +314,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		InfernoPositions:          []*InfernoPosition{},
 		SmokesStart:               []*SmokeStart{},
 		DecoysStart:               []*DecoyStart{},
+		Utilities:                 []*Utility{},
 		HeGrenadesExplode:         []*HeGrenadeExplode{},
 		FlashbangsExplode:         []*FlashbangExplode{},
 		HostagePickUpStart:        []*HostagePickUpStart{},
@@ -353,6 +355,7 @@ func (match *Match) reset() {
 	match.InfernoPositions = []*InfernoPosition{}
 	match.SmokesStart = []*SmokeStart{}
 	match.DecoysStart = []*DecoyStart{}
+	match.Utilities = []*Utility{}
 	match.HeGrenadesExplode = []*HeGrenadeExplode{}
 	match.FlashbangsExplode = []*FlashbangExplode{}
 	match.HostagePickUpStart = []*HostagePickUpStart{}
@@ -453,6 +456,9 @@ func (match *Match) resetRound(roundNumber int) {
 		return event.RoundNumber != roundNumber
 	})
 	match.SmokesStart = slice.Filter(match.SmokesStart, func(event *SmokeStart, index int) bool {
+		return event.RoundNumber != roundNumber
+	})
+	match.Utilities = slice.Filter(match.Utilities, func(event *Utility, index int) bool {
 		return event.RoundNumber != roundNumber
 	})
 	match.PlayerButtons = slice.Filter(match.PlayerButtons, func(event *funData.PlayerButtons, index int) bool {
