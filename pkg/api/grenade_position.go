@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
@@ -29,7 +30,13 @@ type GrenadePosition struct {
 	VelocityX        float64              `json:"velocityX"`
 	VelocityY        float64              `json:"velocityY"`
 	VelocityZ        float64              `json:"velocityZ"`
+	Speed            float64              `json:"speed"`
 	GrenadeName      constants.WeaponName `json:"grenadeName"`
+}
+
+type grenadeProjectilePositionSample struct {
+	position r3.Vector
+	tick     int
 }
 
 func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.GrenadeProjectile) *GrenadePosition {
@@ -49,10 +56,11 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 	}
 
 	velocity := getPlayerVelocity(thrower, analyzer)
-	projectileVelocity := getGrenadeProjectileVelocity(projectile)
+	projectileVelocity := getGrenadeProjectileVelocity(analyzer, projectile)
 
 	parser := analyzer.parser
 	throwerTeam := thrower.Team
+	speed := vectorSpeed(projectileVelocity)
 	return &GrenadePosition{
 		Frame:            parser.CurrentFrame(),
 		Tick:             analyzer.currentTick(),
@@ -75,30 +83,38 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 		VelocityX:        projectileVelocity.X,
 		VelocityY:        projectileVelocity.Y,
 		VelocityZ:        projectileVelocity.Z,
+		Speed:            speed,
 	}
 }
 
-func getGrenadeProjectileVelocity(projectile *common.GrenadeProjectile) r3.Vector {
-	if projectile == nil || projectile.Entity == nil {
+func getGrenadeProjectileVelocity(analyzer *Analyzer, projectile *common.GrenadeProjectile) r3.Vector {
+	if analyzer == nil || projectile == nil {
 		return r3.Vector{}
 	}
-	if val, ok := projectile.Entity.PropertyValue("m_vecVelocity"); ok {
-		return val.R3Vec()
+	currentTick := analyzer.currentTick()
+	currentPos := projectile.Position()
+	var velocity r3.Vector
+	if previous, ok := analyzer.lastGrenadeProjectilePosition[projectile.UniqueID()]; ok {
+		tickDelta := currentTick - previous.tick
+		tickTime := analyzer.parser.TickTime().Seconds()
+		if tickDelta > 0 && tickTime > 0 {
+			seconds := float64(tickDelta) * tickTime
+			velocity = r3.Vector{
+				X: (currentPos.X - previous.position.X) / seconds,
+				Y: (currentPos.Y - previous.position.Y) / seconds,
+				Z: (currentPos.Z - previous.position.Z) / seconds,
+			}
+		}
 	}
+	if analyzer.lastGrenadeProjectilePosition != nil {
+		analyzer.lastGrenadeProjectilePosition[projectile.UniqueID()] = grenadeProjectilePositionSample{
+			position: currentPos,
+			tick:     currentTick,
+		}
+	}
+	return velocity
+}
 
-	trajectory := projectile.Trajectory
-	if len(trajectory) < 2 {
-		return r3.Vector{}
-	}
-	last := trajectory[len(trajectory)-1]
-	prev := trajectory[len(trajectory)-2]
-	seconds := last.Time.Seconds() - prev.Time.Seconds()
-	if seconds <= 0 {
-		return r3.Vector{}
-	}
-	return r3.Vector{
-		X: (last.Position.X - prev.Position.X) / seconds,
-		Y: (last.Position.Y - prev.Position.Y) / seconds,
-		Z: (last.Position.Z - prev.Position.Z) / seconds,
-	}
+func vectorSpeed(vector r3.Vector) float64 {
+	return math.Sqrt(vector.X*vector.X + vector.Y*vector.Y + vector.Z*vector.Z)
 }

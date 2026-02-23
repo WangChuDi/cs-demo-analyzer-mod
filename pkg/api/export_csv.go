@@ -1116,6 +1116,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"velocity x",
 			"velocity y",
 			"velocity z",
+			"speed",
 			"match checksum",
 		}
 
@@ -1143,6 +1144,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(position.VelocityX),
 				converters.Float64ToString(position.VelocityY),
 				converters.Float64ToString(position.VelocityZ),
+				converters.Float64ToString(position.Speed),
 				match.Checksum,
 			}
 			lines = append(lines, line)

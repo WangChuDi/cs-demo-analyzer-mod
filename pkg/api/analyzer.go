@@ -65,9 +65,10 @@ type Analyzer struct {
 	// Map Weapon UniqueID -> Dropper SteamID
 	droppedWeapons map[ulid.ULID]uint64
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
-	roundWeaponOwners map[ulid.ULID]uint64
-	chickenEntities   []st.Entity
-	pendingFootsteps  []events.Footstep
+	roundWeaponOwners             map[ulid.ULID]uint64
+	lastGrenadeProjectilePosition map[int64]grenadeProjectilePositionSample
+	chickenEntities               []st.Entity
+	pendingFootsteps              []events.Footstep
 }
 
 type AnalyzeDemoOptions struct {
@@ -115,19 +116,20 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	match := newMatch(source, demo)
 
 	analyzer := &Analyzer{
-		parser:                    parser,
-		match:                     &match,
-		isSource2:                 demo.IsSource2(),
-		isFirstRoundOfHalf:        true,
-		isRoundEndDetected:        false,
-		buyTimeSeconds:            20, // Default mp_buytime value is 20
-		lastFreezeTimeEndTick:     -1,
-		bombPlantPosition:         r3.Vector{},
-		lastGrenadeThrownByPlayer: make(map[uint64]*Shot),
-		playersUntyingAnHostage:   make(map[uint64]int),
-		droppedWeapons:            make(map[ulid.ULID]uint64),
-		roundWeaponOwners:         make(map[ulid.ULID]uint64),
-		postProcess:               defaultPostProcess,
+		parser:                        parser,
+		match:                         &match,
+		isSource2:                     demo.IsSource2(),
+		isFirstRoundOfHalf:            true,
+		isRoundEndDetected:            false,
+		buyTimeSeconds:                20, // Default mp_buytime value is 20
+		lastFreezeTimeEndTick:         -1,
+		bombPlantPosition:             r3.Vector{},
+		lastGrenadeThrownByPlayer:     make(map[uint64]*Shot),
+		playersUntyingAnHostage:       make(map[uint64]int),
+		droppedWeapons:                make(map[ulid.ULID]uint64),
+		roundWeaponOwners:             make(map[ulid.ULID]uint64),
+		lastGrenadeProjectilePosition: make(map[int64]grenadeProjectilePositionSample),
+		postProcess:                   defaultPostProcess,
 	}
 
 	analyzer.currentRound = &Round{
@@ -264,6 +266,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
@@ -411,6 +414,7 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 
 	roundNumber := analyzer.currentRound.Number + 1
 
@@ -1217,8 +1221,6 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 	// 	player.startWeaponInspection(analyzer.currentTick())
 	// })
-
-
 
 	// parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
 	// 	if !analyzer.matchStarted() || event.Player == nil {
