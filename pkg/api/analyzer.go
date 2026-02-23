@@ -943,7 +943,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		if event.Weapon.Class() == common.EqClassGrenade {
 			analyzer.lastGrenadeThrownByPlayer[shot.PlayerSteamID64] = shot
-			utility := newUtilityFromShot(shot)
+			utility := newUtilityFromShot(analyzer, shot, event.Shooter)
 			if utility != nil {
 				match.Utilities = append(match.Utilities, utility)
 			}
