@@ -943,6 +943,10 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		if event.Weapon.Class() == common.EqClassGrenade {
 			analyzer.lastGrenadeThrownByPlayer[shot.PlayerSteamID64] = shot
+			utility := newUtilityFromShot(analyzer, shot, event.Shooter)
+			if utility != nil {
+				match.Utilities = append(match.Utilities, utility)
+			}
 		}
 
 		match.Shots = append(match.Shots, shot)
@@ -1051,6 +1055,15 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		} else {
 			lastGrenadeShotExist.ProjectileID = projectile.UniqueID()
 			delete(analyzer.lastGrenadeThrownByPlayer, thrower.SteamID64)
+		}
+
+		projectileID := projectile.UniqueID()
+		for i := len(match.Utilities) - 1; i >= 0; i-- {
+			utility := match.Utilities[i]
+			if utility.ThrowerSteamID64 == thrower.SteamID64 && utility.ProjectileID == 0 {
+				utility.ProjectileID = projectileID
+				break
+			}
 		}
 	})
 
@@ -1217,8 +1230,6 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 	// 	player.startWeaponInspection(analyzer.currentTick())
 	// })
-
-
 
 	// parser.RegisterEventHandler(func(event events.PlayerStopInspectingWeapon) {
 	// 	if !analyzer.matchStarted() || event.Player == nil {
