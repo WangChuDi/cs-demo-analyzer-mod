@@ -10,10 +10,12 @@ import (
 type UtilityType string
 
 const (
-	UtilityTypeSmoke UtilityType = "smoke"
-	UtilityTypeFlash UtilityType = "flash"
-	UtilityTypeHE    UtilityType = "he"
-	UtilityTypeDecoy UtilityType = "decoy"
+	UtilityTypeSmoke      UtilityType = "smoke"
+	UtilityTypeFlash      UtilityType = "flash"
+	UtilityTypeHE         UtilityType = "he"
+	UtilityTypeDecoy      UtilityType = "decoy"
+	UtilityTypeMolotov    UtilityType = "molotov"
+	UtilityTypeIncendiary UtilityType = "incendiary"
 )
 
 type UtilityThrowType string
@@ -66,6 +68,10 @@ func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player) 
 		utilityType = UtilityTypeHE
 	case constants.WeaponDecoy:
 		utilityType = UtilityTypeDecoy
+	case constants.WeaponMolotov:
+		utilityType = UtilityTypeMolotov
+	case constants.WeaponIncendiary:
+		utilityType = UtilityTypeIncendiary
 	default:
 		return nil
 	}
