@@ -48,12 +48,13 @@ Tracks player movement sounds (footsteps).
   - `player name`, `player steamid`, `player team name`, `player side`
 
 ### 💨 Grenade Positions
-Tracks grenade projectile positions during flight.
+Tracks grenade projectile positions during flight (real-time only).
 
 **Introduced Data Columns:**
 
 - **Grenade Positions Table (`_grenade_positions.csv`)**:
   - `velocity x`, `velocity y`, `velocity z` (Projectile Velocity)
+  - `speed` (Projectile Speed)
 
 ### 🎮 Player Buttons
 Tracks player button presses (Attack, Jump, Duck, etc.) for every tick/update.
