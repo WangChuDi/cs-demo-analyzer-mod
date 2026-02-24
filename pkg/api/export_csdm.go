@@ -612,6 +612,7 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				converters.Float64ToString(position.ThrowerVelocityZ),
 				converters.Float32ToString(position.ThrowerYaw),
 				converters.Float32ToString(position.ThrowerPitch),
+				converters.Float64ToString(position.Speed),
 				match.Checksum,
 			}
 			lines = append(lines, line)
