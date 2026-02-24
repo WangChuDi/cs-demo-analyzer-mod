@@ -572,6 +572,14 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"thrower velocity z",
 			"thrower yaw",
 			"thrower pitch",
+			"is jump throw",
+			"initial velocity x",
+			"initial velocity y",
+			"initial velocity z",
+			"initial speed",
+			"initial position x",
+			"initial position y",
+			"initial position z",
 			"match checksum",
 		}
 
@@ -597,6 +605,14 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(utility.ThrowerVelocityZ),
 				converters.Float32ToString(utility.ThrowerYaw),
 				converters.Float32ToString(utility.ThrowerPitch),
+				converters.BoolToString(utility.IsJumpThrow),
+				converters.Float64ToString(utility.InitialVelocityX),
+				converters.Float64ToString(utility.InitialVelocityY),
+				converters.Float64ToString(utility.InitialVelocityZ),
+				converters.Float64ToString(utility.InitialSpeed),
+				converters.Float64ToString(utility.InitialPositionX),
+				converters.Float64ToString(utility.InitialPositionY),
+				converters.Float64ToString(utility.InitialPositionZ),
 				match.Checksum,
 			}
 			lines = append(lines, line)

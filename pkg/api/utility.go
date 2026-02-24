@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/golang/geo/r3"
 	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
@@ -51,6 +52,14 @@ type Utility struct {
 	ThrowerVelocityZ float64          `json:"throwerVelocityZ"`
 	ThrowerPitch     float32          `json:"throwerPitch"`
 	ThrowerYaw       float32          `json:"throwerYaw"`
+	IsJumpThrow      bool             `json:"isJumpThrow"`
+	InitialVelocityX float64          `json:"initialVelocityX"`
+	InitialVelocityY float64          `json:"initialVelocityY"`
+	InitialVelocityZ float64          `json:"initialVelocityZ"`
+	InitialSpeed     float64          `json:"initialSpeed"`
+	InitialPositionX float64          `json:"initialPositionX"`
+	InitialPositionY float64          `json:"initialPositionY"`
+	InitialPositionZ float64          `json:"initialPositionZ"`
 }
 
 func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player) *Utility {
@@ -99,6 +108,40 @@ func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player) 
 		ThrowerPitch:     shot.Pitch,
 		ThrowerYaw:       shot.Yaw,
 	}
+}
+
+func getUtilityIsJumpThrow(projectile *common.GrenadeProjectile) bool {
+	if projectile == nil || projectile.WeaponInstance == nil || projectile.WeaponInstance.Entity == nil {
+		return false
+	}
+	if val, ok := projectile.WeaponInstance.Entity.PropertyValue("m_bJumpThrow"); ok {
+		return val.BoolVal()
+	}
+	return false
+}
+
+func getUtilityInitialVelocity(projectile *common.GrenadeProjectile) r3.Vector {
+	if projectile == nil || projectile.Entity == nil {
+		return r3.Vector{}
+	}
+	if val, ok := projectile.Entity.PropertyValue("m_vInitialVelocity"); ok {
+		return val.R3Vec()
+	}
+	return r3.Vector{}
+}
+
+func getUtilityInitialPosition(projectile *common.GrenadeProjectile) r3.Vector {
+	if projectile == nil || projectile.Entity == nil {
+		return r3.Vector{}
+	}
+	if val, ok := projectile.Entity.PropertyValue("m_vInitialPosition"); ok {
+		return val.R3Vec()
+	}
+	return r3.Vector{}
+}
+
+func getUtilityInitialSpeed(velocity r3.Vector) float64 {
+	return math.Sqrt(velocity.X*velocity.X + velocity.Y*velocity.Y + velocity.Z*velocity.Z)
 }
 
 type throwButtonState struct {
