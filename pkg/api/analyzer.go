@@ -1062,6 +1062,16 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			utility := match.Utilities[i]
 			if utility.ThrowerSteamID64 == thrower.SteamID64 && utility.ProjectileID == 0 {
 				utility.ProjectileID = projectileID
+				utility.IsJumpThrow = getUtilityIsJumpThrow(projectile)
+				initialVelocity := getUtilityInitialVelocity(projectile)
+				initialPosition := getUtilityInitialPosition(projectile)
+				utility.InitialVelocityX = initialVelocity.X
+				utility.InitialVelocityY = initialVelocity.Y
+				utility.InitialVelocityZ = initialVelocity.Z
+				utility.InitialSpeed = getUtilityInitialSpeed(initialVelocity)
+				utility.InitialPositionX = initialPosition.X
+				utility.InitialPositionY = initialPosition.Y
+				utility.InitialPositionZ = initialPosition.Z
 				break
 			}
 		}
