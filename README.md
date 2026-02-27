@@ -118,7 +118,7 @@ Uses position-delta method to calculate player velocity. Engine properties (`m_v
 
 Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output as individual boolean fields.
 
-- Button window start: uses `max(PinPulledTick, throwTick - 0.5s)`, whichever is closer to the throw
+- Button window start: uses the later of `PinPulledTick` or `throwTick - 0.5s` as the window start
   - `PinPulledTick`: computed from the weapon entity's `m_fPinPullTime` property, converted back to a tick number
   - 0.5s window: fixed lookback of `tickRate/2` ticks as fallback
 - Scans all `match.PlayerButtons` records within the window, accumulating via OR to get the final state
@@ -134,7 +134,7 @@ Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output
   - `standing`: speed2D == 0
   - `step`: 0 < speed2D < 80
   - `walk`: 80 ≤ speed2D < 180
-  - `run`: speed2D ≥ 200
+  - `run`: speed2D ≥ 180
 
 #### Event Flow
 ```

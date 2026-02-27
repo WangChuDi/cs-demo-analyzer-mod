@@ -723,22 +723,22 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		currentTick := analyzer.currentTick()
 		for _, player := range parser.GameState().Participants().Playing() {
-		// Player position history rotation for velocity calculation.
-		// 
-		// Frame vs Tick: FrameDone fires once per parser frame, but multiple frames
-		// can share the same tick number. For example:
-		//   Frame 100: tick 31622  (new tick → rotate: prev=last, then last=current)
-		//   Frame 101: tick 31622  (same tick → skip rotation, just update last)
-		//   Frame 102: tick 31624  (new tick, gap of 2 → rotate, then last=current)
-		//
-		// Why this matters:
-		//   If we rotated on every frame, duplicate-tick frames would set prev = last
-		//   where both have the SAME position (same tick = same entity state).
-		//   Then lastPos - prevPos = 0, making the velocity fallback path useless.
-		//
-		// The guard (lastPlayersTick != currentTick) ensures we only rotate when
-		// the tick actually advances, preserving two distinct position snapshots.
-		// The "last" position is always updated regardless, so it stays current.
+			// Player position history rotation for velocity calculation.
+			// 
+			// Frame vs Tick: FrameDone fires once per parser frame, but multiple frames
+			// can share the same tick number. For example:
+			//   Frame 100: tick 31622  (new tick → rotate: prev=last, then last=current)
+			//   Frame 101: tick 31622  (same tick → skip rotation, just update last)
+			//   Frame 102: tick 31624  (new tick, gap of 2 → rotate, then last=current)
+			//
+			// Why this matters:
+			//   If we rotated on every frame, duplicate-tick frames would set prev = last
+			//   where both have the SAME position (same tick = same entity state).
+			//   Then lastPos - prevPos = 0, making the velocity fallback path useless.
+			//
+			// The guard (lastPlayersTick != currentTick) ensures we only rotate when
+			// the tick actually advances, preserving two distinct position snapshots.
+			// The "last" position is always updated regardless, so it stays current.
 			if match.lastPlayersTick[player.SteamID64] != currentTick {
 				match.prevPlayersPosition[player.SteamID64] = match.lastPlayersPosition[player.SteamID64]
 				match.prevPlayersTick[player.SteamID64] = match.lastPlayersTick[player.SteamID64]

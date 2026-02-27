@@ -117,7 +117,7 @@
 
 检测投掷时玩家按下的按键（Attack/Attack2/Jump/WASD/Walk），输出为独立布尔字段。
 
-- 按键窗口起点：取 `max(PinPulledTick, throwTick - 0.5s)` 中更近的
+- 按键窗口起点：取 `max(PinPulledTick, throwTick - 0.5s)`（两者中较晚/较大的 tick，即更接近投掷时刻的那个）
   - `PinPulledTick`：通过武器实体的 `m_fPinPullTime` 属性回算拉环时刻的 tick
   - 0.5s 窗口：固定回溯 `tickRate/2` 个 tick 作为 fallback
 - 扫描 `match.PlayerButtons` 中该窗口内的所有按键记录，累积 OR 得到最终状态
@@ -132,7 +132,7 @@
   - `standing`：speed2D == 0
   - `step`：0 < speed2D < 80
   - `walk`：80 ≤ speed2D < 180
-  - `run`：speed2D ≥ 200
+  - `run`：speed2D ≥ 180
 #### 事件流程
 ```
 WeaponFire 事件
