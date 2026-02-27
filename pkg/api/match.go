@@ -80,6 +80,9 @@ type Match struct {
 	scoreTeamA                *int
 	scoreTeamB                *int
 	lastPlayersPosition       map[uint64]r3.Vector
+	prevPlayersPosition       map[uint64]r3.Vector
+	lastPlayersTick           map[uint64]int
+	prevPlayersTick           map[uint64]int
 }
 
 type MatchAlias Match
@@ -328,6 +331,9 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		PlayerButtons:             []*funData.PlayerButtons{},
 		Footsteps:                 []*Footstep{},
 		lastPlayersPosition:       make(map[uint64]r3.Vector),
+		prevPlayersPosition:       make(map[uint64]r3.Vector),
+		lastPlayersTick:           make(map[uint64]int),
+		prevPlayersTick:           make(map[uint64]int),
 	}
 
 	match.initTeams()
@@ -370,6 +376,9 @@ func (match *Match) reset() {
 	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.Footsteps = []*Footstep{}
 	match.lastPlayersPosition = make(map[uint64]r3.Vector)
+	match.prevPlayersPosition = make(map[uint64]r3.Vector)
+	match.lastPlayersTick = make(map[uint64]int)
+	match.prevPlayersTick = make(map[uint64]int)
 	match.initTeams()
 }
 

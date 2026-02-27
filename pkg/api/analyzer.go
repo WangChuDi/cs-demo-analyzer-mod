@@ -271,6 +271,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
 	analyzer.match.reset()
+	analyzer.initLastPlayersPosition()
 	analyzer.updateTeamNames()
 	for _, player := range analyzer.match.PlayersBySteamID {
 		player.reset()
@@ -295,6 +296,18 @@ func (analyzer *Analyzer) reset() {
 func (analyzer *Analyzer) resetCurrentRound() {
 	analyzer.match.resetRound(analyzer.currentRound.Number)
 	analyzer.createPlayersEconomies()
+	analyzer.initLastPlayersPosition()
+}
+
+func (analyzer *Analyzer) initLastPlayersPosition() {
+	currentTick := analyzer.currentTick()
+	for _, player := range analyzer.parser.GameState().Participants().Playing() {
+		pos := player.Position()
+		analyzer.match.lastPlayersPosition[player.SteamID64] = pos
+		analyzer.match.prevPlayersPosition[player.SteamID64] = pos
+		analyzer.match.lastPlayersTick[player.SteamID64] = currentTick
+		analyzer.match.prevPlayersTick[player.SteamID64] = currentTick
+	}
 }
 
 func (analyzer *Analyzer) registerPlayer(player *common.Player, teamState *common.TeamState) {
@@ -692,32 +705,46 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		tickTime := parser.TickTime().Seconds()
+
 		for _, event := range analyzer.pendingFootsteps {
 			player := event.Player
 			if player == nil {
 				continue
 			}
 
-			playerPos := player.Position()
-			lastPos, ok := match.lastPlayersPosition[player.SteamID64]
-			var velocityX, velocityY, velocityZ float64
+			velocity := getPlayerVelocity(player, analyzer)
 
-			if ok && tickTime > 0 {
-				velocityX = (playerPos.X - lastPos.X) / tickTime
-				velocityY = (playerPos.Y - lastPos.Y) / tickTime
-				velocityZ = (playerPos.Z - lastPos.Z) / tickTime
-			}
-
-			footstep := newFootstep(analyzer, event, velocityX, velocityY, velocityZ)
+			footstep := newFootstep(analyzer, event, velocity.X, velocity.Y, velocity.Z)
 			if footstep != nil {
 				match.Footsteps = append(match.Footsteps, footstep)
 			}
 		}
 		analyzer.pendingFootsteps = nil
 
+		currentTick := analyzer.currentTick()
 		for _, player := range parser.GameState().Participants().Playing() {
+			// Player position history rotation for velocity calculation.
+			// 
+			// Frame vs Tick: FrameDone fires once per parser frame, but multiple frames
+			// can share the same tick number. For example:
+			//   Frame 100: tick 31622  (new tick → rotate: prev=last, then last=current)
+			//   Frame 101: tick 31622  (same tick → skip rotation, just update last)
+			//   Frame 102: tick 31624  (new tick, gap of 2 → rotate, then last=current)
+			//
+			// Why this matters:
+			//   If we rotated on every frame, duplicate-tick frames would set prev = last
+			//   where both have the SAME position (same tick = same entity state).
+			//   Then lastPos - prevPos = 0, making the velocity fallback path useless.
+			//
+			// The guard (lastPlayersTick != currentTick) ensures we only rotate when
+			// the tick actually advances, preserving two distinct position snapshots.
+			// The "last" position is always updated regardless, so it stays current.
+			if match.lastPlayersTick[player.SteamID64] != currentTick {
+				match.prevPlayersPosition[player.SteamID64] = match.lastPlayersPosition[player.SteamID64]
+				match.prevPlayersTick[player.SteamID64] = match.lastPlayersTick[player.SteamID64]
+			}
 			match.lastPlayersPosition[player.SteamID64] = player.Position()
+			match.lastPlayersTick[player.SteamID64] = currentTick
 		}
 	})
 
@@ -947,7 +974,11 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		if event.Weapon.Class() == common.EqClassGrenade {
 			analyzer.lastGrenadeThrownByPlayer[shot.PlayerSteamID64] = shot
-			utility := newUtilityFromShot(analyzer, shot, event.Shooter)
+			var grenadeWeaponEntity st.Entity
+			if event.Weapon != nil {
+				grenadeWeaponEntity = event.Weapon.Entity
+			}
+			utility := newUtilityFromShot(analyzer, shot, event.Shooter, grenadeWeaponEntity)
 			if utility != nil {
 				match.Utilities = append(match.Utilities, utility)
 			}
@@ -1067,6 +1098,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			if utility.ThrowerSteamID64 == thrower.SteamID64 && utility.ProjectileID == 0 {
 				utility.ProjectileID = projectileID
 				utility.IsJumpThrow = getUtilityIsJumpThrow(projectile)
+				utility.ThrowStrength = getUtilityThrowStrength(projectile)
 				initialVelocity := getUtilityInitialVelocity(projectile)
 				initialPosition := getUtilityInitialPosition(projectile)
 				utility.InitialVelocityX = initialVelocity.X
@@ -1076,6 +1108,9 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 				utility.InitialPositionX = initialPosition.X
 				utility.InitialPositionY = initialPosition.Y
 				utility.InitialPositionZ = initialPosition.Z
+				applyUtilityThrowButtons(analyzer, utility)
+				utility.HasJump = utility.IsJumpThrow
+				utility.MouseTypeByStrength = classifyThrowTypeByStrength(utility)
 				break
 			}
 		}
