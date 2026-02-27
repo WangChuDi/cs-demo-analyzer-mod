@@ -1,5 +1,8 @@
 # CS Demo Analyzer (Modified Version)
 
+[🇨🇳 中文文档 / Chinese Documentation](readme_cn.md)
+
+
 This is a modified fork of the original [CS Demo Analyzer](https://github.com/akiver/cs-demo-analyzer), designed to extract additional "fun" statistics from CS2 demos.
 
 ## 🚀 Added Features
@@ -92,6 +95,99 @@ Tracks embarassing or counter-productive moments from the perpetrator's perspect
   - `team attack damage`: Health damage dealt to teammates (excluding utility).
   - `team utility damage`: Health damage dealt to teammates using grenades.
   - `team flash duration`: Total duration teammates were blinded by the player's flashes.
+
+
+### 🧨 Utility Throw Analysis
+Detailed analysis of grenade throws, extracting thrower state, button inputs, throw strength, and more.
+
+#### How It Works
+
+The utility throw analysis involves three core systems: **velocity calculation**, **button detection**, and **throw classification**.
+
+**1. Thrower Velocity Calculation (`utils.go: getPlayerVelocity`)**
+
+Uses position-delta method to calculate player velocity. Engine properties (`m_vecVelocity`/`m_vecBaseVelocity`) are unreliable.
+
+- Primary path: `velocity = (currentPos - lastPos) / (tickDelta * tickTime)`
+- Fallback path: When `currentPos == lastPos` (due to engine entity update ordering — grenade projectile entity is created before player pawn position is updated in the same frame), uses `(lastPos - prevPos)` instead
+- Maintains two-frame position history per player (`lastPlayersPosition`/`prevPlayersPosition`) and corresponding ticks (`lastPlayersTick`/`prevPlayersTick`) in the `FrameDone` handler
+- Position history rotation (`prev = last`) only occurs when the tick actually changes, preventing duplicate-tick frames from corrupting the prev value
+- Position and tick maps are initialized at round start via `initLastPlayersPosition()`
+
+**2. Button Detection System (`utility.go: applyUtilityThrowButtons`)**
+
+Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output as individual boolean fields.
+
+- Button window start: uses `max(PinPulledTick, throwTick - 0.5s)`, whichever is closer to the throw
+  - `PinPulledTick`: computed from the weapon entity's `m_fPinPullTime` property, converted back to a tick number
+  - 0.5s window: fixed lookback of `tickRate/2` ticks as fallback
+- Scans all `match.PlayerButtons` records within the window, accumulating via OR to get the final state
+- `HasJump` is ultimately overridden by the engine property `m_bJumpThrow` (i.e. `IsJumpThrow`) for accuracy
+
+**3. Throw Classification (`utility.go`)**
+- **MouseTypeByStrength**: classifies mouse action via `m_flThrowStrength` property
+  - `1.0` → `left_click`, `0.5` → `double_click` (both buttons simultaneously)
+  - When value is `0` (game bug, unassigned), falls back to `calcThrowStrength()`:
+    `strength = sqrt((initVelX - 1.25*throwerVelX)² + (initVelY - 1.25*throwerVelY)²) / cos(pitch)`
+    Thresholds: >500 = `left_click`, >300 = `double_click`, else = `right_click`
+- **ThrowerSpeedType**: classifies thrower movement state by `speed2D`
+  - `standing`: speed2D == 0
+  - `step`: 0 < speed2D < 80
+  - `walk`: 80 ≤ speed2D < 180
+  - `run`: speed2D ≥ 200
+
+#### Event Flow
+```
+WeaponFire event
+ → newUtilityFromShot(): creates Utility, extracts m_fPinPullTime from weapon entity to compute PinPulledTick
+ → applyUtilityThrowButtons(): first button detection (isJumpThrow unknown)
+
+GrenadeProjectileThrow event
+ → populates projectile data: IsJumpThrow, ThrowStrength, InitialVelocity, InitialPosition
+ → applyUtilityThrowButtons(): second button detection (with complete info)
+ → HasJump = IsJumpThrow (engine property overrides button scan)
+ → classifyThrowTypeByStrength(): computes MouseTypeByStrength
+```
+
+#### Data Columns (`_data_utility.csv`)
+**Button State (boolean):**
+- `has attack`: Left click (Attack)
+- `has attack2`: Right click (Attack2)
+- `has jump`: Jump
+- `has forward`: W (Forward)
+- `has back`: S (Back)
+- `has move left`: A (Move Left)
+- `has move right`: D (Move Right)
+- `has walk`: Shift (Walk)
+
+**Pin Pull & Throw Classification:**
+- `pin pulled tick`: Tick when the pin was pulled (computed from `m_fPinPullTime`, 0 = not detected)
+- `mouse type by strength`: Mouse action classification (`left_click`/`double_click`/`right_click`)
+- `is jump throw`: Whether it's a jump throw (engine property `m_bJumpThrow`)
+- `throw strength`: Throw strength (engine property `m_flThrowStrength`, 0 = game bug)
+
+**Thrower State:**
+- `thrower velocity x/y/z`: Thrower velocity components
+- `thrower speed 2d`: Horizontal speed (used for movement state classification)
+- `thrower speed type`: Movement state (`standing`/`step`/`walk`/`run`)
+- `thrower yaw`, `thrower pitch`: View direction
+**Projectile Data:**
+- `initial velocity x/y/z`, `initial speed`: Grenade initial velocity
+- `initial position x/y/z`: Grenade initial position
+
+#### Known Edge Cases
+- Engine entity update ordering: grenade `WeaponFire` events fire during projectile entity creation (`datatables.go`), before `FrameDone` and player position updates, requiring the velocity fallback path
+- Duplicate-tick frames: `FrameDone` may fire multiple times for the same tick, requiring a tick-change guard to prevent position history corruption
+- Tick gaps: demos may have tick jumps (e.g. 31622→31624), must use actual tick delta for time interval calculation
+- `m_flThrowStrength` == 0: game bug leaves it unassigned, uses `calcThrowStrength()` formula as fallback
+- `m_fPinPullTime` unavailable: some demos or bots may lack this property, falls back to 0.5s fixed window
+
+#### Related Files
+- `pkg/api/utility.go` — Utility struct, all classification functions, button detection logic
+- `pkg/api/utils.go` — `getPlayerVelocity()` position-delta velocity calculation
+- `pkg/api/analyzer.go` — FrameDone handler (position/tick rotation), WeaponFire/GrenadeProjectileThrow event handlers
+- `pkg/api/match.go` — Position/tick history maps in Match struct
+- `pkg/api/export_csv.go` — CSV export
 
 ---
 
