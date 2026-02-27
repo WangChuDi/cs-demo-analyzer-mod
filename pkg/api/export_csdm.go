@@ -320,6 +320,8 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				converters.IntToString(chickenDeath.RoundNumber),
 				converters.Uint64ToString(chickenDeath.KillerSteamID),
 				chickenDeath.WeaponName.String(),
+				converters.Uint64ToString(chickenDeath.LeaderSteamID),
+				chickenDeath.LeaderName,
 				match.Checksum,
 			}
 			lines = append(lines, line)
