@@ -688,6 +688,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"round",
 			"killer steam id",
 			"weapon name",
+			"leader steam id",
+			"leader name",
 			"match checksum",
 		}
 
@@ -699,6 +701,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(chickenDeath.RoundNumber),
 				converters.Uint64ToString(chickenDeath.KillerSteamID),
 				chickenDeath.WeaponName.String(),
+				converters.Uint64ToString(chickenDeath.LeaderSteamID),
+				chickenDeath.LeaderName,
 				match.Checksum,
 			}
 			lines = append(lines, line)

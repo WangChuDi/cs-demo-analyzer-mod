@@ -615,7 +615,25 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		chickenDeath := newChickenDeath(analyzer.parser.CurrentFrame(), analyzer.currentTick(), analyzer.currentRound.Number, event.Killer.SteamID64, equipmentToWeaponName[event.Weapon.Type])
+		// Find the chicken entity by OtherID to read m_leader property
+		var leaderSteamID uint64
+		var leaderName string
+		for _, chickenEntity := range analyzer.chickenEntities {
+			if chickenEntity.ID() == int(event.OtherID) {
+				leaderProp, exists := chickenEntity.PropertyValue("m_leader")
+				if exists {
+					leaderPawnHandle := leaderProp.Handle()
+					leader := parser.GameState().Participants().FindByPawnHandle(leaderPawnHandle)
+					if leader != nil {
+						leaderSteamID = leader.SteamID64
+						leaderName = leader.Name
+					}
+				}
+				break
+			}
+		}
+
+		chickenDeath := newChickenDeath(analyzer.parser.CurrentFrame(), analyzer.currentTick(), analyzer.currentRound.Number, event.Killer.SteamID64, equipmentToWeaponName[event.Weapon.Type], leaderSteamID, leaderName)
 		analyzer.match.ChickenDeaths = append(analyzer.match.ChickenDeaths, chickenDeath)
 	})
 
