@@ -27,7 +27,8 @@ const (
 	// It's not done at the end of freezetime because players are still able to buy a few seconds after it.
 	// Using the seconds from mp_buytime which is 20 seconds may leads to inaccurate results since during this timelapse
 	// players may have throw grenades, been killed...
-	equipmentValueDelaySeconds = 7
+	equipmentValueDelaySeconds                    = 7
+	useGenericFallDamageOnlyDueToDemoinfocsCS2Bug = true
 )
 
 type Analyzer struct {
@@ -69,6 +70,7 @@ type Analyzer struct {
 	lastGrenadeProjectilePosition map[int64]grenadeProjectilePositionSample
 	chickenEntities               []st.Entity
 	pendingFootsteps              []events.Footstep
+	fallDamageFrameBySteamID      map[uint64]int
 }
 
 type AnalyzeDemoOptions struct {
@@ -129,6 +131,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		droppedWeapons:                make(map[ulid.ULID]uint64),
 		roundWeaponOwners:             make(map[ulid.ULID]uint64),
 		lastGrenadeProjectilePosition: make(map[int64]grenadeProjectilePositionSample),
+		fallDamageFrameBySteamID:      make(map[uint64]int),
 		postProcess:                   defaultPostProcess,
 	}
 
@@ -266,6 +269,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
@@ -427,6 +431,7 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 
 	roundNumber := analyzer.currentRound.Number + 1
@@ -705,10 +710,65 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
+		if !useGenericFallDamageOnlyDueToDemoinfocsCS2Bug && event.Weapon != nil && event.Weapon.Type == common.EqWorld && analyzer.fallDamageFrameBySteamID[event.Player.SteamID64] == analyzer.parser.CurrentFrame() {
+			return
+		}
+
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
 			match.Damages = append(match.Damages, damage)
 		}
+	})
+
+	parser.RegisterEventHandler(func(event events.GenericGameEvent) {
+		if !analyzer.matchStarted() || event.Name != "player_falldamage" {
+			return
+		}
+
+		// Temporary workaround for demoinfocs-golang CS2 behavior.
+		// For fall/environment damage, typed events.PlayerHurt.Weapon can be inferred as C4
+		// even when the raw CS2 events point to world/worldent damage. Local fall damage is
+		// therefore sourced from generic player_falldamage for now, while ordinary typed
+		// PlayerHurt damage ingestion stays enabled. When the upstream parser is fixed, this
+		// workaround can be replaced by a typed fall-damage path again.
+		damage := newFallDamageFromGameEvent(analyzer, event)
+		if damage == nil {
+			return
+		}
+
+		if useGenericFallDamageOnlyDueToDemoinfocsCS2Bug {
+			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
+				if existingDamage == nil {
+					return true
+				}
+
+				isSameFrameVictim := existingDamage.Frame == damage.Frame &&
+					existingDamage.Tick == damage.Tick &&
+					existingDamage.VictimSteamID64 == damage.VictimSteamID64
+				isEnvironmentTypedDamage := existingDamage.AttackerSteamID64 == 0 &&
+					(existingDamage.WeaponName == constants.WeaponWorld || existingDamage.WeaponName == constants.WeaponBomb || existingDamage.WeaponName == constants.WeaponUnknown) &&
+					!existingDamage.isFallDamage
+
+				return !(isSameFrameVictim && isEnvironmentTypedDamage)
+			})
+		} else {
+			analyzer.fallDamageFrameBySteamID[damage.VictimSteamID64] = analyzer.parser.CurrentFrame()
+			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
+				if existingDamage == nil {
+					return true
+				}
+
+				isSameWorldDamage := existingDamage.Frame == damage.Frame &&
+					existingDamage.Tick == damage.Tick &&
+					existingDamage.VictimSteamID64 == damage.VictimSteamID64 &&
+					existingDamage.WeaponName == constants.WeaponWorld &&
+					!existingDamage.isFallDamage
+
+				return !isSameWorldDamage
+			})
+		}
+
+		match.Damages = append(match.Damages, damage)
 	})
 
 	parser.RegisterEventHandler(func(event events.FrameDone) {
@@ -722,7 +782,6 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		if !analyzer.matchStarted() {
 			return
 		}
-
 
 		for _, event := range analyzer.pendingFootsteps {
 			player := event.Player
@@ -742,7 +801,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		currentTick := analyzer.currentTick()
 		for _, player := range parser.GameState().Participants().Playing() {
 			// Player position history rotation for velocity calculation.
-			// 
+			//
 			// Frame vs Tick: FrameDone fires once per parser frame, but multiple frames
 			// can share the same tick number. For example:
 			//   Frame 100: tick 31622  (new tick → rotate: prev=last, then last=current)
