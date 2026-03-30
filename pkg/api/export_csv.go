@@ -279,13 +279,13 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.WallbangDamageTaken()),
 				converters.IntToString(player.TeamDamageTaken()),
 				converters.IntToString(player.FallDamageTaken()),
-				converters.IntToString(player.TeamAttackDamage()),
-				converters.IntToString(player.TeamUtilityDamage()),
-				converters.Float32ToString(player.TeamFlashDuration()),
 				converters.IntToString(player.AirDamageTaken()),
 				converters.IntToString(player.RunAndGunOrAirKilledByCount()),
 				converters.IntToString(player.ThroughSmokeKillCount()),
 				converters.IntToString(player.WallbangKillCount()),
+				converters.IntToString(player.TeamAttackDamage()),
+				converters.IntToString(player.TeamUtilityDamage()),
+				converters.Float32ToString(player.TeamFlashDuration()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
