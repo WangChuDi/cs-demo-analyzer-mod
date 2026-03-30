@@ -70,6 +70,7 @@ type Analyzer struct {
 	lastGrenadeProjectilePosition map[int64]grenadeProjectilePositionSample
 	chickenEntities               []st.Entity
 	pendingFootsteps              []events.Footstep
+	fallDamageFrameBySteamID      map[uint64]int
 }
 
 type AnalyzeDemoOptions struct {
@@ -130,6 +131,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		droppedWeapons:                make(map[ulid.ULID]uint64),
 		roundWeaponOwners:             make(map[ulid.ULID]uint64),
 		lastGrenadeProjectilePosition: make(map[int64]grenadeProjectilePositionSample),
+		fallDamageFrameBySteamID:      make(map[uint64]int),
 		postProcess:                   defaultPostProcess,
 	}
 
@@ -267,6 +269,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
@@ -428,6 +431,7 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 
 	roundNumber := analyzer.currentRound.Number + 1
@@ -706,26 +710,66 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
+		if analyzer.fallDamageFrameBySteamID[event.Player.SteamID64] == analyzer.parser.CurrentFrame() {
+			if disableTypedCS2FallDamagePathUntilDemoinfocsFix {
+				if event.Attacker == nil && (event.Weapon == nil || event.Weapon.Type == common.EqWorld || event.Weapon.Type == common.EqBomb || event.Weapon.Type == common.EqUnknown) {
+					return
+				}
+			} else if event.Weapon != nil && event.Weapon.Type == common.EqWorld {
+				return
+			}
+		}
+
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
 			match.Damages = append(match.Damages, damage)
 		}
 	})
 
-	if !disableTypedCS2FallDamagePathUntilDemoinfocsFix {
-		parser.RegisterEventHandler(func(event events.GenericGameEvent) {
-			if !analyzer.matchStarted() || event.Name != "player_falldamage" {
-				return
-			}
+	parser.RegisterEventHandler(func(event events.GenericGameEvent) {
+		if !analyzer.matchStarted() || event.Name != "player_falldamage" {
+			return
+		}
 
-			damage := newFallDamageFromGameEvent(analyzer, event)
-			if damage == nil {
-				return
-			}
+		damage := newFallDamageFromGameEvent(analyzer, event)
+		if damage == nil {
+			return
+		}
 
-			match.Damages = append(match.Damages, damage)
-		})
-	}
+		analyzer.fallDamageFrameBySteamID[damage.VictimSteamID64] = analyzer.parser.CurrentFrame()
+
+		if disableTypedCS2FallDamagePathUntilDemoinfocsFix {
+			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
+				if existingDamage == nil {
+					return true
+				}
+
+				isSameFrameVictim := existingDamage.Frame == damage.Frame &&
+					existingDamage.VictimSteamID64 == damage.VictimSteamID64
+				isEnvironmentTypedDamage := existingDamage.AttackerSteamID64 == 0 &&
+					(existingDamage.WeaponName == constants.WeaponWorld || existingDamage.WeaponName == constants.WeaponBomb || existingDamage.WeaponName == constants.WeaponUnknown) &&
+					!existingDamage.isFallDamage
+
+				return !(isSameFrameVictim && isEnvironmentTypedDamage)
+			})
+		} else {
+			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
+				if existingDamage == nil {
+					return true
+				}
+
+				isSameWorldDamage := existingDamage.Frame == damage.Frame &&
+					existingDamage.Tick == damage.Tick &&
+					existingDamage.VictimSteamID64 == damage.VictimSteamID64 &&
+					existingDamage.WeaponName == constants.WeaponWorld &&
+					!existingDamage.isFallDamage
+
+				return !isSameWorldDamage
+			})
+		}
+
+		match.Damages = append(match.Damages, damage)
+	})
 
 	parser.RegisterEventHandler(func(event events.FrameDone) {
 		shouldComputeEconomy := analyzer.lastFreezeTimeEndTick != -1 && analyzer.secondsHasPassedSinceTick(equipmentValueDelaySeconds, analyzer.lastFreezeTimeEndTick)
