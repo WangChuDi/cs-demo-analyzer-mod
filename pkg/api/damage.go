@@ -34,7 +34,6 @@ type Damage struct {
 	WeaponUniqueID           string               `json:"weaponUniqueId"`
 	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
 	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
-	isFallDamage             bool
 }
 
 func (damage *Damage) IsGrenadeWeapon() bool {
@@ -158,6 +157,5 @@ func newFallDamageFromGameEvent(analyzer *Analyzer, event events.GenericGameEven
 		WeaponUniqueID:           "",
 		IsVictimAirborne:         victim.IsAirborne(),
 		IsAttackerAirborne:       false,
-		isFallDamage:             true,
 	}
 }

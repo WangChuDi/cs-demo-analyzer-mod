@@ -198,14 +198,7 @@ func (player *Player) TeamDamageTaken() int {
 }
 
 func (player *Player) FallDamageTaken() int {
-	var fallDamageTaken int
-	for _, damage := range player.match.Damages {
-		if damage.VictimSteamID64 == player.SteamID64 && damage.isFallDamage {
-			fallDamageTaken += damage.HealthDamage
-		}
-	}
-
-	return fallDamageTaken
+	return 0
 }
 
 func (player *Player) AirDamageTaken() int {
