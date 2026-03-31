@@ -33,6 +33,7 @@ type Damage struct {
 	WeaponUniqueID           string               `json:"weaponUniqueId"`
 	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
 	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
+	isFallDamage             bool
 }
 
 func (damage *Damage) IsGrenadeWeapon() bool {
@@ -104,4 +105,64 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		IsVictimAirborne:         event.Player.IsAirborne(),
 		IsAttackerAirborne:       isAttackerAirborne,
 	}
+}
+
+func newFallDamageFromGenericPlayerHurt(analyzer *Analyzer, event events.GenericGameEvent) *Damage {
+	if event.Name != "player_hurt" {
+		return nil
+	}
+
+	userIDData, exists := event.Data["userid"]
+	if !exists || userIDData == nil {
+		return nil
+	}
+
+	playerUserID := int(userIDData.GetValShort())
+	victim := analyzer.parser.GameState().Participants().ByUserID()[playerUserID]
+	if victim == nil {
+		return nil
+	}
+
+	healthDamage := math.Max(0, genericGameEventInt(event, "dmg_health"))
+	armorDamage := math.Max(0, genericGameEventInt(event, "dmg_armor"))
+
+	match := analyzer.match
+	newHealth := math.Max(0, genericGameEventInt(event, "health"))
+	newArmor := math.Max(0, genericGameEventInt(event, "armor"))
+
+	return &Damage{
+		RoundNumber:              analyzer.currentRound.Number,
+		Frame:                    analyzer.parser.CurrentFrame(),
+		Tick:                     analyzer.currentTick(),
+		HealthDamage:             healthDamage,
+		ArmorDamage:              armorDamage,
+		VictimHealth:             math.Max(0, newHealth+healthDamage),
+		VictimArmor:              math.Max(0, newArmor+armorDamage),
+		VictimNewHealth:          newHealth,
+		VictimNewArmor:           newArmor,
+		IsVictimControllingBot:   victim.IsControllingBot(),
+		AttackerSteamID64:        0,
+		AttackerSide:             common.TeamUnassigned,
+		AttackerTeamName:         "World",
+		IsAttackerControllingBot: false,
+		VictimSteamID64:          victim.SteamID64,
+		VictimSide:               victim.Team,
+		VictimTeamName:           match.Team(victim.Team).Name,
+		HitGroup:                 events.HitGroupGeneric,
+		WeaponName:               constants.WeaponWorld,
+		WeaponType:               constants.WeaponTypeUnknown,
+		WeaponUniqueID:           "",
+		IsVictimAirborne:         victim.IsAirborne(),
+		IsAttackerAirborne:       false,
+		isFallDamage:             true,
+	}
+}
+
+func genericGameEventInt(event events.GenericGameEvent, key string) int {
+	v, exists := event.Data[key]
+	if !exists || v == nil {
+		return 0
+	}
+
+	return int(v.GetValShort())
 }

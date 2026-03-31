@@ -200,10 +200,11 @@ func (player *Player) TeamDamageTaken() int {
 func (player *Player) FallDamageTaken() int {
 	var fallDamageTaken int
 	for _, damage := range player.match.Damages {
-		if damage.VictimSteamID64 == player.SteamID64 && damage.WeaponName == constants.WeaponWorld {
+		if damage.VictimSteamID64 == player.SteamID64 && (damage.isFallDamage || (!damage.isFallDamage && damage.WeaponName == constants.WeaponWorld)) {
 			fallDamageTaken += damage.HealthDamage
 		}
 	}
+
 	return fallDamageTaken
 }
 
