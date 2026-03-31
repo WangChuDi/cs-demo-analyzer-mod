@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	stdmath "math"
 
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
@@ -108,18 +107,13 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 	}
 }
 
-func newFallDamageFromGameEvent(analyzer *Analyzer, event events.GenericGameEvent) *Damage {
-	if event.Name != "player_falldamage" {
+func newFallDamageFromGenericPlayerHurt(analyzer *Analyzer, event events.GenericGameEvent) *Damage {
+	if event.Name != "player_hurt" {
 		return nil
 	}
 
 	userIDData, exists := event.Data["userid"]
 	if !exists || userIDData == nil {
-		return nil
-	}
-
-	damageData, exists := event.Data["damage"]
-	if !exists || damageData == nil {
 		return nil
 	}
 
@@ -129,21 +123,23 @@ func newFallDamageFromGameEvent(analyzer *Analyzer, event events.GenericGameEven
 		return nil
 	}
 
-	healthDamage := int(stdmath.Round(float64(damageData.GetValFloat())))
-	healthDamage = math.Max(0, healthDamage)
+	healthDamage := math.Max(0, genericGameEventInt(event, "dmg_health"))
+	armorDamage := math.Max(0, genericGameEventInt(event, "dmg_armor"))
 
 	match := analyzer.match
+	newHealth := math.Max(0, genericGameEventInt(event, "health"))
+	newArmor := math.Max(0, genericGameEventInt(event, "armor"))
 
 	return &Damage{
 		RoundNumber:              analyzer.currentRound.Number,
 		Frame:                    analyzer.parser.CurrentFrame(),
 		Tick:                     analyzer.currentTick(),
 		HealthDamage:             healthDamage,
-		ArmorDamage:              0,
-		VictimHealth:             math.Max(0, victim.Health()),
+		ArmorDamage:              armorDamage,
+		VictimHealth:             math.Max(0, newHealth+healthDamage),
 		VictimArmor:              math.Max(0, victim.Armor()),
-		VictimNewHealth:          math.Max(0, victim.Health()-healthDamage),
-		VictimNewArmor:           math.Max(0, victim.Armor()),
+		VictimNewHealth:          newHealth,
+		VictimNewArmor:           newArmor,
 		IsVictimControllingBot:   victim.IsControllingBot(),
 		AttackerSteamID64:        0,
 		AttackerSide:             common.TeamUnassigned,
@@ -160,4 +156,13 @@ func newFallDamageFromGameEvent(analyzer *Analyzer, event events.GenericGameEven
 		IsAttackerAirborne:       false,
 		isFallDamage:             true,
 	}
+}
+
+func genericGameEventInt(event events.GenericGameEvent, key string) int {
+	v, exists := event.Data[key]
+	if !exists || v == nil {
+		return 0
+	}
+
+	return int(v.GetValShort())
 }

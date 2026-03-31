@@ -67,10 +67,12 @@ type Analyzer struct {
 	droppedWeapons map[ulid.ULID]uint64
 	// Map Weapon UniqueID -> Current Owner SteamID (for tracking Leech/Feed without ItemDrop)
 	roundWeaponOwners             map[ulid.ULID]uint64
+	bombExplodeFrames             map[int]bool
 	lastGrenadeProjectilePosition map[int64]grenadeProjectilePositionSample
 	chickenEntities               []st.Entity
 	pendingFootsteps              []events.Footstep
 	fallDamageFrameBySteamID      map[uint64]int
+	pendingCS2FallDamages         map[int][]*Damage
 }
 
 type AnalyzeDemoOptions struct {
@@ -130,8 +132,10 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		playersUntyingAnHostage:       make(map[uint64]int),
 		droppedWeapons:                make(map[ulid.ULID]uint64),
 		roundWeaponOwners:             make(map[ulid.ULID]uint64),
+		bombExplodeFrames:             make(map[int]bool),
 		lastGrenadeProjectilePosition: make(map[int64]grenadeProjectilePositionSample),
 		fallDamageFrameBySteamID:      make(map[uint64]int),
+		pendingCS2FallDamages:         make(map[int][]*Damage),
 		postProcess:                   defaultPostProcess,
 	}
 
@@ -269,7 +273,9 @@ func (analyzer *Analyzer) reset() {
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.bombExplodeFrames = make(map[int]bool)
 	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
+	analyzer.pendingCS2FallDamages = make(map[int][]*Damage)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
@@ -431,7 +437,9 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
 	analyzer.droppedWeapons = make(map[ulid.ULID]uint64)
 	analyzer.roundWeaponOwners = make(map[ulid.ULID]uint64)
+	analyzer.bombExplodeFrames = make(map[int]bool)
 	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
+	analyzer.pendingCS2FallDamages = make(map[int][]*Damage)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 
 	roundNumber := analyzer.currentRound.Number + 1
@@ -727,51 +735,76 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	})
 
 	parser.RegisterEventHandler(func(event events.GenericGameEvent) {
-		if !analyzer.matchStarted() || event.Name != "player_falldamage" {
+		if !analyzer.matchStarted() || !disableTypedCS2FallDamagePathUntilDemoinfocsFix || event.Name != "player_hurt" {
 			return
 		}
 
-		damage := newFallDamageFromGameEvent(analyzer, event)
+		attackerData, exists := event.Data["attacker"]
+		if !exists || attackerData == nil || attackerData.GetValShort() != 65535 {
+			return
+		}
+
+		weaponData, exists := event.Data["weapon"]
+		if !exists || weaponData == nil || weaponData.GetValString() != "" {
+			return
+		}
+
+		frame := analyzer.parser.CurrentFrame()
+		damage := newFallDamageFromGenericPlayerHurt(analyzer, event)
 		if damage == nil {
 			return
 		}
 
-		analyzer.fallDamageFrameBySteamID[damage.VictimSteamID64] = analyzer.parser.CurrentFrame()
-
-		if disableTypedCS2FallDamagePathUntilDemoinfocsFix {
-			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
-				if existingDamage == nil {
-					return true
-				}
-
-				isSameFrameVictim := existingDamage.Frame == damage.Frame &&
-					existingDamage.VictimSteamID64 == damage.VictimSteamID64
-				isEnvironmentTypedDamage := existingDamage.AttackerSteamID64 == 0 &&
-					(existingDamage.WeaponName == constants.WeaponWorld || existingDamage.WeaponName == constants.WeaponBomb || existingDamage.WeaponName == constants.WeaponUnknown) &&
-					!existingDamage.isFallDamage
-
-				return !(isSameFrameVictim && isEnvironmentTypedDamage)
-			})
-		} else {
-			match.Damages = slice.Filter(match.Damages, func(existingDamage *Damage, index int) bool {
-				if existingDamage == nil {
-					return true
-				}
-
-				isSameWorldDamage := existingDamage.Frame == damage.Frame &&
-					existingDamage.Tick == damage.Tick &&
-					existingDamage.VictimSteamID64 == damage.VictimSteamID64 &&
-					existingDamage.WeaponName == constants.WeaponWorld &&
-					!existingDamage.isFallDamage
-
-				return !isSameWorldDamage
-			})
-		}
-
-		match.Damages = append(match.Damages, damage)
+		analyzer.pendingCS2FallDamages[frame] = append(analyzer.pendingCS2FallDamages[frame], damage)
 	})
 
 	parser.RegisterEventHandler(func(event events.FrameDone) {
+		currentFrame := analyzer.parser.CurrentFrame()
+		for pendingFrame, pendingDamages := range analyzer.pendingCS2FallDamages {
+			if pendingFrame >= currentFrame {
+				continue
+			}
+
+			if !analyzer.bombExplodeFrames[pendingFrame] {
+				for _, pendingDamage := range pendingDamages {
+					analyzer.fallDamageFrameBySteamID[pendingDamage.VictimSteamID64] = pendingFrame
+
+					matchedTypedDamage := false
+					for _, existingDamage := range match.Damages {
+						if existingDamage == nil {
+							continue
+						}
+
+						isSameFrameVictim := existingDamage.Frame == pendingDamage.Frame &&
+							existingDamage.VictimSteamID64 == pendingDamage.VictimSteamID64
+						isEnvironmentTypedDamage := existingDamage.AttackerSteamID64 == 0 &&
+							(existingDamage.WeaponName == constants.WeaponWorld || existingDamage.WeaponName == constants.WeaponBomb || existingDamage.WeaponName == constants.WeaponUnknown)
+
+						if !isSameFrameVictim || !isEnvironmentTypedDamage {
+							continue
+						}
+
+						existingDamage.WeaponName = constants.WeaponWorld
+						existingDamage.WeaponType = constants.WeaponTypeUnknown
+						existingDamage.AttackerSteamID64 = 0
+						existingDamage.AttackerSide = common.TeamUnassigned
+						existingDamage.AttackerTeamName = "World"
+						existingDamage.IsAttackerControllingBot = false
+						existingDamage.IsAttackerAirborne = false
+						existingDamage.isFallDamage = true
+						matchedTypedDamage = true
+						break
+					}
+
+					if !matchedTypedDamage {
+						match.Damages = append(match.Damages, pendingDamage)
+					}
+				}
+			}
+
+			delete(analyzer.pendingCS2FallDamages, pendingFrame)
+		}
+
 		shouldComputeEconomy := analyzer.lastFreezeTimeEndTick != -1 && analyzer.secondsHasPassedSinceTick(equipmentValueDelaySeconds, analyzer.lastFreezeTimeEndTick)
 		if shouldComputeEconomy {
 			analyzer.computePlayersEconomies()
@@ -1097,6 +1130,8 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		if !analyzer.matchStarted() {
 			return
 		}
+
+		analyzer.bombExplodeFrames[analyzer.parser.CurrentFrame()] = true
 
 		bombExploded := newBombExploded(analyzer, event)
 		match.BombsExploded = append(match.BombsExploded, bombExploded)
