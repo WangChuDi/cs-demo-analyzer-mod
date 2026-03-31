@@ -718,16 +718,6 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		if analyzer.fallDamageFrameBySteamID[event.Player.SteamID64] == analyzer.parser.CurrentFrame() {
-			if disableTypedCS2FallDamagePathUntilDemoinfocsFix {
-				if event.Attacker == nil && (event.Weapon == nil || event.Weapon.Type == common.EqWorld || event.Weapon.Type == common.EqBomb || event.Weapon.Type == common.EqUnknown) {
-					return
-				}
-			} else if event.Weapon != nil && event.Weapon.Type == common.EqWorld {
-				return
-			}
-		}
-
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
 			match.Damages = append(match.Damages, damage)

@@ -137,7 +137,7 @@ func newFallDamageFromGenericPlayerHurt(analyzer *Analyzer, event events.Generic
 		HealthDamage:             healthDamage,
 		ArmorDamage:              armorDamage,
 		VictimHealth:             math.Max(0, newHealth+healthDamage),
-		VictimArmor:              math.Max(0, victim.Armor()),
+		VictimArmor:              math.Max(0, newArmor+armorDamage),
 		VictimNewHealth:          newHealth,
 		VictimNewArmor:           newArmor,
 		IsVictimControllingBot:   victim.IsControllingBot(),
