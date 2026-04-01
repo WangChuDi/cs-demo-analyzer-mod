@@ -142,8 +142,6 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				converters.IntToString(player.FeedValue),
 				converters.IntToString(player.LeechCount),
 				converters.IntToString(player.FeedCount),
-				converters.IntToString(player.WallbangDamageDealt()),
-				converters.IntToString(player.WallbangDamageTaken()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -375,7 +373,6 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				string(damage.WeaponType),
 				converters.HitgroupToString(damage.HitGroup),
 				damage.WeaponUniqueID,
-				converters.BoolToString(damage.IsWallbang),
 				match.Checksum,
 			}
 			lines = append(lines, line)
