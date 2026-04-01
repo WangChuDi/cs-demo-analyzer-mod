@@ -73,6 +73,7 @@ type Analyzer struct {
 	pendingFootsteps              []events.Footstep
 	fallDamageFrameBySteamID      map[uint64]int
 	pendingCS2FallDamages         map[int][]*Damage
+	pendingBulletDamageByKey      map[damageMatchFrameKey][]int
 }
 
 type AnalyzeDemoOptions struct {
@@ -136,6 +137,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		lastGrenadeProjectilePosition: make(map[int64]grenadeProjectilePositionSample),
 		fallDamageFrameBySteamID:      make(map[uint64]int),
 		pendingCS2FallDamages:         make(map[int][]*Damage),
+		pendingBulletDamageByKey:      make(map[damageMatchFrameKey][]int),
 		postProcess:                   defaultPostProcess,
 	}
 
@@ -276,6 +278,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.bombExplodeFrames = make(map[int]bool)
 	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.pendingCS2FallDamages = make(map[int][]*Damage)
+	analyzer.pendingBulletDamageByKey = make(map[damageMatchFrameKey][]int)
 	analyzer.lastGrenadeProjectilePosition = make(map[int64]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
@@ -720,8 +723,17 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
+			analyzer.applyPendingBulletDamageToDamage(damage)
 			match.Damages = append(match.Damages, damage)
 		}
+	})
+
+	parser.RegisterEventHandler(func(event events.BulletDamage) {
+		if !analyzer.matchStarted() || event.Attacker == nil || event.Victim == nil {
+			return
+		}
+
+		analyzer.registerBulletDamage(event)
 	})
 
 	parser.RegisterEventHandler(func(event events.GenericGameEvent) {
@@ -1645,10 +1657,66 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	})
 }
 
+func (analyzer *Analyzer) registerBulletDamage(event events.BulletDamage) {
+	analyzer.registerBulletDamageAtFrame(event, analyzer.parser.CurrentFrame())
+}
+
+func (analyzer *Analyzer) registerBulletDamageAtFrame(event events.BulletDamage, frame int) {
+	key := newDamageMatchFrameKey(
+		analyzer.currentRound.Number,
+		frame,
+		event.Attacker.SteamID64,
+		event.Victim.SteamID64,
+	)
+
+	for i := len(analyzer.match.Damages) - 1; i >= 0; i-- {
+		damage := analyzer.match.Damages[i]
+		if damage == nil {
+			continue
+		}
+
+		if damage.hasBulletDamageData {
+			continue
+		}
+
+		if newDamageMatchFrameKeyFromDamage(damage) != key {
+			continue
+		}
+
+		damage.setBulletDamageData(event.NumPenetrations)
+		return
+	}
+
+	analyzer.pendingBulletDamageByKey[key] = append(analyzer.pendingBulletDamageByKey[key], event.NumPenetrations)
+}
+
+func (analyzer *Analyzer) applyPendingBulletDamageToDamage(damage *Damage) {
+	key := newDamageMatchFrameKeyFromDamage(damage)
+	pendingByDamage, exists := analyzer.pendingBulletDamageByKey[key]
+	if !exists || len(pendingByDamage) == 0 {
+		return
+	}
+
+	damage.setBulletDamageData(pendingByDamage[0])
+	if len(pendingByDamage) == 0 {
+		delete(analyzer.pendingBulletDamageByKey, key)
+		return
+	}
+
+	if len(pendingByDamage) == 1 {
+		delete(analyzer.pendingBulletDamageByKey, key)
+		return
+	}
+
+	analyzer.pendingBulletDamageByKey[key] = pendingByDamage[1:]
+}
+
 func defaultPostProcess(analyzer *Analyzer) {
 	match := analyzer.match
 	currentRound := analyzer.currentRound
 	if len(match.Rounds) < currentRound.Number {
 		match.Rounds = append(match.Rounds, currentRound)
 	}
+
+	markHeuristicWallbangDamages(match)
 }
