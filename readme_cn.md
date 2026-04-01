@@ -75,12 +75,14 @@
 - **玩家表 (`_players.csv`)**：
   - `utility damage taken`：受到的手雷/燃烧弹伤害。
   - `team damage taken`：受到的队友伤害。
-  - `fall damage taken`：受到的坠落伤害。
+  - `fall damage taken`：受到的坠落伤害。在 CS2 中，该值通过 generic `player_hurt` 的环境伤害事件推断，并结合同 frame 的 `BombExplode` 事件过滤真实 C4 爆炸伤害，避免将爆炸伤害误记为坠落伤害。
   - `air damage taken`：受到的空中攻击者伤害。
   - `run and gun or air killed by count`：被跑打或空中攻击者击杀的次数。
   - `through smoke kill count`：被透烟击杀的次数。
   - `wallbang kill count`：被穿墙击杀的次数。
-  - `wallbang damage taken`：受到的穿墙伤害（注：非致命穿墙伤害可能因事件数据不足而无法追踪）。
+  - `wallbang damage dealt`：造成的对外穿墙伤害（基于 `Damage.IsWallbang`，可用时使用解析器确认信号，否则回退启发式判定）。
+  - `wallbang damage taken`：受到的对外穿墙伤害（基于 `Damage.IsWallbang`，可用时使用解析器确认信号，否则回退启发式判定）。
+  - `true wallbang damage taken`：仅统计解析器确认的穿墙承伤（`BulletDamage`/`NumPenetrations` 同 frame 关联）。
 
 - **射击表 (`_shots.csv`)**：
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
@@ -190,7 +192,8 @@ GrenadeProjectileThrow 事件
 - `HeGrenadeExplode`（投掷者速度）
 - `SmokeStart`（投掷者速度）
 ### 倒霉统计
-- **穿墙伤害**：非致命穿墙伤害可能因事件数据不足而无法正确追踪。
+- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。`true wallbang damage taken` 仅保留该解析器确认路径。
+- **CS2 坠落伤害**：`demoinfocs-golang v5` 在部分 CS2 demo 中，可能会把真实的 world/fall 伤害的 typed `PlayerHurt.Weapon` 错误推断为 `C4`。为避免误判，当前分析器会改用 generic `player_hurt` 的环境伤害事件进行判断，并排除与 `BombExplode` 同 frame 的候选伤害。
 ## 📝 TODO
 ### 🤡 小丑时刻
 - [ ] 💩 **失败的道具**（没扔好的烟雾弹/闪光弹）
