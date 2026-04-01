@@ -93,7 +93,9 @@ type PlayerJSON struct {
 	FeedCount                   int     `json:"feedCount"`
 	WastedUtilityValue          int     `json:"wastedUtilityValue"`
 	UtilityDamageTaken          int     `json:"utilityDamageTaken"`
+	WallbangDamageDealt         int     `json:"wallbangDamageDealt"`
 	WallbangDamageTaken         int     `json:"wallbangDamageTaken"`
+	TrueWallbangDamageTaken     int     `json:"trueWallbangDamageTaken"`
 	TeamDamageTaken             int     `json:"teamDamageTaken"`
 	FallDamageTaken             int     `json:"fallDamageTaken"`
 	AirDamageTaken              int     `json:"airDamageTaken"`
@@ -159,7 +161,9 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		FeedCount:                   player.FeedCount,
 		WastedUtilityValue:          player.WastedUtilityValue,
 		UtilityDamageTaken:          player.UtilityDamageTaken(),
+		WallbangDamageDealt:         player.WallbangDamageDealt(),
 		WallbangDamageTaken:         player.WallbangDamageTaken(),
+		TrueWallbangDamageTaken:     player.TrueWallbangDamageTaken(),
 		TeamDamageTaken:             player.TeamDamageTaken(),
 		FallDamageTaken:             player.FallDamageTaken(),
 		AirDamageTaken:              player.AirDamageTaken(),
@@ -182,9 +186,42 @@ func (player *Player) UtilityDamageTaken() int {
 	return utilityDamageTaken
 }
 
+func (player *Player) TrueWallbangDamageTaken() int {
+	var trueWallbangDamageTaken int
+	for _, damage := range player.match.Damages {
+		// True wallbang signal: only when BulletDamage <-> PlayerHurt same-frame correlation reports penetrations.
+		if damage.VictimSteamID64 == player.SteamID64 && damage.isWallbang() {
+			trueWallbangDamageTaken += damage.HealthDamage
+		}
+	}
+
+	return trueWallbangDamageTaken
+}
+
+func (player *Player) WallbangDamageDealt() int {
+	var wallbangDamageDealt int
+	for _, damage := range player.match.Damages {
+		// Outward wallbang aggregate: includes heuristic approximation because direct non-lethal wallbang extraction is
+		// often unavailable from parser signals.
+		if damage.AttackerSteamID64 == player.SteamID64 && damage.IsWallbang {
+			wallbangDamageDealt += damage.HealthDamage
+		}
+	}
+
+	return wallbangDamageDealt
+}
+
 func (player *Player) WallbangDamageTaken() int {
-	// Not implemented as PlayerHurt event lacks penetration info
-	return 0
+	var wallbangDamageTaken int
+	for _, damage := range player.match.Damages {
+		// Outward wallbang aggregate: includes heuristic approximation because direct non-lethal wallbang extraction is
+		// often unavailable from parser signals.
+		if damage.VictimSteamID64 == player.SteamID64 && damage.IsWallbang {
+			wallbangDamageTaken += damage.HealthDamage
+		}
+	}
+
+	return wallbangDamageTaken
 }
 
 func (player *Player) TeamDamageTaken() int {
