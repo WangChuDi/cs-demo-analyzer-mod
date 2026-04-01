@@ -1698,11 +1698,6 @@ func (analyzer *Analyzer) applyPendingBulletDamageToDamage(damage *Damage) {
 	}
 
 	damage.setBulletDamageData(pendingByDamage[0])
-	if len(pendingByDamage) == 0 {
-		delete(analyzer.pendingBulletDamageByKey, key)
-		return
-	}
-
 	if len(pendingByDamage) == 1 {
 		delete(analyzer.pendingBulletDamageByKey, key)
 		return

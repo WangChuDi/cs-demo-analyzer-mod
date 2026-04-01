@@ -126,6 +126,32 @@ func TestMarkHeuristicWallbangDamages_KeepsTrueWallbang(t *testing.T) {
 	}
 }
 
+func TestMarkHeuristicWallbangDamages_UsesTrueSignalWithoutPositions(t *testing.T) {
+	match := &Match{
+		Damages: []*Damage{
+			{
+				RoundNumber:         1,
+				Frame:               100,
+				Tick:                100,
+				AttackerSteamID64:   111,
+				VictimSteamID64:     222,
+				WeaponName:          "AK-47",
+				WeaponUniqueID:      "weapon-1",
+				HitGroup:            events.HitGroupChest,
+				HealthDamage:        12,
+				hasBulletDamageData: true,
+				numPenetrations:     1,
+			},
+		},
+	}
+
+	markHeuristicWallbangDamages(match)
+
+	if !match.Damages[0].IsWallbang {
+		t.Fatalf("expected parser-confirmed wallbang damage to remain marked even without heuristic position data")
+	}
+}
+
 func TestPlayerWallbangDamageAggregates(t *testing.T) {
 	player := &Player{SteamID64: 123}
 	match := &Match{

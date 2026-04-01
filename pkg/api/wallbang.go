@@ -26,19 +26,30 @@ type wallbangShotIndexEntry struct {
 }
 
 func markHeuristicWallbangDamages(match *Match) {
-	if match == nil || len(match.Damages) == 0 || len(match.Shots) == 0 || len(match.PlayerPositions) == 0 {
+	if match == nil || len(match.Damages) == 0 {
 		return
 	}
 
 	// The parser gives a reliable true wallbang signal for bullet penetrations only when BulletDamage can be
 	// correlated to PlayerHurt in the same frame (see damage.isWallbang()). For non-lethal damage this direct signal
 	// is frequently unavailable, so we approximate wallbang detection heuristically for outward reporting.
-	shotIndex := buildWallbangHeuristicShotIndex(match.Shots)
-	positionIndex := buildWallbangHeuristicPositionIndex(match.PlayerPositions)
+	haveHeuristicData := len(match.Shots) > 0 && len(match.PlayerPositions) > 0
+
+	var shotIndex map[wallbangShotKey][]wallbangShotIndexEntry
+	var positionIndex map[wallbangPositionKey][]*PlayerPosition
+	if haveHeuristicData {
+		shotIndex = buildWallbangHeuristicShotIndex(match.Shots)
+		positionIndex = buildWallbangHeuristicPositionIndex(match.PlayerPositions)
+	}
 
 	for _, damage := range match.Damages {
 		isTrueWallbang := damage.isWallbang()
-		damage.IsWallbang = isTrueWallbang || isSuspectedWallbangDamage(damage, shotIndex, positionIndex)
+		if haveHeuristicData {
+			damage.IsWallbang = isTrueWallbang || isSuspectedWallbangDamage(damage, shotIndex, positionIndex)
+			continue
+		}
+
+		damage.IsWallbang = isTrueWallbang
 	}
 }
 
