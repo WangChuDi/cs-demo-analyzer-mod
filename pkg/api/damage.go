@@ -10,11 +10,17 @@ import (
 )
 
 type Damage struct {
-	Frame                    int                  `json:"frame"`
-	Tick                     int                  `json:"tick"`
-	RoundNumber              int                  `json:"roundNumber"`
-	HealthDamage             int                  `json:"healthDamage"`
-	ArmorDamage              int                  `json:"armorDamage"`
+	Frame        int `json:"frame"`
+	Tick         int `json:"tick"`
+	RoundNumber  int `json:"roundNumber"`
+	HealthDamage int `json:"healthDamage"`
+	ArmorDamage  int `json:"armorDamage"`
+	// IsWallbang is the outward/public wallbang flag.
+	//
+	// It is true when either:
+	//  1. parser-confirmed penetration is available (damage.isWallbang(), from BulletDamage/NumPenetrations), or
+	//  2. heuristic fallback classifies the damage as wallbang (wallbang.go), used when direct non-lethal extraction is unavailable.
+	IsWallbang               bool                 `json:"isWallbang"`
 	AttackerSteamID64        uint64               `json:"attackerSteamId"`
 	AttackerSide             common.Team          `json:"attackerSide"`
 	AttackerTeamName         string               `json:"attackerTeamName"`
@@ -33,7 +39,16 @@ type Damage struct {
 	WeaponUniqueID           string               `json:"weaponUniqueId"`
 	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
 	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
+	hasBulletDamageData      bool
+	numPenetrations          int
 	isFallDamage             bool
+}
+
+type damageMatchFrameKey struct {
+	roundNumber       int
+	frame             int
+	attackerSteamID64 uint64
+	victimSteamID64   uint64
 }
 
 func (damage *Damage) IsGrenadeWeapon() bool {
@@ -58,6 +73,28 @@ func (damage *Damage) isValidPlayerDamageEvent(player *Player) bool {
 	}
 
 	return true
+}
+
+func (damage *Damage) isWallbang() bool {
+	return damage.hasBulletDamageData && damage.numPenetrations > 0
+}
+
+func (damage *Damage) setBulletDamageData(numPenetrations int) {
+	damage.hasBulletDamageData = true
+	damage.numPenetrations = numPenetrations
+}
+
+func newDamageMatchFrameKey(roundNumber int, frame int, attackerSteamID64 uint64, victimSteamID64 uint64) damageMatchFrameKey {
+	return damageMatchFrameKey{
+		roundNumber:       roundNumber,
+		frame:             frame,
+		attackerSteamID64: attackerSteamID64,
+		victimSteamID64:   victimSteamID64,
+	}
+}
+
+func newDamageMatchFrameKeyFromDamage(damage *Damage) damageMatchFrameKey {
+	return newDamageMatchFrameKey(damage.RoundNumber, damage.Frame, damage.AttackerSteamID64, damage.VictimSteamID64)
 }
 
 func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage {

@@ -197,7 +197,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"feed count",
 			"wasted utility value",
 			"utility damage taken",
+			"wallbang damage dealt",
 			"wallbang damage taken",
+			"true wallbang damage taken",
 			"team damage taken",
 			"fall damage taken",
 			"air damage taken",
@@ -276,7 +278,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.FeedCount),
 				converters.IntToString(player.WastedUtilityValue),
 				converters.IntToString(player.UtilityDamageTaken()),
+				converters.IntToString(player.WallbangDamageDealt()),
 				converters.IntToString(player.WallbangDamageTaken()),
+				converters.IntToString(player.TrueWallbangDamageTaken()),
 				converters.IntToString(player.TeamDamageTaken()),
 				converters.IntToString(player.FallDamageTaken()),
 				converters.IntToString(player.AirDamageTaken()),
@@ -764,6 +768,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"weapon unique id",
 			"is attacker airborne",
 			"is victim airborne",
+			"is wallbang",
 			"match checksum",
 		}
 
@@ -793,6 +798,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				damage.WeaponUniqueID,
 				converters.BoolToString(damage.IsAttackerAirborne),
 				converters.BoolToString(damage.IsVictimAirborne),
+				converters.BoolToString(damage.IsWallbang),
 				match.Checksum,
 			}
 			lines = append(lines, line)

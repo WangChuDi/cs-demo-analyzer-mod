@@ -76,12 +76,14 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Players Table (`_players.csv`)**:
   - `utility damage taken`: Damage received from grenades/molotovs.
   - `team damage taken`: Damage received from teammates.
-  - `fall damage taken`: Damage received from falling.
+  - `fall damage taken`: Damage received from falling. In CS2, this is inferred from generic `player_hurt` environment-damage events and filtered against same-frame `BombExplode` events to avoid counting real C4 blast damage as fall damage.
   - `air damage taken`: Damage received from airborne attackers.
   - `run and gun or air killed by count`: Number of times killed by an attacker who was running (moving faster than accurate speed) or airborne.
   - `through smoke kill count`: Number of times killed through smoke.
   - `wallbang kill count`: Number of times killed through walls.
-  - `wallbang damage taken`: Damage received from wallbangs (Note: non-lethal wallbang damage might not be tracked if the event data is insufficient).
+  - `wallbang damage dealt`: Outward wallbang damage dealt (`Damage.IsWallbang`), combining parser-confirmed penetrations when available with heuristic fallback.
+  - `wallbang damage taken`: Outward wallbang damage taken (`Damage.IsWallbang`), combining parser-confirmed penetrations when available with heuristic fallback.
+  - `true wallbang damage taken`: Parser-confirmed-only wallbang damage taken (`BulletDamage`/`NumPenetrations` same-frame correlation).
 
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
@@ -207,7 +209,8 @@ This affects only:
 - `SmokeStart` (thrower velocity)
 
 ### Unlucky Statistics
-- **Wallbang Damage**: Non-lethal wallbang damage might not be tracked correctly if the demo event data is insufficient.
+- **Wallbang Damage**: Outward wallbang reporting (`Damage.IsWallbang`, `wallbang damage dealt`, `wallbang damage taken`) combines parser-confirmed penetration signals when available with a heuristic fallback path. This fallback is needed because current demos/parser signals do not reliably expose direct non-lethal penetration extraction in all cases. `true wallbang damage taken` remains parser-confirmed only (`BulletDamage`/`NumPenetrations` same-frame correlation).
+- **CS2 Fall Damage**: `demoinfocs-golang v5` can report typed `PlayerHurt.Weapon` as `C4` for true world/fall damage in some CS2 demos. To avoid that, the analyzer currently classifies CS2 fall damage from generic `player_hurt` environment-damage events and excludes candidates that occur on the same frame as `BombExplode`.
 
 
 ## 📝 TODO
