@@ -192,7 +192,7 @@ GrenadeProjectileThrow 事件
 - `HeGrenadeExplode`（投掷者速度）
 - `SmokeStart`（投掷者速度）
 ### 倒霉统计
-- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。`true wallbang damage taken` 仅保留该解析器确认路径。
+- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。当解析器确认路径不可用时，启发式回退会在同一回合内把每条伤害匹配到同攻击者、同武器的最近一次先前开枪记录，以及受害者最近一次先前位置记录；再根据武器模型参数（`BaseDamage`、`RangeModifier`、`ArmorRatio`、`HeadMultiplier`）、hitgroup、距离衰减、以及受害者护甲/头盔状态，估算“非穿墙情况下本应造成的生命值伤害”；如果实际生命值伤害明显低于这个理论非穿墙伤害估计，则将该伤害标记为 wallbang。`true wallbang damage taken` 仅保留该解析器确认路径。
 - **CS2 坠落伤害**：`demoinfocs-golang v5` 在部分 CS2 demo 中，可能会把真实的 world/fall 伤害的 typed `PlayerHurt.Weapon` 错误推断为 `C4`。为避免误判，当前分析器会改用 generic `player_hurt` 的环境伤害事件进行判断，并排除与 `BombExplode` 同 frame 的候选伤害。
 ## 📝 TODO
 ### 🤡 小丑时刻
