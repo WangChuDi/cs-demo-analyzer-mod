@@ -1713,5 +1713,6 @@ func defaultPostProcess(analyzer *Analyzer) {
 		match.Rounds = append(match.Rounds, currentRound)
 	}
 
+	generateAwpHoldDeaths(match)
 	markHeuristicWallbangDamages(match)
 }
