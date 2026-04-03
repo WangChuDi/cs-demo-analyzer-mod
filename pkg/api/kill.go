@@ -24,39 +24,48 @@ type Kill struct {
 	KillerX          float64              `json:"killerX"`
 	KillerY          float64              `json:"killerY"`
 	KillerZ          float64              `json:"killerZ"`
+	KillerVelocityX  float64              `json:"killerVelocityX"`
+	KillerVelocityY  float64              `json:"killerVelocityY"`
+	KillerVelocityZ  float64              `json:"killerVelocityZ"`
 	IsKillerAirborne bool                 `json:"is_killer_airborne"`
 	IsKillerBlinded  bool                 `json:"is_killer_blinded"`
 	// Note: JSON tag uses snake_case for backward compatibility with existing
 	// fields is_killer_airborne/is_killer_blinded and external consumers.
-	IsKillerRunning          bool        `json:"is_killer_running"`
-	IsKillerControllingBot   bool        `json:"isKillerControllingBot"`
-	VictimName               string      `json:"victimName"`
-	VictimSteamID64          uint64      `json:"victimSteamId"`
-	VictimSide               common.Team `json:"victimSide"`
-	VictimTeamName           string      `json:"victimTeamName"`
-	VictimX                  float64     `json:"victimX"`
-	VictimY                  float64     `json:"victimY"`
-	VictimZ                  float64     `json:"victimZ"`
-	IsVictimAirborne         bool        `json:"is_victim_airborne"`
-	IsVictimBlinded          bool        `json:"is_victim_blinded"`
-	IsVictimControllingBot   bool        `json:"isVictimControllingBot"`
-	IsVictimInspectingWeapon bool        `json:"isVictimInspectingWeapon"`
-	AssisterName             string      `json:"assisterName"`
-	AssisterSteamID64        uint64      `json:"assisterSteamId"`
-	AssisterSide             common.Team `json:"assisterSide"`
-	AssisterTeamName         string      `json:"assisterTeamName"`
-	AssisterX                float64     `json:"assisterX"`
-	AssisterY                float64     `json:"assisterY"`
-	AssisterZ                float64     `json:"assisterZ"`
-	IsAssisterControllingBot bool        `json:"isAssisterControllingBot"`
-	IsHeadshot               bool        `json:"isHeadshot"`
-	PenetratedObjects        int         `json:"penetratedObjects"`
-	IsAssistedFlash          bool        `json:"isAssistedFlash"`
-	IsThroughSmoke           bool        `json:"isThroughSmoke"`
-	IsNoScope                bool        `json:"isNoScope"`
-	IsTradeKill              bool        `json:"isTradeKill"`  // The attacker did a trade kill
-	IsTradeDeath             bool        `json:"isTradeDeath"` // The victim did a trade death
-	Distance                 float32     `json:"distance"`
+	IsKillerRunning          bool                 `json:"is_killer_running"`
+	IsKillerControllingBot   bool                 `json:"isKillerControllingBot"`
+	VictimName               string               `json:"victimName"`
+	VictimSteamID64          uint64               `json:"victimSteamId"`
+	VictimSide               common.Team          `json:"victimSide"`
+	VictimTeamName           string               `json:"victimTeamName"`
+	VictimX                  float64              `json:"victimX"`
+	VictimY                  float64              `json:"victimY"`
+	VictimZ                  float64              `json:"victimZ"`
+	VictimVelocityX          float64              `json:"victimVelocityX"`
+	VictimVelocityY          float64              `json:"victimVelocityY"`
+	VictimVelocityZ          float64              `json:"victimVelocityZ"`
+	VictimYaw                float32              `json:"victimYaw"`
+	VictimActiveWeaponName   constants.WeaponName `json:"victimActiveWeaponName"`
+	VictimIsScoped           bool                 `json:"victimIsScoped"`
+	IsVictimAirborne         bool                 `json:"is_victim_airborne"`
+	IsVictimBlinded          bool                 `json:"is_victim_blinded"`
+	IsVictimControllingBot   bool                 `json:"isVictimControllingBot"`
+	IsVictimInspectingWeapon bool                 `json:"isVictimInspectingWeapon"`
+	AssisterName             string               `json:"assisterName"`
+	AssisterSteamID64        uint64               `json:"assisterSteamId"`
+	AssisterSide             common.Team          `json:"assisterSide"`
+	AssisterTeamName         string               `json:"assisterTeamName"`
+	AssisterX                float64              `json:"assisterX"`
+	AssisterY                float64              `json:"assisterY"`
+	AssisterZ                float64              `json:"assisterZ"`
+	IsAssisterControllingBot bool                 `json:"isAssisterControllingBot"`
+	IsHeadshot               bool                 `json:"isHeadshot"`
+	PenetratedObjects        int                  `json:"penetratedObjects"`
+	IsAssistedFlash          bool                 `json:"isAssistedFlash"`
+	IsThroughSmoke           bool                 `json:"isThroughSmoke"`
+	IsNoScope                bool                 `json:"isNoScope"`
+	IsTradeKill              bool                 `json:"isTradeKill"`  // The attacker did a trade kill
+	IsTradeDeath             bool                 `json:"isTradeDeath"` // The victim did a trade death
+	Distance                 float32              `json:"distance"`
 }
 
 func (kill *Kill) IsSuicide() bool {
@@ -89,6 +98,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	var killerX float64
 	var killerY float64
 	var killerZ float64
+	killerVelocity := r3.Vector{}
 	if event.Killer != nil {
 		killerName = event.Killer.Name
 		killerSteamID = event.Killer.SteamID64
@@ -101,8 +111,8 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		isKillerAirborne = event.Killer.IsAirborne()
 		isKillerBlinded = event.Killer.IsBlinded()
 
-		velocity := getPlayerVelocity(event.Killer, analyzer)
-		speed2D := stdmath.Sqrt(velocity.X*velocity.X + velocity.Y*velocity.Y)
+		killerVelocity = getPlayerVelocity(event.Killer, analyzer)
+		speed2D := stdmath.Sqrt(killerVelocity.X*killerVelocity.X + killerVelocity.Y*killerVelocity.Y)
 
 		// Check against weapon's accurate speed threshold
 		wName := equipmentToWeaponName[event.Weapon.Type]
@@ -119,6 +129,13 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	victim := analyzer.match.PlayersBySteamID[event.Victim.SteamID64]
 	if victim != nil {
 		isVictimInspectingWeapon = victim.IsInspectingWeapon(analyzer)
+	}
+
+	victimVelocity := getPlayerVelocity(event.Victim, analyzer)
+	victimYaw := event.Victim.ViewDirectionX()
+	victimActiveWeaponName := constants.WeaponUnknown
+	if activeWeapon := event.Victim.ActiveWeapon(); activeWeapon != nil {
+		victimActiveWeaponName = equipmentToWeaponName[activeWeapon.Type]
 	}
 
 	var isTradeKill bool
@@ -193,12 +210,21 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		KillerX:                  killerX,
 		KillerY:                  killerY,
 		KillerZ:                  killerZ,
+		KillerVelocityX:          killerVelocity.X,
+		KillerVelocityY:          killerVelocity.Y,
+		KillerVelocityZ:          killerVelocity.Z,
 		IsKillerAirborne:         isKillerAirborne,
 		IsKillerBlinded:          isKillerBlinded,
 		IsKillerRunning:          isKillerRunning,
 		VictimX:                  victimPosition.X,
 		VictimY:                  victimPosition.Y,
 		VictimZ:                  victimPosition.Z,
+		VictimVelocityX:          victimVelocity.X,
+		VictimVelocityY:          victimVelocity.Y,
+		VictimVelocityZ:          victimVelocity.Z,
+		VictimYaw:                victimYaw,
+		VictimActiveWeaponName:   victimActiveWeaponName,
+		VictimIsScoped:           event.Victim.IsScoped(),
 		IsVictimAirborne:         event.Victim.IsAirborne(),
 		IsVictimBlinded:          event.Victim.IsBlinded(),
 		IsVictimInspectingWeapon: isVictimInspectingWeapon,
