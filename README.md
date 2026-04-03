@@ -107,6 +107,8 @@ Tracks how often a player successfully stops before firing their first shot.
   - `counter-strafing success rate`: Percentage of eligible first shots where the player was no longer running when firing.
 
 - **Shots Table (`_shots.csv`)**:
+  - `weapon type`: Weapon category/type for the shot that was fired.
+  - `player speed 2d`: Player horizontal movement speed at fire time.
   - `recoil index`: Weapon recoil index captured at fire time.
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
