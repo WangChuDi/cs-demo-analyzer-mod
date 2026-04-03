@@ -17,6 +17,7 @@ type Shot struct {
 	Tick                   int                  `json:"tick"`
 	RoundNumber            int                  `json:"roundNumber"`
 	WeaponName             constants.WeaponName `json:"weaponName"`
+	WeaponType             constants.WeaponType `json:"weaponType"`
 	WeaponID               string               `json:"weaponId"`
 	ProjectileID           int64                `json:"projectileId"` // Available only for grenades
 	X                      float64              `json:"x"`
@@ -30,6 +31,7 @@ type Shot struct {
 	PlayerVelocityX        float64              `json:"playerVelocityX"`
 	PlayerVelocityY        float64              `json:"playerVelocityY"`
 	PlayerVelocityZ        float64              `json:"playerVelocityZ"`
+	PlayerSpeed2D          float64              `json:"playerSpeed2D"`
 	Yaw                    float32              `json:"yaw"`
 	Pitch                  float32              `json:"pitch"`
 	RecoilIndex            float32              `json:"recoilIndex"`
@@ -83,20 +85,22 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 	var isPlayerRunning bool
 	speed2D := stdmath.Sqrt(velocity.X*velocity.X + velocity.Y*velocity.Y)
 
-	wName := equipmentToWeaponName[event.Weapon.Type]
-	if threshold, ok := constants.WeaponAccurateSpeed[wName]; ok {
+	weaponName := equipmentToWeaponName[event.Weapon.Type]
+	weaponType := getEquipmentWeaponType(*event.Weapon)
+	if threshold, ok := constants.WeaponAccurateSpeed[weaponName]; ok {
 		if speed2D > threshold {
 			isPlayerRunning = true
 		}
 	} else {
-		fmt.Printf("Error: Weapon '%s' not found in accurate speed constants\n", wName)
+		fmt.Printf("Error: Weapon '%s' not found in accurate speed constants\n", weaponName)
 	}
 
 	return &Shot{
 		Frame:                  analyzer.parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
-		WeaponName:             wName,
+		WeaponName:             weaponName,
+		WeaponType:             weaponType,
 		WeaponID:               event.Weapon.UniqueID2().String(),
 		X:                      shooter.Position().X,
 		Y:                      shooter.Position().Y,
@@ -109,6 +113,7 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		PlayerVelocityX:        velocity.X,
 		PlayerVelocityY:        velocity.Y,
 		PlayerVelocityZ:        velocity.Z,
+		PlayerSpeed2D:          speed2D,
 		Yaw:                    yaw,
 		Pitch:                  pitch,
 		RecoilIndex:            recoilIndex,
