@@ -88,6 +88,27 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🎯 AWP Hold Deaths
+Tracks kills where the victim was holding an AWP angle: scoped, facing the killer, and stationary or moving slowly enough to be considered in a holding posture.
+
+The derived event also captures whether the victim fired around the death timing:
+- Negative `shot offset` values mean the victim fired shortly **before** death (e.g. an empty AWP shot / `空枪`).
+- Positive `shot offset` values mean the victim fired **after** death timing or did not react within the configured window.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `awp hold kill count`: Number of times the player killed an opponent who was holding a scoped AWP angle.
+  - `awp hold death count`: Number of times the player was killed while holding a scoped AWP angle.
+
+- **AWP Hold Deaths Table (`_awp_hold_deaths.csv`)**:
+  - Killer / victim identity fields.
+  - Killer / victim positions.
+  - Killer / victim velocity vectors and 2D speed buckets.
+  - Killer weapon, victim weapon, and victim reaction-shot weapon.
+  - Signed frame / tick / millisecond shot offsets around death.
+  - Victim posture qualifiers: `is victim slow`, `is victim scoped`, `is victim facing killer`.
+
 ### 🤡 Clown Moments
 Tracks embarassing or counter-productive moments from the perpetrator's perspective (e.g., attacking teammates).
 

@@ -934,6 +934,59 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 		csv.WriteLinesIntoCsvFile(outputPath+"_hostage_rescued.csv", lines)
 	}
 
+	var writeAwpHoldDeaths = func() {
+		lines := [][]string{}
+		for _, event := range match.AwpHoldDeaths {
+			line := []string{
+				converters.IntToString(event.Frame),
+				converters.IntToString(event.Tick),
+				converters.IntToString(event.RoundNumber),
+				event.KillerName,
+				converters.Uint64ToString(event.KillerSteamID64),
+				converters.TeamToString(event.KillerSide),
+				event.KillerTeamName,
+				event.VictimName,
+				converters.Uint64ToString(event.VictimSteamID64),
+				converters.TeamToString(event.VictimSide),
+				event.VictimTeamName,
+				event.KillerWeaponName.String(),
+				event.VictimWeaponName.String(),
+				event.VictimReactionWeaponName.String(),
+				converters.IntToString(event.VictimReactionShotFrame),
+				converters.IntToString(event.VictimReactionShotTick),
+				converters.BoolToString(event.HasVictimAwpShotAroundDeath),
+				converters.IntToString(event.ShotOffsetFrame),
+				converters.IntToString(event.ShotOffsetTick),
+				converters.Float64ToString(event.ShotOffsetMs),
+				converters.BoolToString(event.PositionsAvailable),
+				converters.Float64ToString(event.VictimX),
+				converters.Float64ToString(event.VictimY),
+				converters.Float64ToString(event.VictimZ),
+				converters.Float64ToString(event.KillerX),
+				converters.Float64ToString(event.KillerY),
+				converters.Float64ToString(event.KillerZ),
+				converters.Float64ToString(event.VictimVelocityX),
+				converters.Float64ToString(event.VictimVelocityY),
+				converters.Float64ToString(event.VictimVelocityZ),
+				converters.Float64ToString(event.KillerVelocityX),
+				converters.Float64ToString(event.KillerVelocityY),
+				converters.Float64ToString(event.KillerVelocityZ),
+				converters.Float64ToString(event.KillerSpeed2D),
+				event.KillerSpeedBucket,
+				converters.Float64ToString(event.VictimSpeed2D),
+				event.VictimSpeedBucket,
+				converters.BoolToString(event.IsVictimSlow),
+				converters.BoolToString(event.IsVictimScoped),
+				converters.BoolToString(event.IsVictimFacingKiller),
+				converters.Float64ToString(event.VictimFacingKillerAngleDeg),
+				match.Checksum,
+			}
+			lines = append(lines, line)
+		}
+
+		csv.WriteLinesIntoCsvFile(outputPath+"_awp_hold_deaths.csv", lines)
+	}
+
 	var functions = []func(){
 		writeMatch,
 		writeTeams,
@@ -967,6 +1020,7 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 		writeHostagePickUpStart,
 		writeHostagePickedUp,
 		writeHostageRescued,
+		writeAwpHoldDeaths,
 	}
 
 	var wg sync.WaitGroup

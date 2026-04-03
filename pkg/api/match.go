@@ -77,6 +77,7 @@ type Match struct {
 	PlayerButtons             []*funData.PlayerButtons    `json:"playerButtons"`
 	ChatMessages              []*ChatMessage              `json:"chatMessages"`
 	Footsteps                 []*Footstep                 `json:"footsteps"`
+	AwpHoldDeaths             []*AwpHoldDeath             `json:"awpHoldDeaths"`
 	scoreTeamA                *int
 	scoreTeamB                *int
 	lastPlayersPosition       map[uint64]r3.Vector
@@ -330,6 +331,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
 		PlayerButtons:             []*funData.PlayerButtons{},
 		Footsteps:                 []*Footstep{},
+		AwpHoldDeaths:             []*AwpHoldDeath{},
 		lastPlayersPosition:       make(map[uint64]r3.Vector),
 		prevPlayersPosition:       make(map[uint64]r3.Vector),
 		lastPlayersTick:           make(map[uint64]int),
@@ -375,6 +377,7 @@ func (match *Match) reset() {
 	match.PlayerEconomies = []*PlayerEconomy{}
 	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.Footsteps = []*Footstep{}
+	match.AwpHoldDeaths = []*AwpHoldDeath{}
 	match.lastPlayersPosition = make(map[uint64]r3.Vector)
 	match.prevPlayersPosition = make(map[uint64]r3.Vector)
 	match.lastPlayersTick = make(map[uint64]int)
@@ -474,6 +477,9 @@ func (match *Match) resetRound(roundNumber int) {
 		return event.RoundNumber != roundNumber
 	})
 	match.Footsteps = slice.Filter(match.Footsteps, func(event *Footstep, index int) bool {
+		return event.RoundNumber != roundNumber
+	})
+	match.AwpHoldDeaths = slice.Filter(match.AwpHoldDeaths, func(event *AwpHoldDeath, index int) bool {
 		return event.RoundNumber != roundNumber
 	})
 }

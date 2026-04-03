@@ -102,6 +102,8 @@ type PlayerJSON struct {
 	RunAndGunOrAirKilledByCount int     `json:"runAndGunOrAirKilledByCount"`
 	ThroughSmokeKillCount       int     `json:"throughSmokeKillCount"`
 	WallbangKillCount           int     `json:"wallbangKillCount"`
+	AwpHoldKillCount            int     `json:"awpHoldKillCount"`
+	AwpHoldDeathCount           int     `json:"awpHoldDeathCount"`
 	TeamAttackDamage            int     `json:"teamAttackDamage"`
 	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
 	TeamFlashDuration           float32 `json:"teamFlashDuration"`
@@ -173,6 +175,8 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		RunAndGunOrAirKilledByCount: player.RunAndGunOrAirKilledByCount(),
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
+		AwpHoldKillCount:            player.AwpHoldKillCount(),
+		AwpHoldDeathCount:           player.AwpHoldDeathCount(),
 	})
 }
 
@@ -282,6 +286,26 @@ func (player *Player) RunAndGunOrAirKilledByCount() int {
 			if kill.IsKillerRunning || kill.IsKillerAirborne {
 				count++
 			}
+		}
+	}
+	return count
+}
+
+func (player *Player) AwpHoldKillCount() int {
+	var count int
+	for _, awpHoldDeath := range player.match.AwpHoldDeaths {
+		if awpHoldDeath.KillerSteamID64 == player.SteamID64 {
+			count++
+		}
+	}
+	return count
+}
+
+func (player *Player) AwpHoldDeathCount() int {
+	var count int
+	for _, awpHoldDeath := range player.match.AwpHoldDeaths {
+		if awpHoldDeath.VictimSteamID64 == player.SteamID64 {
+			count++
 		}
 	}
 	return count
