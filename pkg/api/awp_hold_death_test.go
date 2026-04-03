@@ -145,8 +145,36 @@ func TestGenerateAwpHoldDeaths_UsesNegativeTickSentinelForSameTickPreDeathShot(t
 	if row.ShotOffsetFrame != 0 || row.ShotOffsetTick != -1 {
 		t.Fatalf("expected same-tick pre-death shot to use (0, -1) sentinel, got (%d, %d)", row.ShotOffsetFrame, row.ShotOffsetTick)
 	}
+	if row.ShotOffsetMs != 0 {
+		t.Fatalf("expected same-tick pre-death shot to use 0ms offset, got %f", row.ShotOffsetMs)
+	}
 	if !row.HasVictimAwpShotAroundDeath {
 		t.Fatalf("expected same-tick victim awp shot to be detected")
+	}
+}
+
+func TestGenerateAwpHoldDeaths_KeepsKillVelocityWhenSnapshotVelocityIsUnavailable(t *testing.T) {
+	match := qualifiedAwpHoldMatch()
+	match.Kills[0].VictimVelocityX = 90
+	match.PlayerPositions = []*PlayerPosition{
+		{
+			RoundNumber:      1,
+			Tick:             100,
+			Frame:            100,
+			SteamID64:        20,
+			X:                0,
+			Y:                0,
+			Z:                0,
+			Yaw:              0,
+			ActiveWeaponName: constants.WeaponAWP,
+			IsScoping:        true,
+		},
+	}
+
+	generateAwpHoldDeaths(match)
+
+	if got := len(match.AwpHoldDeaths); got != 0 {
+		t.Fatalf("expected no awp hold death when kill snapshot says victim is moving too fast, got %d", got)
 	}
 }
 

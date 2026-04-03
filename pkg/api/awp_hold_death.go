@@ -66,8 +66,9 @@ type roundPlayerKey struct {
 }
 
 type playerPositionSnapshot struct {
-	position *PlayerPosition
-	velocity r3.Vector
+	position    *PlayerPosition
+	velocity    r3.Vector
+	hasVelocity bool
 }
 
 func generateAwpHoldDeaths(match *Match) {
@@ -128,10 +129,12 @@ func generateAwpHoldDeaths(match *Match) {
 		if victimSnapshot.position != nil {
 			victimWeaponName = victimSnapshot.position.ActiveWeaponName
 			isVictimScoped = victimSnapshot.position.IsScoping
-			victimVelocity = victimSnapshot.velocity
+			if victimSnapshot.hasVelocity {
+				victimVelocity = victimSnapshot.velocity
+			}
 			victimYaw = victimSnapshot.position.Yaw
 		}
-		if killerSnapshot.position != nil {
+		if killerSnapshot.position != nil && killerSnapshot.hasVelocity {
 			killerVelocity = killerSnapshot.velocity
 		}
 		isVictimFacingKiller, victimFacingKillerAngleDeg := victimFacingKiller(victimYaw, victimPosition, killerPosition)
@@ -175,7 +178,7 @@ func generateAwpHoldDeaths(match *Match) {
 			HasVictimAwpShotAroundDeath: hasVictimAwpShotAroundDeath,
 			ShotOffsetFrame:             offsetFrame,
 			ShotOffsetTick:              offsetTick,
-			ShotOffsetMs:                float64(offsetTick) * (1000.0 / tickRate),
+			ShotOffsetMs:                shotOffsetMilliseconds(offsetTick, tickRate),
 			PositionsAvailable:          positionsAvailable,
 			VictimX:                     victimPosition.X,
 			VictimY:                     victimPosition.Y,
@@ -324,12 +327,14 @@ func nearestPlayerSnapshotAtOrBefore(tick int, positions []*PlayerPosition, tick
 
 	position := positions[positionIndex]
 	velocity := r3.Vector{}
+	hasVelocity := false
 	if positionIndex > 0 {
 		previousPosition := positions[positionIndex-1]
 		tickDelta := position.Tick - previousPosition.Tick
 		if tickDelta > 0 {
 			secondsDelta := float64(tickDelta) / tickRate
 			if secondsDelta > 0 {
+				hasVelocity = true
 				velocity = r3.Vector{
 					X: (position.X - previousPosition.X) / secondsDelta,
 					Y: (position.Y - previousPosition.Y) / secondsDelta,
@@ -339,7 +344,15 @@ func nearestPlayerSnapshotAtOrBefore(tick int, positions []*PlayerPosition, tick
 		}
 	}
 
-	return playerPositionSnapshot{position: position, velocity: velocity}
+	return playerPositionSnapshot{position: position, velocity: velocity, hasVelocity: hasVelocity}
+}
+
+func shotOffsetMilliseconds(offsetTick int, tickRate float64) float64 {
+	if offsetTick == -1 {
+		return 0
+	}
+
+	return float64(offsetTick) * (1000.0 / tickRate)
 }
 
 func victimFacingKiller(victimYaw float32, victimPosition r3.Vector, killerPosition r3.Vector) (bool, float64) {
