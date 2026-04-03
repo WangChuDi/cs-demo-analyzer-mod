@@ -142,8 +142,6 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				converters.IntToString(player.FeedValue),
 				converters.IntToString(player.LeechCount),
 				converters.IntToString(player.FeedCount),
-				converters.IntToString(player.AwpHoldKillCount()),
-				converters.IntToString(player.AwpHoldDeathCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
