@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"math"
 	"testing"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api"
@@ -562,4 +563,20 @@ func TestRenown_Match_8_2025_Mirage(t *testing.T) {
 
 	assertion.AssertPlayers(t, match, players)
 	assertion.AssertRounds(t, match, rounds)
+
+	assertCounterStrafingSuccessRate(t, match, 76561198029485456, "whatsnxt", 31.372551)
+	assertCounterStrafingSuccessRate(t, match, 76561198225661896, "Vit0-1337", 84.782608)
+}
+
+func assertCounterStrafingSuccessRate(t *testing.T, match *api.Match, steamID64 uint64, name string, want float32) {
+	t.Helper()
+
+	player := match.PlayersBySteamID[steamID64]
+	if player == nil {
+		t.Fatalf("expected player %s (%d) to exist in analyzed match", name, steamID64)
+	}
+
+	if got := player.CounterStrafingSuccessRate(); math.Abs(float64(got-want)) > 0.0001 {
+		t.Fatalf("expected %s counter-strafing success rate to be %v but got %v", name, want, got)
+	}
 }

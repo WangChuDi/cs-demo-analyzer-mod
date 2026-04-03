@@ -119,6 +119,26 @@ Tracks embarassing or counter-productive moments from the perpetrator's perspect
   - `team utility damage`: Health damage dealt to teammates using grenades.
   - `team flash duration`: Total duration teammates were blinded by the player's flashes.
 
+### 🛑 Counter-Strafing Success Rate
+Tracks how often a player successfully stops before firing their first shot.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `counter-strafing success rate`: Percentage of eligible first shots where the player was no longer running when firing.
+
+- **Shots Table (`_shots.csv`)**:
+  - `weapon type`: Weapon category/type for the shot that was fired.
+  - `player speed 2d`: Player horizontal movement speed at fire time.
+  - `recoil index`: Weapon recoil index captured at fire time.
+  - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
+
+**Metric Definition:**
+
+- A shot is treated as an eligible first shot when `recoil index == 1`.
+- A first shot counts as a successful counter-strafe when `is player running == false`.
+- The metric is exported as a single player-level percentage and is not split by weapon class.
+
 
 ### 🧨 Utility Throw Analysis
 Detailed analysis of grenade throws, extracting thrower state, button inputs, throw strength, and more.

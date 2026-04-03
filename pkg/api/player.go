@@ -107,6 +107,11 @@ type PlayerJSON struct {
 	TeamAttackDamage            int     `json:"teamAttackDamage"`
 	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
 	TeamFlashDuration           float32 `json:"teamFlashDuration"`
+	CounterStrafingSuccessRate  float32 `json:"counterStrafingSuccessRate"`
+}
+
+func isFirstShotOfFiringSequence(shot *Shot) bool {
+	return shot.RecoilIndex == 1
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -175,6 +180,7 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		RunAndGunOrAirKilledByCount: player.RunAndGunOrAirKilledByCount(),
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
+		CounterStrafingSuccessRate:  player.CounterStrafingSuccessRate(),
 		AwpHoldKillCount:            player.AwpHoldKillCount(),
 		AwpHoldDeathCount:           player.AwpHoldDeathCount(),
 	})
@@ -813,6 +819,28 @@ func (player *Player) UtilityDamagePerRound() float32 {
 	}
 
 	return 0
+}
+
+func (player *Player) CounterStrafingSuccessRate() float32 {
+	firstShotCount := 0
+	counterStrafingSuccessCount := 0
+
+	for _, shot := range player.match.Shots {
+		if shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
+			continue
+		}
+
+		firstShotCount++
+		if !shot.IsPlayerRunning {
+			counterStrafingSuccessCount++
+		}
+	}
+
+	if firstShotCount == 0 {
+		return 0
+	}
+
+	return float32(counterStrafingSuccessCount) / float32(firstShotCount) * 100
 }
 
 func (player *Player) OneKillCount() int {

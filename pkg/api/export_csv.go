@@ -211,6 +211,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"team attack damage",
 			"team utility damage",
 			"team flash duration",
+			"counter-strafing success rate",
 			"match checksum",
 		}
 
@@ -294,6 +295,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.TeamAttackDamage()),
 				converters.IntToString(player.TeamUtilityDamage()),
 				converters.Float32ToString(player.TeamFlashDuration()),
+				converters.Float32ToString(player.CounterStrafingSuccessRate()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -386,6 +388,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"tick",
 			"round",
 			"weapon name",
+			"weapon type",
 			"weapon id",
 			"projectile id",
 			"x",
@@ -399,6 +402,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"player velocity x",
 			"player velocity y",
 			"player velocity z",
+			"player speed 2d",
 			"yaw",
 			"pitch",
 			"recoil index",
@@ -417,6 +421,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(shot.Tick),
 				converters.IntToString(shot.RoundNumber),
 				shot.WeaponName.String(),
+				shot.WeaponType.String(),
 				shot.WeaponID,
 				converters.Int64ToString(shot.ProjectileID),
 				converters.Float64ToString(shot.X),
@@ -430,6 +435,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(shot.PlayerVelocityX),
 				converters.Float64ToString(shot.PlayerVelocityY),
 				converters.Float64ToString(shot.PlayerVelocityZ),
+				converters.Float64ToString(shot.PlayerSpeed2D),
 				converters.Float32ToString(shot.Yaw),
 				converters.Float32ToString(shot.Pitch),
 				converters.Float32ToString(shot.RecoilIndex),
