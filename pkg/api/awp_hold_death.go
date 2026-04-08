@@ -5,59 +5,55 @@ import (
 	"sort"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
 	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 )
 
 const (
-	awpHoldReactionWindowSeconds    = 2.0
-	awpHoldEmptyShotWindowSeconds   = 0.25
-	awpHoldFacingAngleThreshold     = 30.0
+	awpHoldReactionWindowSeconds    = 1.0
+	awpHoldEmptyShotWindowSeconds   = 0.5
+	awpHoldFacingAngleThreshold     = 10.0
 	defaultTickRateForDerivedTables = 64.0
 )
 
 type AwpHoldDeath struct {
-	Frame                       int                  `json:"frame"`
-	Tick                        int                  `json:"tick"`
-	RoundNumber                 int                  `json:"roundNumber"`
-	KillerName                  string               `json:"killerName"`
-	KillerSteamID64             uint64               `json:"killerSteamId"`
-	KillerSide                  common.Team          `json:"killerSide"`
-	KillerTeamName              string               `json:"killerTeamName"`
-	VictimName                  string               `json:"victimName"`
-	VictimSteamID64             uint64               `json:"victimSteamId"`
-	VictimSide                  common.Team          `json:"victimSide"`
-	VictimTeamName              string               `json:"victimTeamName"`
-	KillerWeaponName            constants.WeaponName `json:"killerWeaponName"`
-	VictimWeaponName            constants.WeaponName `json:"victimWeaponName"`
-	VictimReactionWeaponName    constants.WeaponName `json:"victimReactionWeaponName"`
-	VictimReactionShotFrame     int                  `json:"victimReactionShotFrame"`
-	VictimReactionShotTick      int                  `json:"victimReactionShotTick"`
-	HasVictimAwpShotAroundDeath bool                 `json:"hasVictimAwpShotAroundDeath"`
-	ShotOffsetFrame             int                  `json:"shotOffsetFrame"`
-	ShotOffsetTick              int                  `json:"shotOffsetTick"`
-	ShotOffsetMs                float64              `json:"shotOffsetMs"`
-	PositionsAvailable          bool                 `json:"positionsAvailable"`
-	VictimX                     float64              `json:"victimX"`
-	VictimY                     float64              `json:"victimY"`
-	VictimZ                     float64              `json:"victimZ"`
-	KillerX                     float64              `json:"killerX"`
-	KillerY                     float64              `json:"killerY"`
-	KillerZ                     float64              `json:"killerZ"`
-	VictimVelocityX             float64              `json:"victimVelocityX"`
-	VictimVelocityY             float64              `json:"victimVelocityY"`
-	VictimVelocityZ             float64              `json:"victimVelocityZ"`
-	KillerVelocityX             float64              `json:"killerVelocityX"`
-	KillerVelocityY             float64              `json:"killerVelocityY"`
-	KillerVelocityZ             float64              `json:"killerVelocityZ"`
-	KillerSpeed2D               float64              `json:"killerSpeed2d"`
-	KillerSpeedBucket           string               `json:"killerSpeedBucket"`
-	VictimSpeed2D               float64              `json:"victimSpeed2d"`
-	VictimSpeedBucket           string               `json:"victimSpeedBucket"`
-	IsVictimSlow                bool                 `json:"isVictimSlow"`
-	IsVictimScoped              bool                 `json:"isVictimScoped"`
-	IsVictimFacingKiller        bool                 `json:"isVictimFacingKiller"`
-	VictimFacingKillerAngleDeg  float64              `json:"victimFacingKillerAngleDeg"`
+	Frame                           int                  `json:"frame"`
+	Tick                            int                  `json:"tick"`
+	RoundNumber                     int                  `json:"roundNumber"`
+	KillerName                      string               `json:"killerName"`
+	KillerSteamID64                 uint64               `json:"killerSteamId"`
+	KillerSide                      common.Team          `json:"killerSide"`
+	KillerTeamName                  string               `json:"killerTeamName"`
+	VictimName                      string               `json:"victimName"`
+	VictimSteamID64                 uint64               `json:"victimSteamId"`
+	VictimSide                      common.Team          `json:"victimSide"`
+	VictimTeamName                  string               `json:"victimTeamName"`
+	KillerWeaponName                constants.WeaponName `json:"killerWeaponName"`
+	VictimReactionShotFrame         int                  `json:"victimReactionFrame"`
+	HasPreDeathVictimAwpShot        bool                 `json:"hasPreDeathVictimAwpShot"`
+	HasPostDeathVictimAttackTrigger bool                 `json:"hasPostDeathVictimAttackTrigger"`
+	ShotOffsetFrame                 int                  `json:"offsetFrame"`
+	VictimX                         float64              `json:"victimX"`
+	VictimY                         float64              `json:"victimY"`
+	VictimZ                         float64              `json:"victimZ"`
+	KillerX                         float64              `json:"killerX"`
+	KillerY                         float64              `json:"killerY"`
+	KillerZ                         float64              `json:"killerZ"`
+	VictimVelocityX                 float64              `json:"victimVelocityX"`
+	VictimVelocityY                 float64              `json:"victimVelocityY"`
+	VictimVelocityZ                 float64              `json:"victimVelocityZ"`
+	KillerVelocityX                 float64              `json:"killerVelocityX"`
+	KillerVelocityY                 float64              `json:"killerVelocityY"`
+	KillerVelocityZ                 float64              `json:"killerVelocityZ"`
+	KillerSpeed2D                   float64              `json:"killerSpeed2d"`
+	KillerSpeedBucket               string               `json:"killerSpeedBucket"`
+	VictimSpeed2D                   float64              `json:"victimSpeed2d"`
+	VictimSpeedBucket               string               `json:"victimSpeedBucket"`
+	IsVictimSlow                    bool                 `json:"isVictimSlow"`
+	IsVictimScoped                  bool                 `json:"isVictimScoped"`
+	IsVictimFacingKiller            bool                 `json:"isVictimFacingKiller"`
+	VictimFacingKillerAngleDeg      float64              `json:"victimFacingKillerAngleDeg"`
 }
 
 type roundPlayerKey struct {
@@ -90,6 +86,7 @@ func generateAwpHoldDeaths(match *Match) {
 	emptyShotWindowFrames := max(1, int(frameRate*awpHoldEmptyShotWindowSeconds))
 
 	victimAwpShotsByRoundPlayer := buildVictimAwpShotsByRoundPlayer(match)
+	victimButtonsByRoundPlayer := buildPlayerButtonsByRoundPlayer(match)
 	playerPositionsByRoundPlayer := buildPlayerPositionsByRoundPlayer(match)
 
 	derived := make([]*AwpHoldDeath, 0, len(match.Kills))
@@ -100,12 +97,17 @@ func generateAwpHoldDeaths(match *Match) {
 
 		key := roundPlayerKey{roundNumber: kill.RoundNumber, steamID64: kill.VictimSteamID64}
 		victimAwpShots := victimAwpShotsByRoundPlayer[key]
-		victimReactionShot, offsetFrame, offsetTick := nearestShotOffset(
+		victimReactionShot, offsetFrame, _ := nearestShotOffset(
 			kill.Frame,
 			kill.Tick,
 			victimAwpShots,
 			emptyShotWindowFrames,
 			emptyShotWindowTicks,
+		)
+		hasPostDeathAttack := hasPostDeathAttackWithinWindow(
+			kill.Frame,
+			kill.Tick,
+			victimButtonsByRoundPlayer[key],
 			reactionWindowFrames,
 			reactionWindowTicks,
 		)
@@ -146,60 +148,50 @@ func generateAwpHoldDeaths(match *Match) {
 			continue
 		}
 
-		reactionWeaponName := constants.WeaponUnknown
 		reactionShotFrame := 0
-		reactionShotTick := 0
-		hasVictimAwpShotAroundDeath := victimReactionShot != nil
+		hasPreDeathVictimAwpShot := victimReactionShot != nil
+		hasPostDeathVictimAttackTrigger := hasPostDeathAttack
 		if victimReactionShot != nil {
-			reactionWeaponName = victimReactionShot.WeaponName
 			reactionShotFrame = victimReactionShot.Frame
-			reactionShotTick = victimReactionShot.Tick
 		}
 
-		positionsAvailable := victimSnapshot.position != nil || killerSnapshot.position != nil
-
 		derived = append(derived, &AwpHoldDeath{
-			Frame:                       kill.Frame,
-			Tick:                        kill.Tick,
-			RoundNumber:                 kill.RoundNumber,
-			KillerName:                  kill.KillerName,
-			KillerSteamID64:             kill.KillerSteamID64,
-			KillerSide:                  kill.KillerSide,
-			KillerTeamName:              kill.KillerTeamName,
-			VictimName:                  kill.VictimName,
-			VictimSteamID64:             kill.VictimSteamID64,
-			VictimSide:                  kill.VictimSide,
-			VictimTeamName:              kill.VictimTeamName,
-			KillerWeaponName:            kill.WeaponName,
-			VictimWeaponName:            victimWeaponName,
-			VictimReactionWeaponName:    reactionWeaponName,
-			VictimReactionShotFrame:     reactionShotFrame,
-			VictimReactionShotTick:      reactionShotTick,
-			HasVictimAwpShotAroundDeath: hasVictimAwpShotAroundDeath,
-			ShotOffsetFrame:             offsetFrame,
-			ShotOffsetTick:              offsetTick,
-			ShotOffsetMs:                shotOffsetMilliseconds(offsetTick, tickRate),
-			PositionsAvailable:          positionsAvailable,
-			VictimX:                     victimPosition.X,
-			VictimY:                     victimPosition.Y,
-			VictimZ:                     victimPosition.Z,
-			KillerX:                     killerPosition.X,
-			KillerY:                     killerPosition.Y,
-			KillerZ:                     killerPosition.Z,
-			VictimVelocityX:             victimVelocity.X,
-			VictimVelocityY:             victimVelocity.Y,
-			VictimVelocityZ:             victimVelocity.Z,
-			KillerVelocityX:             killerVelocity.X,
-			KillerVelocityY:             killerVelocity.Y,
-			KillerVelocityZ:             killerVelocity.Z,
-			KillerSpeed2D:               killerSpeed2D,
-			KillerSpeedBucket:           classifyMovementBucket(killerSpeed2D),
-			VictimSpeed2D:               victimSpeed2D,
-			VictimSpeedBucket:           classifyMovementBucket(victimSpeed2D),
-			IsVictimSlow:                isVictimSlow,
-			IsVictimScoped:              isVictimScoped,
-			IsVictimFacingKiller:        isVictimFacingKiller,
-			VictimFacingKillerAngleDeg:  victimFacingKillerAngleDeg,
+			Frame:                           kill.Frame,
+			Tick:                            kill.Tick,
+			RoundNumber:                     kill.RoundNumber,
+			KillerName:                      kill.KillerName,
+			KillerSteamID64:                 kill.KillerSteamID64,
+			KillerSide:                      kill.KillerSide,
+			KillerTeamName:                  kill.KillerTeamName,
+			VictimName:                      kill.VictimName,
+			VictimSteamID64:                 kill.VictimSteamID64,
+			VictimSide:                      kill.VictimSide,
+			VictimTeamName:                  kill.VictimTeamName,
+			KillerWeaponName:                kill.WeaponName,
+			VictimReactionShotFrame:         reactionShotFrame,
+			HasPreDeathVictimAwpShot:        hasPreDeathVictimAwpShot,
+			HasPostDeathVictimAttackTrigger: hasPostDeathVictimAttackTrigger,
+			ShotOffsetFrame:                 offsetFrame,
+			VictimX:                         victimPosition.X,
+			VictimY:                         victimPosition.Y,
+			VictimZ:                         victimPosition.Z,
+			KillerX:                         killerPosition.X,
+			KillerY:                         killerPosition.Y,
+			KillerZ:                         killerPosition.Z,
+			VictimVelocityX:                 victimVelocity.X,
+			VictimVelocityY:                 victimVelocity.Y,
+			VictimVelocityZ:                 victimVelocity.Z,
+			KillerVelocityX:                 killerVelocity.X,
+			KillerVelocityY:                 killerVelocity.Y,
+			KillerVelocityZ:                 killerVelocity.Z,
+			KillerSpeed2D:                   killerSpeed2D,
+			KillerSpeedBucket:               classifyMovementBucket(killerSpeed2D),
+			VictimSpeed2D:                   victimSpeed2D,
+			VictimSpeedBucket:               classifyMovementBucket(victimSpeed2D),
+			IsVictimSlow:                    isVictimSlow,
+			IsVictimScoped:                  isVictimScoped,
+			IsVictimFacingKiller:            isVictimFacingKiller,
+			VictimFacingKillerAngleDeg:      victimFacingKillerAngleDeg,
 		})
 	}
 
@@ -230,6 +222,30 @@ func buildVictimAwpShotsByRoundPlayer(match *Match) map[roundPlayerKey][]*Shot {
 	return shotsByRoundPlayer
 }
 
+func buildPlayerButtonsByRoundPlayer(match *Match) map[roundPlayerKey][]*funData.PlayerButtons {
+	buttonsByRoundPlayer := make(map[roundPlayerKey][]*funData.PlayerButtons)
+	for _, buttons := range match.PlayerButtons {
+		if buttons == nil {
+			continue
+		}
+
+		key := roundPlayerKey{roundNumber: buttons.RoundNumber, steamID64: buttons.SteamID64}
+		buttonsByRoundPlayer[key] = append(buttonsByRoundPlayer[key], buttons)
+	}
+
+	for key := range buttonsByRoundPlayer {
+		sort.Slice(buttonsByRoundPlayer[key], func(i int, j int) bool {
+			if buttonsByRoundPlayer[key][i].Frame == buttonsByRoundPlayer[key][j].Frame {
+				return buttonsByRoundPlayer[key][i].Tick < buttonsByRoundPlayer[key][j].Tick
+			}
+
+			return buttonsByRoundPlayer[key][i].Frame < buttonsByRoundPlayer[key][j].Frame
+		})
+	}
+
+	return buttonsByRoundPlayer
+}
+
 func buildPlayerPositionsByRoundPlayer(match *Match) map[roundPlayerKey][]*PlayerPosition {
 	positionsByRoundPlayer := make(map[roundPlayerKey][]*PlayerPosition)
 	for _, position := range match.PlayerPositions {
@@ -254,9 +270,9 @@ func buildPlayerPositionsByRoundPlayer(match *Match) map[roundPlayerKey][]*Playe
 	return positionsByRoundPlayer
 }
 
-func nearestShotOffset(killFrame int, killTick int, shots []*Shot, emptyShotWindowFrames int, emptyShotWindowTicks int, reactionWindowFrames int, reactionWindowTicks int) (*Shot, int, int) {
+func nearestShotOffset(killFrame int, killTick int, shots []*Shot, emptyShotWindowFrames int, emptyShotWindowTicks int) (*Shot, int, int) {
 	if len(shots) == 0 {
-		return nil, reactionWindowFrames, reactionWindowTicks
+		return nil, 0, 0
 	}
 
 	firstAfterIndex := sort.Search(len(shots), func(index int) bool {
@@ -281,20 +297,6 @@ func nearestShotOffset(killFrame int, killTick int, shots []*Shot, emptyShotWind
 		}
 	}
 
-	var nearestAfter *Shot
-	afterFrameDiff := reactionWindowFrames + 1
-	afterTickDiff := reactionWindowTicks + 1
-	if firstAfterIndex < len(shots) {
-		candidate := shots[firstAfterIndex]
-		frameDiff := candidate.Frame - killFrame
-		diff := candidate.Tick - killTick
-		if frameDiff >= 0 && frameDiff <= reactionWindowFrames && diff > 0 && diff <= reactionWindowTicks {
-			nearestAfter = candidate
-			afterFrameDiff = frameDiff
-			afterTickDiff = diff
-		}
-	}
-
 	if nearestBefore != nil {
 		beforeOffsetFrame := -beforeFrameDiff
 		beforeOffsetTick := -beforeTickDiff
@@ -305,11 +307,48 @@ func nearestShotOffset(killFrame int, killTick int, shots []*Shot, emptyShotWind
 		return nearestBefore, beforeOffsetFrame, beforeOffsetTick
 	}
 
-	if nearestAfter != nil {
-		return nearestAfter, afterFrameDiff, afterTickDiff
+	return nil, 0, 0
+}
+
+func hasPostDeathAttackWithinWindow(killFrame int, killTick int, buttons []*funData.PlayerButtons, reactionWindowFrames int, reactionWindowTicks int) bool {
+	if len(buttons) == 0 {
+		return false
 	}
 
-	return nil, reactionWindowFrames, reactionWindowTicks
+	firstAfterIndex := sort.Search(len(buttons), func(index int) bool {
+		if buttons[index].Frame == killFrame {
+			return buttons[index].Tick > killTick
+		}
+
+		return buttons[index].Frame > killFrame
+	})
+
+	var previousMask uint64
+	if firstAfterIndex > 0 {
+		previousMask = buttons[firstAfterIndex-1].Buttons
+	}
+
+	for index := firstAfterIndex; index < len(buttons); index++ {
+		candidate := buttons[index]
+		frameDiff := candidate.Frame - killFrame
+		tickDiff := candidate.Tick - killTick
+		if frameDiff < 0 || tickDiff <= 0 {
+			continue
+		}
+		if frameDiff > reactionWindowFrames || tickDiff > reactionWindowTicks {
+			break
+		}
+
+		hasAttack := candidate.Buttons&uint64(common.ButtonAttack) != 0
+		hadAttack := previousMask&uint64(common.ButtonAttack) != 0
+		if hasAttack && !hadAttack {
+			return true
+		}
+
+		previousMask = candidate.Buttons
+	}
+
+	return false
 }
 
 func nearestPlayerSnapshotAtOrBefore(tick int, positions []*PlayerPosition, tickRate float64) playerPositionSnapshot {
@@ -345,14 +384,6 @@ func nearestPlayerSnapshotAtOrBefore(tick int, positions []*PlayerPosition, tick
 	}
 
 	return playerPositionSnapshot{position: position, velocity: velocity, hasVelocity: hasVelocity}
-}
-
-func shotOffsetMilliseconds(offsetTick int, tickRate float64) float64 {
-	if offsetTick == -1 {
-		return 0
-	}
-
-	return float64(offsetTick) * (1000.0 / tickRate)
 }
 
 func victimFacingKiller(victimYaw float32, victimPosition r3.Vector, killerPosition r3.Vector) (bool, float64) {

@@ -1844,15 +1844,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"victim side",
 			"victim team name",
 			"killer weapon name",
-			"victim weapon name",
-			"victim reaction weapon name",
-			"victim reaction shot frame",
-			"victim reaction shot tick",
-			"has victim awp shot around death",
-			"shot offset frame",
-			"shot offset tick",
-			"shot offset ms",
-			"positions available",
+			"has pre-death victim awp shot",
+			"has post-death victim attack trigger",
+			"reaction frame",
+			"offset frame",
 			"victim x",
 			"victim y",
 			"victim z",
@@ -1878,6 +1873,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 
 		lines := [][]string{header}
 		for _, event := range match.AwpHoldDeaths {
+			reactionFrame, offsetFrame := awpHoldDeathReactionExportFields(event)
+
 			line := []string{
 				converters.IntToString(event.Frame),
 				converters.IntToString(event.Tick),
@@ -1891,15 +1888,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.TeamToString(event.VictimSide),
 				event.VictimTeamName,
 				event.KillerWeaponName.String(),
-				event.VictimWeaponName.String(),
-				event.VictimReactionWeaponName.String(),
-				converters.IntToString(event.VictimReactionShotFrame),
-				converters.IntToString(event.VictimReactionShotTick),
-				converters.BoolToString(event.HasVictimAwpShotAroundDeath),
-				converters.IntToString(event.ShotOffsetFrame),
-				converters.IntToString(event.ShotOffsetTick),
-				converters.Float64ToString(event.ShotOffsetMs),
-				converters.BoolToString(event.PositionsAvailable),
+				converters.BoolToString(event.HasPreDeathVictimAwpShot),
+				converters.BoolToString(event.HasPostDeathVictimAttackTrigger),
+				reactionFrame,
+				offsetFrame,
 				converters.Float64ToString(event.VictimX),
 				converters.Float64ToString(event.VictimY),
 				converters.Float64ToString(event.VictimZ),
