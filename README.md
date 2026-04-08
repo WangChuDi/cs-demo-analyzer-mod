@@ -89,13 +89,18 @@ Tracks unfortunate events and specific kill/damage circumstances.
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
 ### 🎯 AWP Hold Deaths
-Tracks kills where the victim was holding an AWP angle: scoped, facing the killer, and stationary or moving slowly enough to be considered in a holding posture.
+Tracks kills where the victim was holding an AWP angle: scoped, facing the killer within 10 degrees, and stationary or moving slowly enough to be considered in a holding posture.
+
+The current detection windows are intentionally asymmetric:
+- a nearby victim AWP shot counts as a pre-death reaction only when it happens within 0.5 seconds before death
+- a post-death reaction only looks for an Attack button trigger within 1.0 second after death
 
 The derived event also captures whether the victim had a reaction around the death timing:
 - `has pre-death victim awp shot` becomes true when there is a nearby victim AWP shot shortly **before** death.
 - `has post-death victim attack trigger` becomes true when there is a post-death Attack button trigger within the configured reaction window.
-- `reaction frame` and `offset frame` are only populated when there is a nearby victim AWP shot before death.
+- `reaction frame` and `offset frame` are only meaningful when `has pre-death victim awp shot` is true.
 - In CSV/CSDM exports, attack-only reactions keep `has post-death victim attack trigger = true` while `reaction frame` and `offset frame` remain blank.
+- In JSON exports, `victimReactionFrame` and `offsetFrame` are still present as numeric fields and default to `0` when there is no qualifying pre-death victim AWP shot.
 
 **Introduced Data Columns:**
 
