@@ -90,9 +90,11 @@
 ### 🎯 手撕大狙 / AWP Hold Deaths
 追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向朝向击杀者，并且静止或低速移动。
 
-该派生事件也会记录被击杀者在死亡前后是否有开枪反应：
-- 负数 `shot offset` 表示被击杀者在死亡前很短时间内已经开枪（例如空枪）。
-- 正数 `shot offset` 表示被击杀者在死亡后才开枪，或者在配置窗口内没来得及反应开枪。
+该派生事件也会记录被击杀者在死亡前后是否有反应：
+- `has pre-death victim awp shot` 为 true，表示被击杀者在死亡前很短时间内有附近的 AWP shot。
+- `has post-death victim attack trigger` 为 true，表示被击杀者在死亡后反应窗口内触发了 Attack 按键。
+- `reaction frame` 和 `offset frame` 只在匹配到死亡前附近的被击杀者 AWP shot 时填写。
+- 在 CSV/CSDM 导出中，如果只是 death 后 attack 触发而没有真实的 death 前 reaction shot，则 `has post-death victim attack trigger = true`，同时 `reaction frame` 和 `offset frame` 会保持为空。
 
 **数据列：**
 
@@ -104,8 +106,8 @@
   - 击杀者 / 被击杀者身份信息。
   - 双方位置。
   - 双方速度向量与二维移速分档。
-  - 击杀者武器、被击杀者武器、以及被击杀者反应开枪武器。
-  - 相对死亡时刻的 frame / tick / 毫秒级有符号开枪偏移。
+  - 击杀者武器。
+  - 反应相关字段：`has pre-death victim awp shot`、`has post-death victim attack trigger`、`reaction frame`、`offset frame`。
   - 被击杀者姿态条件：`is victim slow`、`is victim scoped`、`is victim facing killer`。
 
 ### 🤡 神人时刻

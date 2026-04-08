@@ -91,9 +91,11 @@ Tracks unfortunate events and specific kill/damage circumstances.
 ### 🎯 AWP Hold Deaths
 Tracks kills where the victim was holding an AWP angle: scoped, facing the killer, and stationary or moving slowly enough to be considered in a holding posture.
 
-The derived event also captures whether the victim fired around the death timing:
-- Negative `shot offset` values mean the victim fired shortly **before** death (e.g. an empty AWP shot / `空枪`).
-- Positive `shot offset` values mean the victim fired **after** death timing or did not react within the configured window.
+The derived event also captures whether the victim had a reaction around the death timing:
+- `has pre-death victim awp shot` becomes true when there is a nearby victim AWP shot shortly **before** death.
+- `has post-death victim attack trigger` becomes true when there is a post-death Attack button trigger within the configured reaction window.
+- `reaction frame` and `offset frame` are only populated when there is a nearby victim AWP shot before death.
+- In CSV/CSDM exports, attack-only reactions keep `has post-death victim attack trigger = true` while `reaction frame` and `offset frame` remain blank.
 
 **Introduced Data Columns:**
 
@@ -105,8 +107,8 @@ The derived event also captures whether the victim fired around the death timing
   - Killer / victim identity fields.
   - Killer / victim positions.
   - Killer / victim velocity vectors and 2D speed buckets.
-  - Killer weapon, victim weapon, and victim reaction-shot weapon.
-  - Signed frame / tick / millisecond shot offsets around death.
+  - Killer weapon.
+  - Reaction indicators: `has pre-death victim awp shot`, `has post-death victim attack trigger`, `reaction frame`, and `offset frame`.
   - Victim posture qualifiers: `is victim slow`, `is victim scoped`, `is victim facing killer`.
 
 ### 🤡 Clown Moments
