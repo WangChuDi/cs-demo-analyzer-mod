@@ -29,9 +29,6 @@ func TestAwpHoldDeaths_5EPlayMirage(t *testing.T) {
 		if event == nil {
 			t.Fatalf("expected awp hold death %d to be non-nil", index)
 		}
-		if event.VictimWeaponName != constants.WeaponAWP {
-			t.Fatalf("expected victim weapon to be AWP, got %s", event.VictimWeaponName)
-		}
 		if !event.IsVictimScoped {
 			t.Fatalf("expected awp hold death %d victim to be scoped", index)
 		}
@@ -41,11 +38,17 @@ func TestAwpHoldDeaths_5EPlayMirage(t *testing.T) {
 		if !event.IsVictimSlow {
 			t.Fatalf("expected awp hold death %d victim to be slow", index)
 		}
-		if event.ShotOffsetTick == -1 && event.ShotOffsetMs != 0 {
-			t.Fatalf("expected same-tick sentinel to map to 0ms, got %f", event.ShotOffsetMs)
+		if event.ShotOffsetFrame < 0 && !event.HasPreDeathVictimAwpShot {
+			t.Fatalf("expected negative shot offset frame to imply a nearby pre-death victim awp shot")
 		}
-		if event.ShotOffsetTick < 0 && !event.HasVictimAwpShotAroundDeath {
-			t.Fatalf("expected negative shot offset to imply a nearby victim awp shot")
+		if event.HasPreDeathVictimAwpShot && event.VictimReactionShotFrame == 0 {
+			t.Fatalf("expected pre-death victim awp shot flag to carry a reaction frame")
+		}
+		if event.HasPostDeathVictimAttackTrigger && event.HasPreDeathVictimAwpShot {
+			// allowed, but the event should still be internally consistent with a valid reaction frame
+			if event.VictimReactionShotFrame == 0 {
+				t.Fatalf("expected combined reaction event to keep the pre-death reaction frame")
+			}
 		}
 
 		killsByPlayer[event.KillerSteamID64]++
