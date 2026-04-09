@@ -88,11 +88,18 @@
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
 
 ### 🎯 手撕大狙 / AWP Hold Deaths
-追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向朝向击杀者，并且静止或低速移动。
+追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向与击杀者夹角不超过 10 度，并且静止或低速移动。
 
-该派生事件也会记录被击杀者在死亡前后是否有开枪反应：
-- 负数 `shot offset` 表示被击杀者在死亡前很短时间内已经开枪（例如空枪）。
-- 正数 `shot offset` 表示被击杀者在死亡后才开枪，或者在配置窗口内没来得及反应开枪。
+当前的检测窗口是非对称的：
+- 被击杀者的 death 前 AWP shot 只有发生在死亡前 0.5 秒内，才会计为 pre-death reaction
+- death 后 reaction 只看死亡后 1.0 秒内的 Attack 按键触发，不再要求出现 shot
+
+该派生事件也会记录被击杀者在死亡前后是否有反应：
+- `has pre-death victim awp shot` 为 true，表示被击杀者在死亡前很短时间内有附近的 AWP shot。
+- `has post-death victim attack trigger` 为 true，表示被击杀者在死亡后反应窗口内触发了 Attack 按键。
+- `reaction frame` 和 `offset frame` 只有在 `has pre-death victim awp shot = true` 时才有实际意义。
+- 在 CSV/CSDM 导出中，如果只是 death 后 attack 触发而没有真实的 death 前 reaction shot，则 `has post-death victim attack trigger = true`，同时 `reaction frame` 和 `offset frame` 会保持为空。
+- 在 JSON 导出中，即使没有符合条件的 death 前 AWP shot，`victimReactionFrame` 和 `offsetFrame` 仍会以数值字段出现，并通常为 `0`。
 
 **数据列：**
 
@@ -104,8 +111,8 @@
   - 击杀者 / 被击杀者身份信息。
   - 双方位置。
   - 双方速度向量与二维移速分档。
-  - 击杀者武器、被击杀者武器、以及被击杀者反应开枪武器。
-  - 相对死亡时刻的 frame / tick / 毫秒级有符号开枪偏移。
+  - 击杀者武器。
+  - 反应相关字段：`has pre-death victim awp shot`、`has post-death victim attack trigger`、`reaction frame`、`offset frame`。
   - 被击杀者姿态条件：`is victim slow`、`is victim scoped`、`is victim facing killer`。
 
 ### 🤡 神人时刻

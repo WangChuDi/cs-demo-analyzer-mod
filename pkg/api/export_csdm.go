@@ -937,6 +937,8 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 	var writeAwpHoldDeaths = func() {
 		lines := [][]string{}
 		for _, event := range match.AwpHoldDeaths {
+			reactionFrame, offsetFrame := awpHoldDeathReactionExportFields(event)
+
 			line := []string{
 				converters.IntToString(event.Frame),
 				converters.IntToString(event.Tick),
@@ -950,15 +952,10 @@ func exportMatchForCSDM(match *Match, outputPath string) error {
 				converters.TeamToString(event.VictimSide),
 				event.VictimTeamName,
 				event.KillerWeaponName.String(),
-				event.VictimWeaponName.String(),
-				event.VictimReactionWeaponName.String(),
-				converters.IntToString(event.VictimReactionShotFrame),
-				converters.IntToString(event.VictimReactionShotTick),
-				converters.BoolToString(event.HasVictimAwpShotAroundDeath),
-				converters.IntToString(event.ShotOffsetFrame),
-				converters.IntToString(event.ShotOffsetTick),
-				converters.Float64ToString(event.ShotOffsetMs),
-				converters.BoolToString(event.PositionsAvailable),
+				converters.BoolToString(event.HasPreDeathVictimAwpShot),
+				converters.BoolToString(event.HasPostDeathVictimAttackTrigger),
+				reactionFrame,
+				offsetFrame,
 				converters.Float64ToString(event.VictimX),
 				converters.Float64ToString(event.VictimY),
 				converters.Float64ToString(event.VictimZ),

@@ -89,11 +89,18 @@ Tracks unfortunate events and specific kill/damage circumstances.
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
 ### 🎯 AWP Hold Deaths
-Tracks kills where the victim was holding an AWP angle: scoped, facing the killer, and stationary or moving slowly enough to be considered in a holding posture.
+Tracks kills where the victim was holding an AWP angle: scoped, facing the killer within 10 degrees, and stationary or moving slowly enough to be considered in a holding posture.
 
-The derived event also captures whether the victim fired around the death timing:
-- Negative `shot offset` values mean the victim fired shortly **before** death (e.g. an empty AWP shot / `空枪`).
-- Positive `shot offset` values mean the victim fired **after** death timing or did not react within the configured window.
+The current detection windows are intentionally asymmetric:
+- a nearby victim AWP shot counts as a pre-death reaction only when it happens within 0.5 seconds before death
+- a post-death reaction only looks for an Attack button trigger within 1.0 second after death
+
+The derived event also captures whether the victim had a reaction around the death timing:
+- `has pre-death victim awp shot` becomes true when there is a nearby victim AWP shot shortly **before** death.
+- `has post-death victim attack trigger` becomes true when there is a post-death Attack button trigger within the configured reaction window.
+- `reaction frame` and `offset frame` are only meaningful when `has pre-death victim awp shot` is true.
+- In CSV/CSDM exports, attack-only reactions keep `has post-death victim attack trigger = true` while `reaction frame` and `offset frame` remain blank.
+- In JSON exports, `victimReactionFrame` and `offsetFrame` are still present as numeric fields and default to `0` when there is no qualifying pre-death victim AWP shot.
 
 **Introduced Data Columns:**
 
@@ -105,8 +112,8 @@ The derived event also captures whether the victim fired around the death timing
   - Killer / victim identity fields.
   - Killer / victim positions.
   - Killer / victim velocity vectors and 2D speed buckets.
-  - Killer weapon, victim weapon, and victim reaction-shot weapon.
-  - Signed frame / tick / millisecond shot offsets around death.
+  - Killer weapon.
+  - Reaction indicators: `has pre-death victim awp shot`, `has post-death victim attack trigger`, `reaction frame`, and `offset frame`.
   - Victim posture qualifiers: `is victim slow`, `is victim scoped`, `is victim facing killer`.
 
 ### 🤡 Clown Moments
