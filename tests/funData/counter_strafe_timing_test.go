@@ -1,14 +1,13 @@
 package funData
 
 import (
-	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/akiver/cs-demo-analyzer/tests/testsutils"
 	demoinfocs "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs"
 	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
@@ -121,7 +120,7 @@ type standaloneCounterStrafeStats struct {
 
 func TestCounterStrafeTiming(t *testing.T) {
 	demoName := "renown_match_8_2025_mirage"
-	demoPath := filepath.Join("..", "..", "cs-demos", "cs2", demoName+".dem")
+	demoPath := testsutils.GetDemoPath("cs2", demoName)
 
 	match, err := api.AnalyzeDemo(demoPath, api.AnalyzeDemoOptions{
 		Source: constants.DemoSourceRenown,
@@ -301,7 +300,7 @@ func assertCounterStrafeTimingPlayer(t *testing.T, match *api.Match, standaloneS
 	sToWStats := statsByDirection[standaloneDirectionSToW]
 	comboAllStats := comboStatsByDirection[standaloneComboDirectionAll]
 
-	fmt.Printf("standalone counter-strafe timing %s: avg=%.3f stddev=%.3f A->D=%.3f/%.2f%% D->A=%.3f/%.2f%% W->S=%.3f/%.2f%% S->W=%.3f/%.2f%% combo=%.3f/%.2f%% perfect=%.2f%%\n",
+	t.Logf("standalone counter-strafe timing %s: avg=%.3f stddev=%.3f A->D=%.3f/%.2f%% D->A=%.3f/%.2f%% W->S=%.3f/%.2f%% S->W=%.3f/%.2f%% combo=%.3f/%.2f%% perfect=%.2f%%",
 		name,
 		allStats.averageDeltaTick,
 		allStats.stdDevTick,

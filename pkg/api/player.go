@@ -17,26 +17,29 @@ type weaponInspectionData struct {
 }
 
 type Player struct {
-	match                *Match
-	SteamID64            uint64       `json:"steamId"`
-	UserID               int          `json:"userId"` // +1 to get the player's slot
-	Name                 string       `json:"name"`
-	Score                int          `json:"score"`
-	Team                 *Team        `json:"team"`
-	MvpCount             int          `json:"mvpCount"`
-	RankType             int          `json:"rankType"`
-	Rank                 int          `json:"rank"`
-	OldRank              int          `json:"oldRank"`
-	WinCount             int          `json:"winCount"`
-	CrosshairShareCode   string       `json:"crosshairShareCode"`
-	Color                common.Color `json:"color"`
-	InspectWeaponCount   int          `json:"inspectWeaponCount"`
-	LeechValue           int          `json:"leechValue"`
-	FeedValue            int          `json:"feedValue"`
-	LeechCount           int          `json:"leechCount"`
-	FeedCount            int          `json:"feedCount"`
-	WastedUtilityValue   int          `json:"wastedUtilityValue"`
-	lastWeaponInspection weaponInspectionData
+	match                          *Match
+	SteamID64                      uint64       `json:"steamId"`
+	UserID                         int          `json:"userId"` // +1 to get the player's slot
+	Name                           string       `json:"name"`
+	Score                          int          `json:"score"`
+	Team                           *Team        `json:"team"`
+	MvpCount                       int          `json:"mvpCount"`
+	RankType                       int          `json:"rankType"`
+	Rank                           int          `json:"rank"`
+	OldRank                        int          `json:"oldRank"`
+	WinCount                       int          `json:"winCount"`
+	CrosshairShareCode             string       `json:"crosshairShareCode"`
+	Color                          common.Color `json:"color"`
+	InspectWeaponCount             int          `json:"inspectWeaponCount"`
+	LeechValue                     int          `json:"leechValue"`
+	FeedValue                      int          `json:"feedValue"`
+	LeechCount                     int          `json:"leechCount"`
+	FeedCount                      int          `json:"feedCount"`
+	WastedUtilityValue             int          `json:"wastedUtilityValue"`
+	lastWeaponInspection           weaponInspectionData
+	hasCounterStrafeSampleCaches   bool
+	counterStrafeSamplesCache      []counterStrafeSample
+	counterStrafeComboSamplesCache []counterStrafeComboSample
 }
 
 type PlayerAlias Player
@@ -586,7 +589,11 @@ func summarizeCounterStrafeComboSamples(samples []counterStrafeComboSample, dire
 	return average, math.Sqrt(variance), perfectRate
 }
 
-func (player *Player) counterStrafeSamples() []counterStrafeSample {
+func (player *Player) ensureCounterStrafeSampleCaches() {
+	if player.hasCounterStrafeSampleCaches {
+		return
+	}
+
 	shotsByRound := make(map[int][]*Shot)
 	for _, shot := range player.match.Shots {
 		if shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
@@ -603,7 +610,8 @@ func (player *Player) counterStrafeSamples() []counterStrafeSample {
 		buttonsByRound[buttonState.RoundNumber] = append(buttonsByRound[buttonState.RoundNumber], buttonState)
 	}
 
-	samples := []counterStrafeSample{}
+	oneDimensionalSamples := []counterStrafeSample{}
+	comboSamples := []counterStrafeComboSample{}
 	for roundNumber, shots := range shotsByRound {
 		buttons := buttonsByRound[roundNumber]
 		if len(buttons) == 0 {
@@ -613,49 +621,30 @@ func (player *Player) counterStrafeSamples() []counterStrafeSample {
 		previousShotTick := -1
 		for _, shot := range shots {
 			if sample, ok := collectCounterStrafeSampleForShot(buttons, previousShotTick, shot.Tick); ok {
-				samples = append(samples, *sample)
+				oneDimensionalSamples = append(oneDimensionalSamples, *sample)
+			}
+			if comboSample, ok := collectCounterStrafeComboSampleForShot(buttons, previousShotTick, shot.Tick); ok {
+				comboSamples = append(comboSamples, *comboSample)
 			}
 			previousShotTick = shot.Tick
 		}
 	}
 
-	return samples
+	player.counterStrafeSamplesCache = oneDimensionalSamples
+	player.counterStrafeComboSamplesCache = comboSamples
+	player.hasCounterStrafeSampleCaches = true
+}
+
+func (player *Player) counterStrafeSamples() []counterStrafeSample {
+	player.ensureCounterStrafeSampleCaches()
+
+	return player.counterStrafeSamplesCache
 }
 
 func (player *Player) counterStrafeComboSamples() []counterStrafeComboSample {
-	shotsByRound := make(map[int][]*Shot)
-	for _, shot := range player.match.Shots {
-		if shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
-			continue
-		}
-		shotsByRound[shot.RoundNumber] = append(shotsByRound[shot.RoundNumber], shot)
-	}
+	player.ensureCounterStrafeSampleCaches()
 
-	buttonsByRound := make(map[int][]*funData.PlayerButtons)
-	for _, buttonState := range player.match.PlayerButtons {
-		if buttonState.SteamID64 != player.SteamID64 {
-			continue
-		}
-		buttonsByRound[buttonState.RoundNumber] = append(buttonsByRound[buttonState.RoundNumber], buttonState)
-	}
-
-	samples := []counterStrafeComboSample{}
-	for roundNumber, shots := range shotsByRound {
-		buttons := buttonsByRound[roundNumber]
-		if len(buttons) == 0 {
-			continue
-		}
-
-		previousShotTick := -1
-		for _, shot := range shots {
-			if sample, ok := collectCounterStrafeComboSampleForShot(buttons, previousShotTick, shot.Tick); ok {
-				samples = append(samples, *sample)
-			}
-			previousShotTick = shot.Tick
-		}
-	}
-
-	return samples
+	return player.counterStrafeComboSamplesCache
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
