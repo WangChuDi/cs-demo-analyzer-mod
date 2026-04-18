@@ -12,5 +12,6 @@ func GetDemoPath(gameFolder string, name string) string {
 		return filepath.Join("..", "cs-demos", gameFolder, name+".dem")
 	}
 
-	return filepath.Clean(filepath.Join(filepath.Dir(currentFilePath), "..", "..", "cs-demos", gameFolder, name+".dem"))
+	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFilePath), "..", ".."))
+	return filepath.Join(repositoryRoot, "cs-demos", gameFolder, name+".dem")
 }
