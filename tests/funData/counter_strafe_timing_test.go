@@ -251,8 +251,22 @@ func computeStandaloneCounterStrafeStats(demoPath string) (map[uint64]map[standa
 
 	oneDimensionalSamplesBySteamID := make(map[uint64][]standaloneCounterStrafeSample)
 	comboSamplesBySteamID := make(map[uint64][]standaloneCounterStrafeComboSample)
-	for roundNumber, shotsByPlayer := range shotsByRoundPlayer {
-		for steamID64, shots := range shotsByPlayer {
+	roundNumbers := make([]int, 0, len(shotsByRoundPlayer))
+	for roundNumber := range shotsByRoundPlayer {
+		roundNumbers = append(roundNumbers, roundNumber)
+	}
+	sort.Ints(roundNumbers)
+
+	for _, roundNumber := range roundNumbers {
+		shotsByPlayer := shotsByRoundPlayer[roundNumber]
+		steamIDs := make([]uint64, 0, len(shotsByPlayer))
+		for steamID64 := range shotsByPlayer {
+			steamIDs = append(steamIDs, steamID64)
+		}
+		sort.Slice(steamIDs, func(i int, j int) bool { return steamIDs[i] < steamIDs[j] })
+
+		for _, steamID64 := range steamIDs {
+			shots := shotsByPlayer[steamID64]
 			buttons := buttonsByRoundPlayer[roundNumber][steamID64]
 			if len(buttons) == 0 {
 				continue
