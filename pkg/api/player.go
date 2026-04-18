@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"math"
+	"sort"
 
 	"github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
@@ -474,11 +475,13 @@ func (tracker *counterStrafeComboTransitionTracker) apply(mask uint64, tick int)
 }
 
 func collectCounterStrafeAxisSamplesForShot(buttons []*funData.PlayerButtons, startExclusiveTick int, shotTick int) counterStrafeShotAxisSamples {
+	startIndex := sort.Search(len(buttons), func(index int) bool {
+		return buttons[index].Tick > startExclusiveTick
+	})
+
 	lastMask := uint64(0)
-	startIndex := 0
-	for startIndex < len(buttons) && buttons[startIndex].Tick <= startExclusiveTick {
-		lastMask = buttons[startIndex].Buttons
-		startIndex++
+	if startIndex > 0 {
+		lastMask = buttons[startIndex-1].Buttons
 	}
 
 	trackers := []counterStrafeTransitionTracker{
@@ -559,11 +562,13 @@ func collectCounterStrafeSampleForShot(buttons []*funData.PlayerButtons, startEx
 }
 
 func collectCounterStrafeComboSampleForShot(buttons []*funData.PlayerButtons, startExclusiveTick int, shotTick int) (*counterStrafeComboSample, bool) {
+	startIndex := sort.Search(len(buttons), func(index int) bool {
+		return buttons[index].Tick > startExclusiveTick
+	})
+
 	lastMask := uint64(0)
-	startIndex := 0
-	for startIndex < len(buttons) && buttons[startIndex].Tick <= startExclusiveTick {
-		lastMask = buttons[startIndex].Buttons
-		startIndex++
+	if startIndex > 0 {
+		lastMask = buttons[startIndex-1].Buttons
 	}
 
 	trackers := []counterStrafeComboTransitionTracker{
