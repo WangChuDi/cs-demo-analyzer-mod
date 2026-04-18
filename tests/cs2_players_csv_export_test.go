@@ -45,6 +45,28 @@ func TestPlayersCSVExport_CounterStrafeColumnsAndTeamDamageOrder(t *testing.T) {
 		indexByHeader[column] = index
 	}
 
+	orderedHeaderBlock := []string{
+		"team attack damage",
+		"team utility damage",
+		"team flash duration",
+		"counter-strafing success rate",
+		"counter-strafing avg delta tick",
+		"counter-strafing delta stddev tick",
+		"counter-strafing a->d avg delta tick",
+		"counter-strafing a->d perfect rate",
+		"counter-strafing d->a avg delta tick",
+		"counter-strafing d->a perfect rate",
+		"counter-strafing w->s avg delta tick",
+		"counter-strafing w->s perfect rate",
+		"counter-strafing s->w avg delta tick",
+		"counter-strafing s->w perfect rate",
+		"counter-strafing combo avg delta tick",
+		"counter-strafing combo delta stddev tick",
+		"counter-strafing combo perfect rate",
+		"counter-strafing perfect rate",
+	}
+	assertOrderedCSVHeaderBlock(t, indexByHeader, orderedHeaderBlock)
+
 	requiredColumns := []string{
 		"team attack damage",
 		"team utility damage",
@@ -129,5 +151,27 @@ func assertCSVCellEquals(t *testing.T, row []string, indexByHeader map[string]in
 	}
 	if got := row[index]; got != want {
 		t.Fatalf("expected column %q to be %q but got %q", column, want, got)
+	}
+}
+
+func assertOrderedCSVHeaderBlock(t *testing.T, indexByHeader map[string]int, orderedColumns []string) {
+	t.Helper()
+
+	if len(orderedColumns) == 0 {
+		return
+	}
+
+	previousIndex := -1
+	previousColumn := ""
+	for _, column := range orderedColumns {
+		index, ok := indexByHeader[column]
+		if !ok {
+			t.Fatalf("expected exported players csv to contain column %q", column)
+		}
+		if previousIndex != -1 && index != previousIndex+1 {
+			t.Fatalf("expected column %q to immediately follow %q in header order", column, previousColumn)
+		}
+		previousIndex = index
+		previousColumn = column
 	}
 }
