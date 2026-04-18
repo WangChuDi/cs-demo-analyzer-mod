@@ -3,6 +3,7 @@ package funData
 import (
 	"math"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api"
@@ -38,11 +39,13 @@ const standalonePerfectCounterStrafeDeltaWindow = 3
 const standalonePerfectCounterStrafeComboDeltaWindow = 10
 
 type standaloneButtonSnapshot struct {
+	frame   int
 	tick    int
 	buttons uint64
 }
 
 type standaloneShot struct {
+	frame       int
 	roundNumber int
 	tick        int
 	steamID64   uint64
@@ -178,7 +181,7 @@ func computeStandaloneCounterStrafeStats(demoPath string) (map[uint64]map[standa
 		}
 		buttonsByRoundPlayer[currentRoundNumber][event.Player.SteamID64] = append(
 			buttonsByRoundPlayer[currentRoundNumber][event.Player.SteamID64],
-			standaloneButtonSnapshot{tick: parser.GameState().IngameTick(), buttons: event.ButtonsState},
+			standaloneButtonSnapshot{frame: parser.CurrentFrame(), tick: parser.GameState().IngameTick(), buttons: event.ButtonsState},
 		)
 	})
 
@@ -208,6 +211,7 @@ func computeStandaloneCounterStrafeStats(demoPath string) (map[uint64]map[standa
 		shotsByRoundPlayer[currentRoundNumber][event.Shooter.SteamID64] = append(
 			shotsByRoundPlayer[currentRoundNumber][event.Shooter.SteamID64],
 			standaloneShot{
+				frame:       parser.CurrentFrame(),
 				roundNumber: currentRoundNumber,
 				tick:        parser.GameState().IngameTick(),
 				steamID64:   event.Shooter.SteamID64,
@@ -219,6 +223,30 @@ func computeStandaloneCounterStrafeStats(demoPath string) (map[uint64]map[standa
 
 	if err := parser.ParseToEnd(); err != nil {
 		return nil, nil, err
+	}
+
+	for roundNumber, buttonsByPlayer := range buttonsByRoundPlayer {
+		for steamID64 := range buttonsByPlayer {
+			sort.Slice(buttonsByRoundPlayer[roundNumber][steamID64], func(i int, j int) bool {
+				if buttonsByRoundPlayer[roundNumber][steamID64][i].frame == buttonsByRoundPlayer[roundNumber][steamID64][j].frame {
+					return buttonsByRoundPlayer[roundNumber][steamID64][i].tick < buttonsByRoundPlayer[roundNumber][steamID64][j].tick
+				}
+
+				return buttonsByRoundPlayer[roundNumber][steamID64][i].frame < buttonsByRoundPlayer[roundNumber][steamID64][j].frame
+			})
+		}
+	}
+
+	for roundNumber, shotsByPlayer := range shotsByRoundPlayer {
+		for steamID64 := range shotsByPlayer {
+			sort.Slice(shotsByRoundPlayer[roundNumber][steamID64], func(i int, j int) bool {
+				if shotsByRoundPlayer[roundNumber][steamID64][i].frame == shotsByRoundPlayer[roundNumber][steamID64][j].frame {
+					return shotsByRoundPlayer[roundNumber][steamID64][i].tick < shotsByRoundPlayer[roundNumber][steamID64][j].tick
+				}
+
+				return shotsByRoundPlayer[roundNumber][steamID64][i].frame < shotsByRoundPlayer[roundNumber][steamID64][j].frame
+			})
+		}
 	}
 
 	oneDimensionalSamplesBySteamID := make(map[uint64][]standaloneCounterStrafeSample)

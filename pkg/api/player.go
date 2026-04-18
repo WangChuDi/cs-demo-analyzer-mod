@@ -40,6 +40,9 @@ type Player struct {
 	hasCounterStrafeSampleCaches   bool
 	counterStrafeSamplesCache      []counterStrafeSample
 	counterStrafeComboSamplesCache []counterStrafeComboSample
+	hasCounterStrafeSummaryCaches  bool
+	counterStrafeSummariesByDirection map[counterStrafeDirection]counterStrafeSummary
+	counterStrafeComboSummary        counterStrafeComboSummary
 }
 
 type PlayerAlias Player
@@ -159,6 +162,88 @@ type counterStrafeComboSample struct {
 	verticalDeltaTick   int
 	direction           counterStrafeComboDirection
 	completionTick      int
+}
+
+type counterStrafeSummary struct {
+	average    float64
+	stdDev     float64
+	perfectRate float32
+}
+
+type counterStrafeComboSummary struct {
+	average    float64
+	stdDev     float64
+	perfectRate float32
+}
+
+type counterStrafeSummaryAccumulator struct {
+	count        int
+	sum          float64
+	sumOfSquares float64
+	perfectCount int
+}
+
+type counterStrafeComboSummaryAccumulator struct {
+	count        int
+	sum          float64
+	sumOfSquares float64
+	perfectCount int
+}
+
+func (accumulator *counterStrafeSummaryAccumulator) addSample(sample counterStrafeSample) {
+	deltaTick := float64(sample.deltaTick)
+	accumulator.count++
+	accumulator.sum += deltaTick
+	accumulator.sumOfSquares += deltaTick * deltaTick
+	if math.Abs(deltaTick) <= perfectCounterStrafeDeltaTickWindow {
+		accumulator.perfectCount++
+	}
+}
+
+func (accumulator counterStrafeSummaryAccumulator) summary() counterStrafeSummary {
+	if accumulator.count == 0 {
+		return counterStrafeSummary{}
+	}
+
+	average := accumulator.sum / float64(accumulator.count)
+	variance := accumulator.sumOfSquares/float64(accumulator.count) - average*average
+	if variance < 0 {
+		variance = 0
+	}
+
+	return counterStrafeSummary{
+		average: average,
+		stdDev: math.Sqrt(variance),
+		perfectRate: float32(accumulator.perfectCount) / float32(accumulator.count) * 100,
+	}
+}
+
+func (accumulator *counterStrafeComboSummaryAccumulator) addSample(sample counterStrafeComboSample) {
+	comboDeltaTick := float64(max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick)))
+	accumulator.count++
+	accumulator.sum += comboDeltaTick
+	accumulator.sumOfSquares += comboDeltaTick * comboDeltaTick
+	if counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow && counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow {
+		accumulator.perfectCount++
+	}
+}
+
+func (accumulator counterStrafeComboSummaryAccumulator) summary() counterStrafeComboSummary {
+	if accumulator.count == 0 {
+		return counterStrafeComboSummary{}
+	}
+
+	average := accumulator.sum / float64(accumulator.count)
+	variance := accumulator.sumOfSquares/float64(accumulator.count) - average*average
+	if variance < 0 {
+		variance = 0
+	}
+
+	return counterStrafeComboSummary{
+		average: average,
+		stdDev: math.Sqrt(variance),
+		perfectRate: float32(accumulator.perfectCount) / float32(accumulator.count) * 100,
+	}
 }
 
 type counterStrafeTransitionTracker struct {
@@ -509,37 +594,29 @@ func collectCounterStrafeComboSampleForShot(buttons []*funData.PlayerButtons, st
 	return &latestSample, true
 }
 
-func summarizeCounterStrafeSamples(samples []counterStrafeSample, direction counterStrafeDirection) (float64, float64, float32) {
-	filteredSamples := make([]counterStrafeSample, 0, len(samples))
-	for _, sample := range samples {
-		if direction != counterStrafeDirectionAll && sample.direction != direction {
-			continue
-		}
-		filteredSamples = append(filteredSamples, sample)
-	}
-
-	if len(filteredSamples) == 0 {
+func summarizeCounterStrafeSamples(samples []counterStrafeSample) (float64, float64, float32) {
+	if len(samples) == 0 {
 		return 0, 0, 0
 	}
 
 	var sum float64
 	perfectCount := 0
-	for _, sample := range filteredSamples {
+	for _, sample := range samples {
 		sum += float64(sample.deltaTick)
 		if math.Abs(float64(sample.deltaTick)) <= perfectCounterStrafeDeltaTickWindow {
 			perfectCount++
 		}
 	}
 
-	average := sum / float64(len(filteredSamples))
+	average := sum / float64(len(samples))
 	variance := 0.0
-	for _, sample := range filteredSamples {
+	for _, sample := range samples {
 		delta := float64(sample.deltaTick) - average
 		variance += delta * delta
 	}
-	variance /= float64(len(filteredSamples))
+	variance /= float64(len(samples))
 
-	perfectRate := float32(perfectCount) / float32(len(filteredSamples)) * 100
+	perfectRate := float32(perfectCount) / float32(len(samples)) * 100
 
 	return average, math.Sqrt(variance), perfectRate
 }
@@ -552,22 +629,14 @@ func counterStrafeAbsoluteDeltaTick(deltaTick int) int {
 	return deltaTick
 }
 
-func summarizeCounterStrafeComboSamples(samples []counterStrafeComboSample, direction counterStrafeComboDirection) (float64, float64, float32) {
-	filteredSamples := make([]counterStrafeComboSample, 0, len(samples))
-	for _, sample := range samples {
-		if direction != counterStrafeComboDirectionAll && sample.direction != direction {
-			continue
-		}
-		filteredSamples = append(filteredSamples, sample)
-	}
-
-	if len(filteredSamples) == 0 {
+func summarizeCounterStrafeComboSamples(samples []counterStrafeComboSample) (float64, float64, float32) {
+	if len(samples) == 0 {
 		return 0, 0, 0
 	}
 
 	var sum float64
 	perfectCount := 0
-	for _, sample := range filteredSamples {
+	for _, sample := range samples {
 		comboDeltaTick := max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick))
 		sum += float64(comboDeltaTick)
 		if counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow && counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow {
@@ -575,16 +644,16 @@ func summarizeCounterStrafeComboSamples(samples []counterStrafeComboSample, dire
 		}
 	}
 
-	average := sum / float64(len(filteredSamples))
+	average := sum / float64(len(samples))
 	variance := 0.0
-	for _, sample := range filteredSamples {
+	for _, sample := range samples {
 		comboDeltaTick := max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick))
 		delta := float64(comboDeltaTick) - average
 		variance += delta * delta
 	}
-	variance /= float64(len(filteredSamples))
+	variance /= float64(len(samples))
 
-	perfectRate := float32(perfectCount) / float32(len(filteredSamples)) * 100
+	perfectRate := float32(perfectCount) / float32(len(samples)) * 100
 
 	return average, math.Sqrt(variance), perfectRate
 }
@@ -594,26 +663,18 @@ func (player *Player) ensureCounterStrafeSampleCaches() {
 		return
 	}
 
-	shotsByRound := make(map[int][]*Shot)
-	for _, shot := range player.match.Shots {
-		if shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
-			continue
-		}
-		shotsByRound[shot.RoundNumber] = append(shotsByRound[shot.RoundNumber], shot)
-	}
-
-	buttonsByRound := make(map[int][]*funData.PlayerButtons)
-	for _, buttonState := range player.match.PlayerButtons {
-		if buttonState.SteamID64 != player.SteamID64 {
-			continue
-		}
-		buttonsByRound[buttonState.RoundNumber] = append(buttonsByRound[buttonState.RoundNumber], buttonState)
-	}
+	player.match.ensureCounterStrafeRoundIndexes()
 
 	oneDimensionalSamples := []counterStrafeSample{}
 	comboSamples := []counterStrafeComboSample{}
-	for roundNumber, shots := range shotsByRound {
-		buttons := buttonsByRound[roundNumber]
+	for _, round := range player.match.Rounds {
+		key := roundPlayerKey{roundNumber: round.Number, steamID64: player.SteamID64}
+		shots := player.match.counterStrafeShotsByRoundPlayer[key]
+		if len(shots) == 0 {
+			continue
+		}
+
+		buttons := player.match.counterStrafeButtonsByRoundPlayer[key]
 		if len(buttons) == 0 {
 			continue
 		}
@@ -633,6 +694,45 @@ func (player *Player) ensureCounterStrafeSampleCaches() {
 	player.counterStrafeSamplesCache = oneDimensionalSamples
 	player.counterStrafeComboSamplesCache = comboSamples
 	player.hasCounterStrafeSampleCaches = true
+}
+
+func (player *Player) ensureCounterStrafeSummaryCaches() {
+	if player.hasCounterStrafeSummaryCaches {
+		return
+	}
+
+	player.ensureCounterStrafeSampleCaches()
+
+	accumulatorsByDirection := map[counterStrafeDirection]*counterStrafeSummaryAccumulator{
+		counterStrafeDirectionAll:  &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionAToD: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionDToA: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionWToS: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionSToW: &counterStrafeSummaryAccumulator{},
+	}
+
+	for _, sample := range player.counterStrafeSamplesCache {
+		accumulatorsByDirection[counterStrafeDirectionAll].addSample(sample)
+		accumulatorsByDirection[sample.direction].addSample(sample)
+	}
+
+	player.counterStrafeSummariesByDirection = make(map[counterStrafeDirection]counterStrafeSummary, len(accumulatorsByDirection))
+	for direction, accumulator := range accumulatorsByDirection {
+		player.counterStrafeSummariesByDirection[direction] = accumulator.summary()
+	}
+
+	comboAccumulator := counterStrafeComboSummaryAccumulator{}
+	for _, sample := range player.counterStrafeComboSamplesCache {
+		comboAccumulator.addSample(sample)
+	}
+	player.counterStrafeComboSummary = comboAccumulator.summary()
+
+	player.hasCounterStrafeSummaryCaches = true
+}
+
+func (player *Player) counterStrafeSummary(direction counterStrafeDirection) counterStrafeSummary {
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeSummariesByDirection[direction]
 }
 
 func (player *Player) counterStrafeSamples() []counterStrafeSample {
@@ -1377,73 +1477,62 @@ func (player *Player) CounterStrafingSuccessRate() float32 {
 }
 
 func (player *Player) CounterStrafingAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionAll)
-	return average
+	return player.counterStrafeSummary(counterStrafeDirectionAll).average
 }
 
 func (player *Player) CounterStrafingDeltaStdDevTick() float64 {
-	_, stdDev, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionAll)
-	return stdDev
+	return player.counterStrafeSummary(counterStrafeDirectionAll).stdDev
 }
 
 func (player *Player) CounterStrafingPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionAll)
-	return perfectRate
+	return player.counterStrafeSummary(counterStrafeDirectionAll).perfectRate
 }
 
 func (player *Player) CounterStrafingAToDAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionAToD)
-	return average
+	return player.counterStrafeSummary(counterStrafeDirectionAToD).average
 }
 
 func (player *Player) CounterStrafingAToDPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionAToD)
-	return perfectRate
+	return player.counterStrafeSummary(counterStrafeDirectionAToD).perfectRate
 }
 
 func (player *Player) CounterStrafingDToAAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionDToA)
-	return average
+	return player.counterStrafeSummary(counterStrafeDirectionDToA).average
 }
 
 func (player *Player) CounterStrafingDToAPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionDToA)
-	return perfectRate
+	return player.counterStrafeSummary(counterStrafeDirectionDToA).perfectRate
 }
 
 func (player *Player) CounterStrafingWToSAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionWToS)
-	return average
+	return player.counterStrafeSummary(counterStrafeDirectionWToS).average
 }
 
 func (player *Player) CounterStrafingWToSPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionWToS)
-	return perfectRate
+	return player.counterStrafeSummary(counterStrafeDirectionWToS).perfectRate
 }
 
 func (player *Player) CounterStrafingSToWAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionSToW)
-	return average
+	return player.counterStrafeSummary(counterStrafeDirectionSToW).average
 }
 
 func (player *Player) CounterStrafingSToWPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeSamples(player.counterStrafeSamples(), counterStrafeDirectionSToW)
-	return perfectRate
+	return player.counterStrafeSummary(counterStrafeDirectionSToW).perfectRate
 }
 
 func (player *Player) CounterStrafingComboAverageDeltaTick() float64 {
-	average, _, _ := summarizeCounterStrafeComboSamples(player.counterStrafeComboSamples(), counterStrafeComboDirectionAll)
-	return average
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.average
 }
 
 func (player *Player) CounterStrafingComboDeltaStdDevTick() float64 {
-	_, stdDev, _ := summarizeCounterStrafeComboSamples(player.counterStrafeComboSamples(), counterStrafeComboDirectionAll)
-	return stdDev
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.stdDev
 }
 
 func (player *Player) CounterStrafingComboPerfectRate() float32 {
-	_, _, perfectRate := summarizeCounterStrafeComboSamples(player.counterStrafeComboSamples(), counterStrafeComboDirectionAll)
-	return perfectRate
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.perfectRate
 }
 
 func (player *Player) OneKillCount() int {
@@ -1611,6 +1700,12 @@ func (player *Player) reset() {
 		tick:          -1,
 		cancelledTick: -1,
 	}
+	player.hasCounterStrafeSampleCaches = false
+	player.counterStrafeSamplesCache = nil
+	player.counterStrafeComboSamplesCache = nil
+	player.hasCounterStrafeSummaryCaches = false
+	player.counterStrafeSummariesByDirection = nil
+	player.counterStrafeComboSummary = counterStrafeComboSummary{}
 }
 
 func NewPlayer(analyzer *Analyzer, currentTeam common.Team, player common.Player) *Player {
