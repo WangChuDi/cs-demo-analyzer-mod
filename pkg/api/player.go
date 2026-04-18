@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"math"
+	"sort"
 
 	"github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
 	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
 )
@@ -16,26 +18,32 @@ type weaponInspectionData struct {
 }
 
 type Player struct {
-	match                *Match
-	SteamID64            uint64       `json:"steamId"`
-	UserID               int          `json:"userId"` // +1 to get the player's slot
-	Name                 string       `json:"name"`
-	Score                int          `json:"score"`
-	Team                 *Team        `json:"team"`
-	MvpCount             int          `json:"mvpCount"`
-	RankType             int          `json:"rankType"`
-	Rank                 int          `json:"rank"`
-	OldRank              int          `json:"oldRank"`
-	WinCount             int          `json:"winCount"`
-	CrosshairShareCode   string       `json:"crosshairShareCode"`
-	Color                common.Color `json:"color"`
-	InspectWeaponCount   int          `json:"inspectWeaponCount"`
-	LeechValue           int          `json:"leechValue"`
-	FeedValue            int          `json:"feedValue"`
-	LeechCount           int          `json:"leechCount"`
-	FeedCount            int          `json:"feedCount"`
-	WastedUtilityValue   int          `json:"wastedUtilityValue"`
-	lastWeaponInspection weaponInspectionData
+	match                          *Match
+	SteamID64                      uint64       `json:"steamId"`
+	UserID                         int          `json:"userId"` // +1 to get the player's slot
+	Name                           string       `json:"name"`
+	Score                          int          `json:"score"`
+	Team                           *Team        `json:"team"`
+	MvpCount                       int          `json:"mvpCount"`
+	RankType                       int          `json:"rankType"`
+	Rank                           int          `json:"rank"`
+	OldRank                        int          `json:"oldRank"`
+	WinCount                       int          `json:"winCount"`
+	CrosshairShareCode             string       `json:"crosshairShareCode"`
+	Color                          common.Color `json:"color"`
+	InspectWeaponCount             int          `json:"inspectWeaponCount"`
+	LeechValue                     int          `json:"leechValue"`
+	FeedValue                      int          `json:"feedValue"`
+	LeechCount                     int          `json:"leechCount"`
+	FeedCount                      int          `json:"feedCount"`
+	WastedUtilityValue             int          `json:"wastedUtilityValue"`
+	lastWeaponInspection           weaponInspectionData
+	hasCounterStrafeSampleCaches   bool
+	counterStrafeSamplesCache      []counterStrafeSample
+	counterStrafeComboSamplesCache []counterStrafeComboSample
+	hasCounterStrafeSummaryCaches  bool
+	counterStrafeSummariesByDirection map[counterStrafeDirection]counterStrafeSummary
+	counterStrafeComboSummary        counterStrafeComboSummary
 }
 
 type PlayerAlias Player
@@ -108,10 +116,586 @@ type PlayerJSON struct {
 	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
 	TeamFlashDuration           float32 `json:"teamFlashDuration"`
 	CounterStrafingSuccessRate  float32 `json:"counterStrafingSuccessRate"`
+	CounterStrafingAverageDeltaTick float64 `json:"counterStrafingAverageDeltaTick"`
+	CounterStrafingDeltaStdDevTick float64 `json:"counterStrafingDeltaStdDevTick"`
+	CounterStrafingPerfectRate float32 `json:"counterStrafingPerfectRate"`
+	CounterStrafingAToDAverageDeltaTick float64 `json:"counterStrafingAToDAverageDeltaTick"`
+	CounterStrafingAToDPerfectRate float32 `json:"counterStrafingAToDPerfectRate"`
+	CounterStrafingDToAAverageDeltaTick float64 `json:"counterStrafingDToAAverageDeltaTick"`
+	CounterStrafingDToAPerfectRate float32 `json:"counterStrafingDToAPerfectRate"`
+	CounterStrafingWToSAverageDeltaTick float64 `json:"counterStrafingWToSAverageDeltaTick"`
+	CounterStrafingWToSPerfectRate float32 `json:"counterStrafingWToSPerfectRate"`
+	CounterStrafingSToWAverageDeltaTick float64 `json:"counterStrafingSToWAverageDeltaTick"`
+	CounterStrafingSToWPerfectRate float32 `json:"counterStrafingSToWPerfectRate"`
+	CounterStrafingComboAverageDeltaTick float64 `json:"counterStrafingComboAverageDeltaTick"`
+	CounterStrafingComboDeltaStdDevTick float64 `json:"counterStrafingComboDeltaStdDevTick"`
+	CounterStrafingComboPerfectRate float32 `json:"counterStrafingComboPerfectRate"`
+}
+
+type counterStrafeDirection int
+
+const (
+	counterStrafeDirectionAll counterStrafeDirection = iota
+	counterStrafeDirectionAToD
+	counterStrafeDirectionDToA
+	counterStrafeDirectionWToS
+	counterStrafeDirectionSToW
+)
+
+type counterStrafeComboDirection int
+
+const (
+	counterStrafeComboDirectionAll counterStrafeComboDirection = iota
+	counterStrafeComboDirectionWAToSD
+	counterStrafeComboDirectionWDToSA
+	counterStrafeComboDirectionSAToWD
+	counterStrafeComboDirectionSDToWA
+)
+
+const perfectCounterStrafeDeltaTickWindow = 3
+const perfectCounterStrafeComboDeltaTickWindow = 10
+
+type counterStrafeSample struct {
+	deltaTick      int
+	direction      counterStrafeDirection
+	completionTick int
+}
+
+type counterStrafeShotAxisSamples struct {
+	hasAToD bool
+	aToD    counterStrafeSample
+	hasDToA bool
+	dToA    counterStrafeSample
+	hasWToS bool
+	wToS    counterStrafeSample
+	hasSToW bool
+	sToW    counterStrafeSample
+}
+
+type counterStrafeComboSample struct {
+	horizontalDeltaTick int
+	verticalDeltaTick   int
+	direction           counterStrafeComboDirection
+	completionTick      int
+}
+
+type counterStrafeSummary struct {
+	average    float64
+	stdDev     float64
+	perfectRate float32
+}
+
+type counterStrafeComboSummary struct {
+	average    float64
+	stdDev     float64
+	perfectRate float32
+}
+
+type counterStrafeSummaryAccumulator struct {
+	count        int
+	sum          float64
+	sumOfSquares float64
+	perfectCount int
+}
+
+type counterStrafeComboSummaryAccumulator struct {
+	count        int
+	sum          float64
+	sumOfSquares float64
+	perfectCount int
+}
+
+func (accumulator *counterStrafeSummaryAccumulator) addSample(sample counterStrafeSample) {
+	deltaTick := float64(sample.deltaTick)
+	accumulator.count++
+	accumulator.sum += deltaTick
+	accumulator.sumOfSquares += deltaTick * deltaTick
+	if math.Abs(deltaTick) <= perfectCounterStrafeDeltaTickWindow {
+		accumulator.perfectCount++
+	}
+}
+
+func (accumulator counterStrafeSummaryAccumulator) summary() counterStrafeSummary {
+	if accumulator.count == 0 {
+		return counterStrafeSummary{}
+	}
+
+	average := accumulator.sum / float64(accumulator.count)
+	variance := accumulator.sumOfSquares/float64(accumulator.count) - average*average
+	if variance < 0 {
+		variance = 0
+	}
+
+	return counterStrafeSummary{
+		average: average,
+		stdDev: math.Sqrt(variance),
+		perfectRate: float32(accumulator.perfectCount) / float32(accumulator.count) * 100,
+	}
+}
+
+func (accumulator *counterStrafeComboSummaryAccumulator) addSample(sample counterStrafeComboSample) {
+	comboDeltaTick := float64(max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick)))
+	accumulator.count++
+	accumulator.sum += comboDeltaTick
+	accumulator.sumOfSquares += comboDeltaTick * comboDeltaTick
+	if counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow && counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow {
+		accumulator.perfectCount++
+	}
+}
+
+func (accumulator counterStrafeComboSummaryAccumulator) summary() counterStrafeComboSummary {
+	if accumulator.count == 0 {
+		return counterStrafeComboSummary{}
+	}
+
+	average := accumulator.sum / float64(accumulator.count)
+	variance := accumulator.sumOfSquares/float64(accumulator.count) - average*average
+	if variance < 0 {
+		variance = 0
+	}
+
+	return counterStrafeComboSummary{
+		average: average,
+		stdDev: math.Sqrt(variance),
+		perfectRate: float32(accumulator.perfectCount) / float32(accumulator.count) * 100,
+	}
+}
+
+type counterStrafeTransitionTracker struct {
+	direction           counterStrafeDirection
+	originalButton      common.ButtonBitMask
+	reverseButton       common.ButtonBitMask
+	originalPressed     bool
+	reversePressed      bool
+	hasObservedOriginal bool
+	hasRelease          bool
+	releaseTick         int
+	hasReversePress     bool
+	reversePressTick    int
+	hasLatestSample     bool
+	latestSample        counterStrafeSample
+}
+
+type counterStrafeComboTransitionTracker struct {
+	direction                  counterStrafeComboDirection
+	originalHorizontalButton   common.ButtonBitMask
+	reverseHorizontalButton    common.ButtonBitMask
+	originalVerticalButton     common.ButtonBitMask
+	reverseVerticalButton      common.ButtonBitMask
+	originalHorizontalPressed  bool
+	reverseHorizontalPressed   bool
+	originalVerticalPressed    bool
+	reverseVerticalPressed     bool
+	hasObservedOriginalCombo   bool
+	hasHorizontalRelease       bool
+	horizontalReleaseTick      int
+	hasHorizontalReversePress  bool
+	horizontalReversePressTick int
+	hasVerticalRelease         bool
+	verticalReleaseTick        int
+	hasVerticalReversePress    bool
+	verticalReversePressTick   int
+	hasLatestSample            bool
+	latestSample               counterStrafeComboSample
 }
 
 func isFirstShotOfFiringSequence(shot *Shot) bool {
 	return shot.RecoilIndex == 1
+}
+
+func newCounterStrafeTransitionTracker(direction counterStrafeDirection, originalButton common.ButtonBitMask, reverseButton common.ButtonBitMask) counterStrafeTransitionTracker {
+	return counterStrafeTransitionTracker{
+		direction:      direction,
+		originalButton: originalButton,
+		reverseButton:  reverseButton,
+	}
+}
+
+func newCounterStrafeComboTransitionTracker(direction counterStrafeComboDirection, originalHorizontalButton common.ButtonBitMask, reverseHorizontalButton common.ButtonBitMask, originalVerticalButton common.ButtonBitMask, reverseVerticalButton common.ButtonBitMask) counterStrafeComboTransitionTracker {
+	return counterStrafeComboTransitionTracker{
+		direction:                direction,
+		originalHorizontalButton: originalHorizontalButton,
+		reverseHorizontalButton:  reverseHorizontalButton,
+		originalVerticalButton:   originalVerticalButton,
+		reverseVerticalButton:    reverseVerticalButton,
+	}
+}
+
+func isButtonPressed(mask uint64, button common.ButtonBitMask) bool {
+	return mask&uint64(button) != 0
+}
+
+func (tracker *counterStrafeTransitionTracker) initialize(mask uint64) {
+	tracker.originalPressed = isButtonPressed(mask, tracker.originalButton)
+	tracker.reversePressed = isButtonPressed(mask, tracker.reverseButton)
+	tracker.hasObservedOriginal = tracker.originalPressed
+	tracker.hasRelease = false
+	tracker.hasReversePress = false
+}
+
+func (tracker *counterStrafeTransitionTracker) completeSample() {
+	tracker.latestSample = counterStrafeSample{
+		deltaTick:      tracker.reversePressTick - tracker.releaseTick,
+		direction:      tracker.direction,
+		completionTick: max(tracker.reversePressTick, tracker.releaseTick),
+	}
+	tracker.hasLatestSample = true
+	tracker.hasObservedOriginal = false
+	tracker.hasRelease = false
+	tracker.hasReversePress = false
+}
+
+func (tracker *counterStrafeTransitionTracker) apply(mask uint64, tick int) {
+	currentOriginalPressed := isButtonPressed(mask, tracker.originalButton)
+	currentReversePressed := isButtonPressed(mask, tracker.reverseButton)
+
+	if tracker.originalPressed && !currentOriginalPressed {
+		if tracker.hasObservedOriginal {
+			tracker.releaseTick = tick
+			tracker.hasRelease = true
+			if tracker.hasReversePress {
+				tracker.completeSample()
+			}
+		}
+	}
+
+	if !tracker.reversePressed && currentReversePressed {
+		if tracker.hasObservedOriginal {
+			tracker.reversePressTick = tick
+			tracker.hasReversePress = true
+			if tracker.hasRelease {
+				tracker.completeSample()
+			}
+		}
+	}
+
+	if tracker.reversePressed && !currentReversePressed {
+		if tracker.hasReversePress && !tracker.hasRelease {
+			tracker.hasReversePress = false
+		}
+	}
+
+	if !tracker.originalPressed && currentOriginalPressed {
+		tracker.hasObservedOriginal = true
+		tracker.hasRelease = false
+		tracker.hasReversePress = false
+	}
+
+	tracker.originalPressed = currentOriginalPressed
+	tracker.reversePressed = currentReversePressed
+}
+
+func (tracker *counterStrafeComboTransitionTracker) resetObservedOriginalCombo() {
+	tracker.hasObservedOriginalCombo = false
+	tracker.hasHorizontalRelease = false
+	tracker.hasHorizontalReversePress = false
+	tracker.hasVerticalRelease = false
+	tracker.hasVerticalReversePress = false
+}
+
+func (tracker *counterStrafeComboTransitionTracker) observeOriginalCombo() {
+	tracker.hasObservedOriginalCombo = true
+	tracker.hasHorizontalRelease = false
+	tracker.hasHorizontalReversePress = false
+	tracker.hasVerticalRelease = false
+	tracker.hasVerticalReversePress = false
+}
+
+func (tracker *counterStrafeComboTransitionTracker) initialize(mask uint64) {
+	tracker.originalHorizontalPressed = isButtonPressed(mask, tracker.originalHorizontalButton)
+	tracker.reverseHorizontalPressed = isButtonPressed(mask, tracker.reverseHorizontalButton)
+	tracker.originalVerticalPressed = isButtonPressed(mask, tracker.originalVerticalButton)
+	tracker.reverseVerticalPressed = isButtonPressed(mask, tracker.reverseVerticalButton)
+	tracker.hasObservedOriginalCombo = tracker.originalHorizontalPressed && tracker.originalVerticalPressed
+	tracker.hasHorizontalRelease = false
+	tracker.hasHorizontalReversePress = false
+	tracker.hasVerticalRelease = false
+	tracker.hasVerticalReversePress = false
+}
+
+func (tracker *counterStrafeComboTransitionTracker) completeSample() {
+	tracker.latestSample = counterStrafeComboSample{
+		horizontalDeltaTick: tracker.horizontalReversePressTick - tracker.horizontalReleaseTick,
+		verticalDeltaTick:   tracker.verticalReversePressTick - tracker.verticalReleaseTick,
+		direction:           tracker.direction,
+		completionTick:      max(max(tracker.horizontalReversePressTick, tracker.horizontalReleaseTick), max(tracker.verticalReversePressTick, tracker.verticalReleaseTick)),
+	}
+	tracker.hasLatestSample = true
+	tracker.resetObservedOriginalCombo()
+}
+
+func (tracker *counterStrafeComboTransitionTracker) apply(mask uint64, tick int) {
+	currentOriginalHorizontalPressed := isButtonPressed(mask, tracker.originalHorizontalButton)
+	currentReverseHorizontalPressed := isButtonPressed(mask, tracker.reverseHorizontalButton)
+	currentOriginalVerticalPressed := isButtonPressed(mask, tracker.originalVerticalButton)
+	currentReverseVerticalPressed := isButtonPressed(mask, tracker.reverseVerticalButton)
+
+	if tracker.hasObservedOriginalCombo {
+		if tracker.originalHorizontalPressed && !currentOriginalHorizontalPressed {
+			tracker.horizontalReleaseTick = tick
+			tracker.hasHorizontalRelease = true
+		}
+		if !tracker.reverseHorizontalPressed && currentReverseHorizontalPressed {
+			tracker.horizontalReversePressTick = tick
+			tracker.hasHorizontalReversePress = true
+		}
+		if tracker.reverseHorizontalPressed && !currentReverseHorizontalPressed {
+			if tracker.hasHorizontalReversePress && !tracker.hasHorizontalRelease {
+				tracker.hasHorizontalReversePress = false
+			}
+		}
+
+		if tracker.originalVerticalPressed && !currentOriginalVerticalPressed {
+			tracker.verticalReleaseTick = tick
+			tracker.hasVerticalRelease = true
+		}
+		if !tracker.reverseVerticalPressed && currentReverseVerticalPressed {
+			tracker.verticalReversePressTick = tick
+			tracker.hasVerticalReversePress = true
+		}
+		if tracker.reverseVerticalPressed && !currentReverseVerticalPressed {
+			if tracker.hasVerticalReversePress && !tracker.hasVerticalRelease {
+				tracker.hasVerticalReversePress = false
+			}
+		}
+	}
+
+	if currentOriginalHorizontalPressed && currentOriginalVerticalPressed && (!tracker.originalHorizontalPressed || !tracker.originalVerticalPressed) {
+		tracker.observeOriginalCombo()
+	}
+
+	if tracker.hasObservedOriginalCombo && tracker.hasHorizontalRelease && tracker.hasHorizontalReversePress && tracker.hasVerticalRelease && tracker.hasVerticalReversePress {
+		tracker.completeSample()
+	}
+
+	tracker.originalHorizontalPressed = currentOriginalHorizontalPressed
+	tracker.reverseHorizontalPressed = currentReverseHorizontalPressed
+	tracker.originalVerticalPressed = currentOriginalVerticalPressed
+	tracker.reverseVerticalPressed = currentReverseVerticalPressed
+}
+
+func collectCounterStrafeAxisSamplesForShot(buttons []*funData.PlayerButtons, startExclusiveTick int, shotTick int) counterStrafeShotAxisSamples {
+	startIndex := sort.Search(len(buttons), func(index int) bool {
+		return buttons[index].Tick > startExclusiveTick
+	})
+
+	lastMask := uint64(0)
+	if startIndex > 0 {
+		lastMask = buttons[startIndex-1].Buttons
+	}
+
+	trackers := []counterStrafeTransitionTracker{
+		newCounterStrafeTransitionTracker(counterStrafeDirectionAToD, common.ButtonMoveLeft, common.ButtonMoveRight),
+		newCounterStrafeTransitionTracker(counterStrafeDirectionDToA, common.ButtonMoveRight, common.ButtonMoveLeft),
+		newCounterStrafeTransitionTracker(counterStrafeDirectionWToS, common.ButtonForward, common.ButtonBack),
+		newCounterStrafeTransitionTracker(counterStrafeDirectionSToW, common.ButtonBack, common.ButtonForward),
+	}
+	for index := range trackers {
+		trackers[index].initialize(lastMask)
+	}
+
+	for index := startIndex; index < len(buttons); index++ {
+		buttonState := buttons[index]
+		if buttonState.Tick > shotTick {
+			break
+		}
+
+		for trackerIndex := range trackers {
+			trackers[trackerIndex].apply(buttonState.Buttons, buttonState.Tick)
+		}
+	}
+
+	axisSamples := counterStrafeShotAxisSamples{}
+	for _, tracker := range trackers {
+		if !tracker.hasLatestSample {
+			continue
+		}
+
+		sample := tracker.latestSample
+		switch sample.direction {
+		case counterStrafeDirectionAToD:
+			axisSamples.hasAToD = true
+			axisSamples.aToD = sample
+		case counterStrafeDirectionDToA:
+			axisSamples.hasDToA = true
+			axisSamples.dToA = sample
+		case counterStrafeDirectionWToS:
+			axisSamples.hasWToS = true
+			axisSamples.wToS = sample
+		case counterStrafeDirectionSToW:
+			axisSamples.hasSToW = true
+			axisSamples.sToW = sample
+		}
+	}
+
+	return axisSamples
+}
+
+func collectCounterStrafeSampleForShot(buttons []*funData.PlayerButtons, startExclusiveTick int, shotTick int) (*counterStrafeSample, bool) {
+	axisSamples := collectCounterStrafeAxisSamplesForShot(buttons, startExclusiveTick, shotTick)
+	samples := make([]counterStrafeSample, 0, 4)
+	if axisSamples.hasAToD {
+		samples = append(samples, axisSamples.aToD)
+	}
+	if axisSamples.hasDToA {
+		samples = append(samples, axisSamples.dToA)
+	}
+	if axisSamples.hasWToS {
+		samples = append(samples, axisSamples.wToS)
+	}
+	if axisSamples.hasSToW {
+		samples = append(samples, axisSamples.sToW)
+	}
+
+	if len(samples) == 0 {
+		return nil, false
+	}
+
+	latestSample := samples[0]
+	for _, sample := range samples[1:] {
+		if sample.completionTick > latestSample.completionTick {
+			latestSample = sample
+		}
+	}
+
+	return &latestSample, true
+}
+
+func collectCounterStrafeComboSampleForShot(buttons []*funData.PlayerButtons, startExclusiveTick int, shotTick int) (*counterStrafeComboSample, bool) {
+	startIndex := sort.Search(len(buttons), func(index int) bool {
+		return buttons[index].Tick > startExclusiveTick
+	})
+
+	lastMask := uint64(0)
+	if startIndex > 0 {
+		lastMask = buttons[startIndex-1].Buttons
+	}
+
+	trackers := []counterStrafeComboTransitionTracker{
+		newCounterStrafeComboTransitionTracker(counterStrafeComboDirectionWAToSD, common.ButtonMoveLeft, common.ButtonMoveRight, common.ButtonForward, common.ButtonBack),
+		newCounterStrafeComboTransitionTracker(counterStrafeComboDirectionWDToSA, common.ButtonMoveRight, common.ButtonMoveLeft, common.ButtonForward, common.ButtonBack),
+		newCounterStrafeComboTransitionTracker(counterStrafeComboDirectionSAToWD, common.ButtonMoveLeft, common.ButtonMoveRight, common.ButtonBack, common.ButtonForward),
+		newCounterStrafeComboTransitionTracker(counterStrafeComboDirectionSDToWA, common.ButtonMoveRight, common.ButtonMoveLeft, common.ButtonBack, common.ButtonForward),
+	}
+	for index := range trackers {
+		trackers[index].initialize(lastMask)
+	}
+
+	for index := startIndex; index < len(buttons); index++ {
+		buttonState := buttons[index]
+		if buttonState.Tick > shotTick {
+			break
+		}
+
+		for trackerIndex := range trackers {
+			trackers[trackerIndex].apply(buttonState.Buttons, buttonState.Tick)
+		}
+	}
+
+	comboSamples := make([]counterStrafeComboSample, 0, len(trackers))
+	for _, tracker := range trackers {
+		if tracker.hasLatestSample {
+			comboSamples = append(comboSamples, tracker.latestSample)
+		}
+	}
+
+	if len(comboSamples) == 0 {
+		return nil, false
+	}
+
+	latestSample := comboSamples[0]
+	for _, sample := range comboSamples[1:] {
+		if sample.completionTick > latestSample.completionTick {
+			latestSample = sample
+		}
+	}
+
+	return &latestSample, true
+}
+
+func counterStrafeAbsoluteDeltaTick(deltaTick int) int {
+	if deltaTick < 0 {
+		return -deltaTick
+	}
+
+	return deltaTick
+}
+
+func (player *Player) ensureCounterStrafeSampleCaches() {
+	if player.hasCounterStrafeSampleCaches {
+		return
+	}
+
+	player.match.ensureCounterStrafeRoundIndexes()
+
+	oneDimensionalSamples := []counterStrafeSample{}
+	comboSamples := []counterStrafeComboSample{}
+	for _, round := range player.match.Rounds {
+		key := roundPlayerKey{roundNumber: round.Number, steamID64: player.SteamID64}
+		shots := player.match.counterStrafeShotsByRoundPlayer[key]
+		if len(shots) == 0 {
+			continue
+		}
+
+		buttons := player.match.counterStrafeButtonsByRoundPlayer[key]
+		if len(buttons) == 0 {
+			continue
+		}
+
+		previousShotTick := -1
+		for _, shot := range shots {
+			if sample, ok := collectCounterStrafeSampleForShot(buttons, previousShotTick, shot.Tick); ok {
+				oneDimensionalSamples = append(oneDimensionalSamples, *sample)
+			}
+			if comboSample, ok := collectCounterStrafeComboSampleForShot(buttons, previousShotTick, shot.Tick); ok {
+				comboSamples = append(comboSamples, *comboSample)
+			}
+			previousShotTick = shot.Tick
+		}
+	}
+
+	player.counterStrafeSamplesCache = oneDimensionalSamples
+	player.counterStrafeComboSamplesCache = comboSamples
+	player.hasCounterStrafeSampleCaches = true
+}
+
+func (player *Player) ensureCounterStrafeSummaryCaches() {
+	if player.hasCounterStrafeSummaryCaches {
+		return
+	}
+
+	player.ensureCounterStrafeSampleCaches()
+
+	accumulatorsByDirection := map[counterStrafeDirection]*counterStrafeSummaryAccumulator{
+		counterStrafeDirectionAll:  &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionAToD: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionDToA: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionWToS: &counterStrafeSummaryAccumulator{},
+		counterStrafeDirectionSToW: &counterStrafeSummaryAccumulator{},
+	}
+
+	for _, sample := range player.counterStrafeSamplesCache {
+		accumulatorsByDirection[counterStrafeDirectionAll].addSample(sample)
+		accumulatorsByDirection[sample.direction].addSample(sample)
+	}
+
+	player.counterStrafeSummariesByDirection = make(map[counterStrafeDirection]counterStrafeSummary, len(accumulatorsByDirection))
+	for direction, accumulator := range accumulatorsByDirection {
+		player.counterStrafeSummariesByDirection[direction] = accumulator.summary()
+	}
+
+	comboAccumulator := counterStrafeComboSummaryAccumulator{}
+	for _, sample := range player.counterStrafeComboSamplesCache {
+		comboAccumulator.addSample(sample)
+	}
+	player.counterStrafeComboSummary = comboAccumulator.summary()
+
+	player.hasCounterStrafeSummaryCaches = true
+}
+
+func (player *Player) counterStrafeSummary(direction counterStrafeDirection) counterStrafeSummary {
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeSummariesByDirection[direction]
 }
 
 func (player *Player) MarshalJSON() ([]byte, error) {
@@ -181,6 +765,20 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
 		CounterStrafingSuccessRate:  player.CounterStrafingSuccessRate(),
+		CounterStrafingAverageDeltaTick: player.CounterStrafingAverageDeltaTick(),
+		CounterStrafingDeltaStdDevTick: player.CounterStrafingDeltaStdDevTick(),
+		CounterStrafingPerfectRate: player.CounterStrafingPerfectRate(),
+		CounterStrafingAToDAverageDeltaTick: player.CounterStrafingAToDAverageDeltaTick(),
+		CounterStrafingAToDPerfectRate: player.CounterStrafingAToDPerfectRate(),
+		CounterStrafingDToAAverageDeltaTick: player.CounterStrafingDToAAverageDeltaTick(),
+		CounterStrafingDToAPerfectRate: player.CounterStrafingDToAPerfectRate(),
+		CounterStrafingWToSAverageDeltaTick: player.CounterStrafingWToSAverageDeltaTick(),
+		CounterStrafingWToSPerfectRate: player.CounterStrafingWToSPerfectRate(),
+		CounterStrafingSToWAverageDeltaTick: player.CounterStrafingSToWAverageDeltaTick(),
+		CounterStrafingSToWPerfectRate: player.CounterStrafingSToWPerfectRate(),
+		CounterStrafingComboAverageDeltaTick: player.CounterStrafingComboAverageDeltaTick(),
+		CounterStrafingComboDeltaStdDevTick: player.CounterStrafingComboDeltaStdDevTick(),
+		CounterStrafingComboPerfectRate: player.CounterStrafingComboPerfectRate(),
 		AwpHoldKillCount:            player.AwpHoldKillCount(),
 		AwpHoldDeathCount:           player.AwpHoldDeathCount(),
 	})
@@ -843,6 +1441,65 @@ func (player *Player) CounterStrafingSuccessRate() float32 {
 	return float32(counterStrafingSuccessCount) / float32(firstShotCount) * 100
 }
 
+func (player *Player) CounterStrafingAverageDeltaTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionAll).average
+}
+
+func (player *Player) CounterStrafingDeltaStdDevTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionAll).stdDev
+}
+
+func (player *Player) CounterStrafingPerfectRate() float32 {
+	return player.counterStrafeSummary(counterStrafeDirectionAll).perfectRate
+}
+
+func (player *Player) CounterStrafingAToDAverageDeltaTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionAToD).average
+}
+
+func (player *Player) CounterStrafingAToDPerfectRate() float32 {
+	return player.counterStrafeSummary(counterStrafeDirectionAToD).perfectRate
+}
+
+func (player *Player) CounterStrafingDToAAverageDeltaTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionDToA).average
+}
+
+func (player *Player) CounterStrafingDToAPerfectRate() float32 {
+	return player.counterStrafeSummary(counterStrafeDirectionDToA).perfectRate
+}
+
+func (player *Player) CounterStrafingWToSAverageDeltaTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionWToS).average
+}
+
+func (player *Player) CounterStrafingWToSPerfectRate() float32 {
+	return player.counterStrafeSummary(counterStrafeDirectionWToS).perfectRate
+}
+
+func (player *Player) CounterStrafingSToWAverageDeltaTick() float64 {
+	return player.counterStrafeSummary(counterStrafeDirectionSToW).average
+}
+
+func (player *Player) CounterStrafingSToWPerfectRate() float32 {
+	return player.counterStrafeSummary(counterStrafeDirectionSToW).perfectRate
+}
+
+func (player *Player) CounterStrafingComboAverageDeltaTick() float64 {
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.average
+}
+
+func (player *Player) CounterStrafingComboDeltaStdDevTick() float64 {
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.stdDev
+}
+
+func (player *Player) CounterStrafingComboPerfectRate() float32 {
+	player.ensureCounterStrafeSummaryCaches()
+	return player.counterStrafeComboSummary.perfectRate
+}
+
 func (player *Player) OneKillCount() int {
 	return player.getXKillCount(1)
 }
@@ -1008,6 +1665,12 @@ func (player *Player) reset() {
 		tick:          -1,
 		cancelledTick: -1,
 	}
+	player.hasCounterStrafeSampleCaches = false
+	player.counterStrafeSamplesCache = nil
+	player.counterStrafeComboSamplesCache = nil
+	player.hasCounterStrafeSummaryCaches = false
+	player.counterStrafeSummariesByDirection = nil
+	player.counterStrafeComboSummary = counterStrafeComboSummary{}
 }
 
 func NewPlayer(analyzer *Analyzer, currentTeam common.Team, player common.Player) *Player {

@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/akiver/cs-demo-analyzer/internal/demo"
@@ -84,6 +85,9 @@ type Match struct {
 	prevPlayersPosition       map[uint64]r3.Vector
 	lastPlayersTick           map[uint64]int
 	prevPlayersTick           map[uint64]int
+	hasCounterStrafeRoundIndexes bool
+	counterStrafeShotsByRoundPlayer map[roundPlayerKey][]*Shot
+	counterStrafeButtonsByRoundPlayer map[roundPlayerKey][]*funData.PlayerButtons
 }
 
 type MatchAlias Match
@@ -174,6 +178,62 @@ func (match *Match) KillsByRound() map[int][]*Kill {
 	}
 
 	return killsByRound
+}
+
+func sortShotsByFrameThenTick(shots []*Shot) {
+	sort.Slice(shots, func(i int, j int) bool {
+		if shots[i].Frame == shots[j].Frame {
+			return shots[i].Tick < shots[j].Tick
+		}
+
+		return shots[i].Frame < shots[j].Frame
+	})
+}
+
+func sortPlayerButtonsByFrameThenTick(buttons []*funData.PlayerButtons) {
+	sort.Slice(buttons, func(i int, j int) bool {
+		if buttons[i].Frame == buttons[j].Frame {
+			return buttons[i].Tick < buttons[j].Tick
+		}
+
+		return buttons[i].Frame < buttons[j].Frame
+	})
+}
+
+func (match *Match) ensureCounterStrafeRoundIndexes() {
+	if match.hasCounterStrafeRoundIndexes {
+		return
+	}
+
+	match.counterStrafeShotsByRoundPlayer = make(map[roundPlayerKey][]*Shot)
+	for _, shot := range match.Shots {
+		if shot == nil || shot.PlayerSteamID64 == 0 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
+			continue
+		}
+
+		key := roundPlayerKey{roundNumber: shot.RoundNumber, steamID64: shot.PlayerSteamID64}
+		match.counterStrafeShotsByRoundPlayer[key] = append(match.counterStrafeShotsByRoundPlayer[key], shot)
+	}
+
+	for key := range match.counterStrafeShotsByRoundPlayer {
+		sortShotsByFrameThenTick(match.counterStrafeShotsByRoundPlayer[key])
+	}
+
+	match.counterStrafeButtonsByRoundPlayer = make(map[roundPlayerKey][]*funData.PlayerButtons)
+	for _, buttonState := range match.PlayerButtons {
+		if buttonState == nil || buttonState.SteamID64 == 0 {
+			continue
+		}
+
+		key := roundPlayerKey{roundNumber: buttonState.RoundNumber, steamID64: buttonState.SteamID64}
+		match.counterStrafeButtonsByRoundPlayer[key] = append(match.counterStrafeButtonsByRoundPlayer[key], buttonState)
+	}
+
+	for key := range match.counterStrafeButtonsByRoundPlayer {
+		sortPlayerButtonsByFrameThenTick(match.counterStrafeButtonsByRoundPlayer[key])
+	}
+
+	match.hasCounterStrafeRoundIndexes = true
 }
 
 func (match *Match) GetPlayerEconomyAtRound(playerName string, steamID64 uint64, roundNumber int) *PlayerEconomy {
@@ -336,6 +396,9 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		prevPlayersPosition:       make(map[uint64]r3.Vector),
 		lastPlayersTick:           make(map[uint64]int),
 		prevPlayersTick:           make(map[uint64]int),
+		hasCounterStrafeRoundIndexes: false,
+		counterStrafeShotsByRoundPlayer: make(map[roundPlayerKey][]*Shot),
+		counterStrafeButtonsByRoundPlayer: make(map[roundPlayerKey][]*funData.PlayerButtons),
 	}
 
 	match.initTeams()
@@ -382,6 +445,9 @@ func (match *Match) reset() {
 	match.prevPlayersPosition = make(map[uint64]r3.Vector)
 	match.lastPlayersTick = make(map[uint64]int)
 	match.prevPlayersTick = make(map[uint64]int)
+	match.hasCounterStrafeRoundIndexes = false
+	match.counterStrafeShotsByRoundPlayer = make(map[roundPlayerKey][]*Shot)
+	match.counterStrafeButtonsByRoundPlayer = make(map[roundPlayerKey][]*funData.PlayerButtons)
 	match.initTeams()
 }
 
