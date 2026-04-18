@@ -115,6 +115,20 @@ type PlayerJSON struct {
 	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
 	TeamFlashDuration           float32 `json:"teamFlashDuration"`
 	CounterStrafingSuccessRate  float32 `json:"counterStrafingSuccessRate"`
+	CounterStrafingAverageDeltaTick float64 `json:"counterStrafingAverageDeltaTick"`
+	CounterStrafingDeltaStdDevTick float64 `json:"counterStrafingDeltaStdDevTick"`
+	CounterStrafingPerfectRate float32 `json:"counterStrafingPerfectRate"`
+	CounterStrafingAToDAverageDeltaTick float64 `json:"counterStrafingAToDAverageDeltaTick"`
+	CounterStrafingAToDPerfectRate float32 `json:"counterStrafingAToDPerfectRate"`
+	CounterStrafingDToAAverageDeltaTick float64 `json:"counterStrafingDToAAverageDeltaTick"`
+	CounterStrafingDToAPerfectRate float32 `json:"counterStrafingDToAPerfectRate"`
+	CounterStrafingWToSAverageDeltaTick float64 `json:"counterStrafingWToSAverageDeltaTick"`
+	CounterStrafingWToSPerfectRate float32 `json:"counterStrafingWToSPerfectRate"`
+	CounterStrafingSToWAverageDeltaTick float64 `json:"counterStrafingSToWAverageDeltaTick"`
+	CounterStrafingSToWPerfectRate float32 `json:"counterStrafingSToWPerfectRate"`
+	CounterStrafingComboAverageDeltaTick float64 `json:"counterStrafingComboAverageDeltaTick"`
+	CounterStrafingComboDeltaStdDevTick float64 `json:"counterStrafingComboDeltaStdDevTick"`
+	CounterStrafingComboPerfectRate float32 `json:"counterStrafingComboPerfectRate"`
 }
 
 type counterStrafeDirection int
@@ -594,68 +608,12 @@ func collectCounterStrafeComboSampleForShot(buttons []*funData.PlayerButtons, st
 	return &latestSample, true
 }
 
-func summarizeCounterStrafeSamples(samples []counterStrafeSample) (float64, float64, float32) {
-	if len(samples) == 0 {
-		return 0, 0, 0
-	}
-
-	var sum float64
-	perfectCount := 0
-	for _, sample := range samples {
-		sum += float64(sample.deltaTick)
-		if math.Abs(float64(sample.deltaTick)) <= perfectCounterStrafeDeltaTickWindow {
-			perfectCount++
-		}
-	}
-
-	average := sum / float64(len(samples))
-	variance := 0.0
-	for _, sample := range samples {
-		delta := float64(sample.deltaTick) - average
-		variance += delta * delta
-	}
-	variance /= float64(len(samples))
-
-	perfectRate := float32(perfectCount) / float32(len(samples)) * 100
-
-	return average, math.Sqrt(variance), perfectRate
-}
-
 func counterStrafeAbsoluteDeltaTick(deltaTick int) int {
 	if deltaTick < 0 {
 		return -deltaTick
 	}
 
 	return deltaTick
-}
-
-func summarizeCounterStrafeComboSamples(samples []counterStrafeComboSample) (float64, float64, float32) {
-	if len(samples) == 0 {
-		return 0, 0, 0
-	}
-
-	var sum float64
-	perfectCount := 0
-	for _, sample := range samples {
-		comboDeltaTick := max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick))
-		sum += float64(comboDeltaTick)
-		if counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow && counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick) <= perfectCounterStrafeComboDeltaTickWindow {
-			perfectCount++
-		}
-	}
-
-	average := sum / float64(len(samples))
-	variance := 0.0
-	for _, sample := range samples {
-		comboDeltaTick := max(counterStrafeAbsoluteDeltaTick(sample.horizontalDeltaTick), counterStrafeAbsoluteDeltaTick(sample.verticalDeltaTick))
-		delta := float64(comboDeltaTick) - average
-		variance += delta * delta
-	}
-	variance /= float64(len(samples))
-
-	perfectRate := float32(perfectCount) / float32(len(samples)) * 100
-
-	return average, math.Sqrt(variance), perfectRate
 }
 
 func (player *Player) ensureCounterStrafeSampleCaches() {
@@ -735,18 +693,6 @@ func (player *Player) counterStrafeSummary(direction counterStrafeDirection) cou
 	return player.counterStrafeSummariesByDirection[direction]
 }
 
-func (player *Player) counterStrafeSamples() []counterStrafeSample {
-	player.ensureCounterStrafeSampleCaches()
-
-	return player.counterStrafeSamplesCache
-}
-
-func (player *Player) counterStrafeComboSamples() []counterStrafeComboSample {
-	player.ensureCounterStrafeSampleCaches()
-
-	return player.counterStrafeComboSamplesCache
-}
-
 func (player *Player) MarshalJSON() ([]byte, error) {
 	return json.Marshal(PlayerJSON{
 		PlayerAlias:                 (*PlayerAlias)(player),
@@ -814,6 +760,20 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
 		CounterStrafingSuccessRate:  player.CounterStrafingSuccessRate(),
+		CounterStrafingAverageDeltaTick: player.CounterStrafingAverageDeltaTick(),
+		CounterStrafingDeltaStdDevTick: player.CounterStrafingDeltaStdDevTick(),
+		CounterStrafingPerfectRate: player.CounterStrafingPerfectRate(),
+		CounterStrafingAToDAverageDeltaTick: player.CounterStrafingAToDAverageDeltaTick(),
+		CounterStrafingAToDPerfectRate: player.CounterStrafingAToDPerfectRate(),
+		CounterStrafingDToAAverageDeltaTick: player.CounterStrafingDToAAverageDeltaTick(),
+		CounterStrafingDToAPerfectRate: player.CounterStrafingDToAPerfectRate(),
+		CounterStrafingWToSAverageDeltaTick: player.CounterStrafingWToSAverageDeltaTick(),
+		CounterStrafingWToSPerfectRate: player.CounterStrafingWToSPerfectRate(),
+		CounterStrafingSToWAverageDeltaTick: player.CounterStrafingSToWAverageDeltaTick(),
+		CounterStrafingSToWPerfectRate: player.CounterStrafingSToWPerfectRate(),
+		CounterStrafingComboAverageDeltaTick: player.CounterStrafingComboAverageDeltaTick(),
+		CounterStrafingComboDeltaStdDevTick: player.CounterStrafingComboDeltaStdDevTick(),
+		CounterStrafingComboPerfectRate: player.CounterStrafingComboPerfectRate(),
 		AwpHoldKillCount:            player.AwpHoldKillCount(),
 		AwpHoldDeathCount:           player.AwpHoldDeathCount(),
 	})
