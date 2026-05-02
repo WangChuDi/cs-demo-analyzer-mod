@@ -49,6 +49,9 @@ func TestPlayersCSVExport_CounterStrafeColumnsAndTeamDamageOrder(t *testing.T) {
 		"team attack damage",
 		"team utility damage",
 		"team flash duration",
+		"first shot count",
+		"first shot hit count",
+		"first shot accuracy",
 		"counter-strafing success rate",
 		"counter-strafing avg delta tick",
 		"counter-strafing delta stddev tick",
@@ -70,6 +73,9 @@ func TestPlayersCSVExport_CounterStrafeColumnsAndTeamDamageOrder(t *testing.T) {
 	requiredColumns := []string{
 		"team attack damage",
 		"team utility damage",
+		"first shot count",
+		"first shot hit count",
+		"first shot accuracy",
 		"counter-strafing success rate",
 		"counter-strafing avg delta tick",
 		"counter-strafing delta stddev tick",
@@ -95,6 +101,9 @@ func TestPlayersCSVExport_CounterStrafeColumnsAndTeamDamageOrder(t *testing.T) {
 	playerRow := findCSVRowByName(t, rows[1:], header, "whatsnxt")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "team attack damage", "0")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "team utility damage", "6")
+	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot count", "51")
+	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot hit count", "6")
+	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot accuracy", "11.764706")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing success rate", "31.372551")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing avg delta tick", "4.744681")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing delta stddev tick", "11.629874")
