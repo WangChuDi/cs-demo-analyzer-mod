@@ -115,6 +115,9 @@ type PlayerJSON struct {
 	TeamAttackDamage            int     `json:"teamAttackDamage"`
 	TeamUtilityDamage           int     `json:"teamUtilityDamage"`
 	TeamFlashDuration           float32 `json:"teamFlashDuration"`
+	FirstShotCount              int     `json:"firstShotCount"`
+	FirstShotHitCount           int     `json:"firstShotHitCount"`
+	FirstShotAccuracy           float32 `json:"firstShotAccuracy"`
 	CounterStrafingSuccessRate  float32 `json:"counterStrafingSuccessRate"`
 	CounterStrafingAverageDeltaTick float64 `json:"counterStrafingAverageDeltaTick"`
 	CounterStrafingDeltaStdDevTick float64 `json:"counterStrafingDeltaStdDevTick"`
@@ -761,6 +764,9 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		TeamAttackDamage:            player.TeamAttackDamage(),
 		TeamUtilityDamage:           player.TeamUtilityDamage(),
 		TeamFlashDuration:           player.TeamFlashDuration(),
+		FirstShotCount:              player.FirstShotCount(),
+		FirstShotHitCount:           player.FirstShotHitCount(),
+		FirstShotAccuracy:           player.FirstShotAccuracy(),
 		RunAndGunOrAirKilledByCount: player.RunAndGunOrAirKilledByCount(),
 		ThroughSmokeKillCount:       player.ThroughSmokeKillCount(),
 		WallbangKillCount:           player.WallbangKillCount(),
@@ -1419,6 +1425,51 @@ func (player *Player) UtilityDamagePerRound() float32 {
 	return 0
 }
 
+func (player *Player) FirstShotCount() int {
+	count := 0
+	for _, shot := range player.match.Shots {
+		if shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || !isFirstShotOfFiringSequence(shot) {
+			continue
+		}
+
+		count++
+	}
+
+	return count
+}
+
+func (player *Player) FirstShotHitCount() int {
+	shots := player.shotsByWeaponID()
+	if len(shots) == 0 {
+		return 0
+	}
+
+	hitShots := make(map[*Shot]struct{})
+	for _, damage := range player.match.Damages {
+		if !damage.isValidPlayerDamageEvent(player) {
+			continue
+		}
+
+		matchedShot := nearestPriorShotForDamage(damage, shots)
+		if matchedShot == nil || !isFirstShotOfFiringSequence(matchedShot) {
+			continue
+		}
+
+		hitShots[matchedShot] = struct{}{}
+	}
+
+	return len(hitShots)
+}
+
+func (player *Player) FirstShotAccuracy() float32 {
+	firstShotCount := player.FirstShotCount()
+	if firstShotCount == 0 {
+		return 0
+	}
+
+	return float32(player.FirstShotHitCount()) / float32(firstShotCount) * 100
+}
+
 func (player *Player) CounterStrafingSuccessRate() float32 {
 	firstShotCount := 0
 	counterStrafingSuccessCount := 0
@@ -1439,6 +1490,70 @@ func (player *Player) CounterStrafingSuccessRate() float32 {
 	}
 
 	return float32(counterStrafingSuccessCount) / float32(firstShotCount) * 100
+}
+
+func (player *Player) shotsByWeaponID() map[string][]shotIndexEntry {
+	shotsByWeaponID := make(map[string][]shotIndexEntry)
+	for _, shot := range player.match.Shots {
+		if shot == nil || shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || shot.WeaponID == "" {
+			continue
+		}
+
+		shotsByWeaponID[shot.WeaponID] = append(shotsByWeaponID[shot.WeaponID], shotIndexEntry{
+			frame: shot.Frame,
+			tick:  shot.Tick,
+			shot:  shot,
+		})
+	}
+
+	for weaponID := range shotsByWeaponID {
+		sort.Slice(shotsByWeaponID[weaponID], func(i int, j int) bool {
+			if shotsByWeaponID[weaponID][i].frame == shotsByWeaponID[weaponID][j].frame {
+				return shotsByWeaponID[weaponID][i].tick < shotsByWeaponID[weaponID][j].tick
+			}
+
+			return shotsByWeaponID[weaponID][i].frame < shotsByWeaponID[weaponID][j].frame
+		})
+	}
+
+	return shotsByWeaponID
+}
+
+func nearestPriorShotForDamage(damage *Damage, shotsByWeaponID map[string][]shotIndexEntry) *Shot {
+	entries, exists := shotsByWeaponID[damage.WeaponUniqueID]
+	if !exists || len(entries) == 0 {
+		return nil
+	}
+
+	var best *Shot
+	bestFrameDelta := math.MaxInt
+	bestTickDelta := math.MaxInt
+
+	for _, entry := range entries {
+		if entry.shot == nil || entry.shot.RoundNumber != damage.RoundNumber {
+			continue
+		}
+		if entry.frame > damage.Frame {
+			continue
+		}
+		if entry.frame == damage.Frame && entry.tick > damage.Tick {
+			continue
+		}
+
+		frameDelta := absInt(entry.frame - damage.Frame)
+		if frameDelta > constants.HeuristicDamageAttributionMaxShotFrameDistance {
+			continue
+		}
+
+		tickDelta := absInt(entry.tick - damage.Tick)
+		if frameDelta < bestFrameDelta || (frameDelta == bestFrameDelta && tickDelta < bestTickDelta) {
+			best = entry.shot
+			bestFrameDelta = frameDelta
+			bestTickDelta = tickDelta
+		}
+	}
+
+	return best
 }
 
 func (player *Player) CounterStrafingAverageDeltaTick() float64 {

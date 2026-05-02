@@ -564,8 +564,29 @@ func TestRenown_Match_8_2025_Mirage(t *testing.T) {
 	assertion.AssertPlayers(t, match, players)
 	assertion.AssertRounds(t, match, rounds)
 
+	assertFirstShotMetrics(t, match, 76561198029485456, "whatsnxt", 51, 6, 11.764706)
+	assertFirstShotMetrics(t, match, 76561198225661896, "Vit0-1337", 46, 16, 34.782608)
 	assertCounterStrafingSuccessRate(t, match, 76561198029485456, "whatsnxt", 31.372551)
 	assertCounterStrafingSuccessRate(t, match, 76561198225661896, "Vit0-1337", 84.782608)
+}
+
+func assertFirstShotMetrics(t *testing.T, match *api.Match, steamID64 uint64, name string, wantCount int, wantHitCount int, wantAccuracy float32) {
+	t.Helper()
+
+	player := match.PlayersBySteamID[steamID64]
+	if player == nil {
+		t.Fatalf("expected player %s (%d) to exist in analyzed match", name, steamID64)
+	}
+
+	if got := player.FirstShotCount(); got != wantCount {
+		t.Fatalf("expected %s first shot count to be %d but got %d", name, wantCount, got)
+	}
+	if got := player.FirstShotHitCount(); got != wantHitCount {
+		t.Fatalf("expected %s first shot hit count to be %d but got %d", name, wantHitCount, got)
+	}
+	if got := player.FirstShotAccuracy(); math.Abs(float64(got-wantAccuracy)) > 0.0001 {
+		t.Fatalf("expected %s first shot accuracy to be %v but got %v", name, wantAccuracy, got)
+	}
 }
 
 func assertCounterStrafingSuccessRate(t *testing.T, match *api.Match, steamID64 uint64, name string, want float32) {

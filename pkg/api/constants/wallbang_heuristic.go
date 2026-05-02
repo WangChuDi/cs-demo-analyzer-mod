@@ -10,7 +10,7 @@ type HeuristicWallbangWeaponDamageModel struct {
 const (
 	// These thresholds are used by the wallbang heuristic path because demos/parser signals often do not expose
 	// direct non-lethal penetration damage information reliably.
-	HeuristicWallbangMaxShotFrameDistance        = 48
+	HeuristicDamageAttributionMaxShotFrameDistance = 48
 	HeuristicWallbangMaxVictimPositionFrameDelta = 48
 	HeuristicWallbangHelmetSnapshotFrameWindow   = 8
 	HeuristicWallbangMinDelta                    = 1.0
