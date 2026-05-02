@@ -1,6 +1,8 @@
 package api
 
 import (
+	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
@@ -170,6 +172,195 @@ func TestPlayerWallbangDamageAggregates(t *testing.T) {
 
 	if got, want := player.WallbangDamageTaken(), 7; got != want {
 		t.Fatalf("expected wallbang damage taken to be %d but got %d", want, got)
+	}
+}
+
+func TestPlayerFirstShotMetrics(t *testing.T) {
+	player := &Player{SteamID64: 111}
+	match := &Match{
+		Shots: []*Shot{
+			{
+				RoundNumber:     1,
+				Frame:           100,
+				Tick:            100,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-1",
+				RecoilIndex:     1,
+			},
+			{
+				RoundNumber:     1,
+				Frame:           102,
+				Tick:            102,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-1",
+				RecoilIndex:     2,
+			},
+			{
+				RoundNumber:     1,
+				Frame:           200,
+				Tick:            200,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-2",
+				RecoilIndex:     1,
+			},
+			{
+				RoundNumber:     1,
+				Frame:           300,
+				Tick:            300,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-3",
+				RecoilIndex:     1,
+			},
+		},
+		Damages: []*Damage{
+			{
+				RoundNumber:       1,
+				Frame:             101,
+				Tick:              101,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   222,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-1",
+			},
+			{
+				RoundNumber:       1,
+				Frame:             103,
+				Tick:              103,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   333,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-1",
+			},
+			{
+				RoundNumber:       1,
+				Frame:             201,
+				Tick:              201,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   444,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-2",
+			},
+			{
+				RoundNumber:       1,
+				Frame:             301,
+				Tick:              301,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   555,
+				VictimSide:        common.TeamTerrorists,
+				WeaponUniqueID:    "weapon-3",
+			},
+		},
+	}
+	player.match = match
+
+	if got, want := player.FirstShotCount(), 3; got != want {
+		t.Fatalf("expected first shot count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotHitCount(), 2; got != want {
+		t.Fatalf("expected first shot hit count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotAccuracy(), float32(66.666664); math.Abs(float64(got-want)) > 0.0001 {
+		t.Fatalf("expected first shot accuracy to be %v but got %v", want, got)
+	}
+}
+
+func TestPlayerFirstShotMetrics_DoesNotAttributeSprayDamageToFirstShot(t *testing.T) {
+	player := &Player{SteamID64: 111}
+	match := &Match{
+		Shots: []*Shot{
+			{
+				RoundNumber:     1,
+				Frame:           100,
+				Tick:            100,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-1",
+				RecoilIndex:     1,
+			},
+			{
+				RoundNumber:     1,
+				Frame:           102,
+				Tick:            102,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-1",
+				RecoilIndex:     2,
+			},
+		},
+		Damages: []*Damage{
+			{
+				RoundNumber:       1,
+				Frame:             103,
+				Tick:              103,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   222,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-1",
+			},
+		},
+	}
+	player.match = match
+
+	if got, want := player.FirstShotCount(), 1; got != want {
+		t.Fatalf("expected first shot count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotHitCount(), 0; got != want {
+		t.Fatalf("expected first shot hit count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotAccuracy(), float32(0); math.Abs(float64(got-want)) > 0.0001 {
+		t.Fatalf("expected first shot accuracy to be %v but got %v", want, got)
+	}
+}
+
+func TestPlayerMarshalJSONIncludesFirstShotMetrics(t *testing.T) {
+	player := &Player{SteamID64: 111, Name: "shooter"}
+	match := &Match{
+		Shots: []*Shot{{
+			RoundNumber:     1,
+			Frame:           100,
+			Tick:            100,
+			PlayerSteamID64: player.SteamID64,
+			WeaponID:        "weapon-1",
+			RecoilIndex:     1,
+		}},
+		Damages: []*Damage{{
+			RoundNumber:       1,
+			Frame:             101,
+			Tick:              101,
+			AttackerSteamID64: player.SteamID64,
+			AttackerSide:      common.TeamTerrorists,
+			VictimSteamID64:   222,
+			VictimSide:        common.TeamCounterTerrorists,
+			WeaponUniqueID:    "weapon-1",
+		}},
+	}
+	player.match = match
+
+	payload, err := player.MarshalJSON()
+	if err != nil {
+		t.Fatalf("expected player JSON marshaling to succeed: %v", err)
+	}
+
+	var actual map[string]any
+	if err := json.Unmarshal(payload, &actual); err != nil {
+		t.Fatalf("expected marshaled player JSON to decode: %v", err)
+	}
+
+	if got, want := actual["firstShotCount"], float64(1); got != want {
+		t.Fatalf("expected firstShotCount to be %v but got %v", want, got)
+	}
+	if got, want := actual["firstShotHitCount"], float64(1); got != want {
+		t.Fatalf("expected firstShotHitCount to be %v but got %v", want, got)
+	}
+	if got, want := actual["firstShotAccuracy"], float64(100); got != want {
+		t.Fatalf("expected firstShotAccuracy to be %v but got %v", want, got)
 	}
 }
 
