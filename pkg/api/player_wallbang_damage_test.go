@@ -319,6 +319,57 @@ func TestPlayerFirstShotMetrics_DoesNotAttributeSprayDamageToFirstShot(t *testin
 	}
 }
 
+func TestPlayerFirstShotMetrics_RespectsAttributionFrameWindow(t *testing.T) {
+	player := &Player{SteamID64: 111}
+	match := &Match{
+		Shots: []*Shot{
+			{
+				RoundNumber:     1,
+				Frame:           100,
+				Tick:            100,
+				PlayerSteamID64: player.SteamID64,
+				WeaponID:        "weapon-1",
+				RecoilIndex:     1,
+			},
+		},
+		Damages: []*Damage{
+			{
+				RoundNumber:       1,
+				Frame:             148,
+				Tick:              148,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   222,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-1",
+			},
+			{
+				RoundNumber:       1,
+				Frame:             149,
+				Tick:              149,
+				AttackerSteamID64: player.SteamID64,
+				AttackerSide:      common.TeamTerrorists,
+				VictimSteamID64:   333,
+				VictimSide:        common.TeamCounterTerrorists,
+				WeaponUniqueID:    "weapon-1",
+			},
+		},
+	}
+	player.match = match
+
+	if got, want := player.FirstShotCount(), 1; got != want {
+		t.Fatalf("expected first shot count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotHitCount(), 1; got != want {
+		t.Fatalf("expected first shot hit count to be %d but got %d", want, got)
+	}
+
+	if got, want := player.FirstShotAccuracy(), float32(100); math.Abs(float64(got-want)) > 0.0001 {
+		t.Fatalf("expected first shot accuracy to be %v but got %v", want, got)
+	}
+}
+
 func TestPlayerMarshalJSONIncludesFirstShotMetrics(t *testing.T) {
 	player := &Player{SteamID64: 111, Name: "shooter"}
 	match := &Match{

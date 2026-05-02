@@ -1492,14 +1492,14 @@ func (player *Player) CounterStrafingSuccessRate() float32 {
 	return float32(counterStrafingSuccessCount) / float32(firstShotCount) * 100
 }
 
-func (player *Player) shotsByWeaponID() map[string][]wallbangShotIndexEntry {
-	shotsByWeaponID := make(map[string][]wallbangShotIndexEntry)
+func (player *Player) shotsByWeaponID() map[string][]shotIndexEntry {
+	shotsByWeaponID := make(map[string][]shotIndexEntry)
 	for _, shot := range player.match.Shots {
 		if shot == nil || shot.PlayerSteamID64 != player.SteamID64 || shot.IsPlayerControllingBot || shot.WeaponID == "" {
 			continue
 		}
 
-		shotsByWeaponID[shot.WeaponID] = append(shotsByWeaponID[shot.WeaponID], wallbangShotIndexEntry{
+		shotsByWeaponID[shot.WeaponID] = append(shotsByWeaponID[shot.WeaponID], shotIndexEntry{
 			frame: shot.Frame,
 			tick:  shot.Tick,
 			shot:  shot,
@@ -1519,7 +1519,7 @@ func (player *Player) shotsByWeaponID() map[string][]wallbangShotIndexEntry {
 	return shotsByWeaponID
 }
 
-func nearestPriorShotForDamage(damage *Damage, shotsByWeaponID map[string][]wallbangShotIndexEntry) *Shot {
+func nearestPriorShotForDamage(damage *Damage, shotsByWeaponID map[string][]shotIndexEntry) *Shot {
 	entries, exists := shotsByWeaponID[damage.WeaponUniqueID]
 	if !exists || len(entries) == 0 {
 		return nil
@@ -1541,7 +1541,7 @@ func nearestPriorShotForDamage(damage *Damage, shotsByWeaponID map[string][]wall
 		}
 
 		frameDelta := absInt(entry.frame - damage.Frame)
-		if frameDelta > constants.HeuristicWallbangMaxShotFrameDistance {
+		if frameDelta > constants.HeuristicDamageAttributionMaxShotFrameDistance {
 			continue
 		}
 

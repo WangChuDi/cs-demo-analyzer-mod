@@ -161,6 +161,7 @@ Tracks how often a player's eligible first shots connect with at least one valid
 - A shot is treated as an eligible first shot when `recoil index == 1`.
 - Only valid enemy player damage events are considered, reusing the same attacker/victim filters as the existing player damage aggregates.
 - When direct shot-to-damage linkage is unavailable, the analyzer matches the damage to the nearest prior shot from the same attacker and weapon instance, and only counts it when that matched shot is itself an eligible first shot.
+- Fallback attribution only considers candidate prior shots within `48` frames of the damage event, which keeps the metric conservative when direct linkage is unavailable.
 - `first shot hit count` counts each eligible first shot at most once, even if that shot causes multiple valid damage events.
 - `first shot accuracy` is `first shot hit count / first shot count * 100`.
 

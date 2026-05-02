@@ -19,7 +19,7 @@ type wallbangPositionKey struct {
 	steamID uint64
 }
 
-type wallbangShotIndexEntry struct {
+type shotIndexEntry struct {
 	frame int
 	tick  int
 	shot  *Shot
@@ -35,7 +35,7 @@ func markHeuristicWallbangDamages(match *Match) {
 	// is frequently unavailable, so we approximate wallbang detection heuristically for outward reporting.
 	haveHeuristicData := len(match.Shots) > 0 && len(match.PlayerPositions) > 0
 
-	var shotIndex map[wallbangShotKey][]wallbangShotIndexEntry
+	var shotIndex map[wallbangShotKey][]shotIndexEntry
 	var positionIndex map[wallbangPositionKey][]*PlayerPosition
 	if haveHeuristicData {
 		shotIndex = buildWallbangHeuristicShotIndex(match.Shots)
@@ -53,7 +53,7 @@ func markHeuristicWallbangDamages(match *Match) {
 	}
 }
 
-func isSuspectedWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]wallbangShotIndexEntry, positionIndex map[wallbangPositionKey][]*PlayerPosition) bool {
+func isSuspectedWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry, positionIndex map[wallbangPositionKey][]*PlayerPosition) bool {
 	if damage == nil {
 		return false
 	}
@@ -108,15 +108,15 @@ func isSuspectedWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]w
 	return true
 }
 
-func buildWallbangHeuristicShotIndex(shots []*Shot) map[wallbangShotKey][]wallbangShotIndexEntry {
-	index := make(map[wallbangShotKey][]wallbangShotIndexEntry)
+func buildWallbangHeuristicShotIndex(shots []*Shot) map[wallbangShotKey][]shotIndexEntry {
+	index := make(map[wallbangShotKey][]shotIndexEntry)
 	for _, shot := range shots {
 		if shot.PlayerSteamID64 == 0 || shot.WeaponID == "" {
 			continue
 		}
 
 		key := wallbangShotKey{round: shot.RoundNumber, attacker: shot.PlayerSteamID64, weaponID: shot.WeaponID}
-		index[key] = append(index[key], wallbangShotIndexEntry{frame: shot.Frame, tick: shot.Tick, shot: shot})
+		index[key] = append(index[key], shotIndexEntry{frame: shot.Frame, tick: shot.Tick, shot: shot})
 	}
 
 	for key := range index {
@@ -156,7 +156,7 @@ func buildWallbangHeuristicPositionIndex(positions []*PlayerPosition) map[wallba
 	return index
 }
 
-func nearestShotForWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]wallbangShotIndexEntry) *Shot {
+func nearestShotForWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry) *Shot {
 	key := wallbangShotKey{round: damage.RoundNumber, attacker: damage.AttackerSteamID64, weaponID: damage.WeaponUniqueID}
 	entries, exists := shotIndex[key]
 	if !exists || len(entries) == 0 {
@@ -176,7 +176,7 @@ func nearestShotForWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey]
 		}
 
 		frameDelta := absInt(entry.frame - damage.Frame)
-		if frameDelta > constants.HeuristicWallbangMaxShotFrameDistance {
+		if frameDelta > constants.HeuristicDamageAttributionMaxShotFrameDistance {
 			continue
 		}
 
