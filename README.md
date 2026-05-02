@@ -146,6 +146,24 @@ Tracks how often a player successfully stops before firing their first shot.
 - A first shot counts as a successful counter-strafe when `is player running == false`.
 - The metric is exported as a single player-level percentage and is not split by weapon class.
 
+### 🎯 First Shot Accuracy
+Tracks how often a player's eligible first shots connect with at least one valid enemy damage event.
+
+**Introduced Data Columns:**
+
+- **Players Table (`_players.csv`)**:
+  - `first shot count`: Number of eligible first shots fired by the player.
+  - `first shot hit count`: Number of eligible first shots that produce at least one valid enemy damage event, counting each first shot at most once.
+  - `first shot accuracy`: Percentage of eligible first shots that connect with at least one valid enemy damage event.
+
+**Metric Definition:**
+
+- A shot is treated as an eligible first shot when `recoil index == 1`.
+- Only valid enemy player damage events are considered, reusing the same attacker/victim filters as the existing player damage aggregates.
+- When direct shot-to-damage linkage is unavailable, the analyzer matches the damage to the nearest prior shot from the same attacker and weapon instance, and only counts it when that matched shot is itself an eligible first shot.
+- `first shot hit count` counts each eligible first shot at most once, even if that shot causes multiple valid damage events.
+- `first shot accuracy` is `first shot hit count / first shot count * 100`.
+
 
 ### 🧨 Utility Throw Analysis
 Detailed analysis of grenade throws, extracting thrower state, button inputs, throw strength, and more.
