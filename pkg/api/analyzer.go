@@ -56,6 +56,8 @@ type Analyzer struct {
 	// The grenade ID is not the same as the projectile ID and when a player throws a grenade, its projectile is
 	// created only a few ticks later.
 	lastGrenadeThrownByPlayer map[uint64]*Shot
+	grenadePinPulls           map[grenadeWeaponKey]grenadePinPull
+	destroyedGrenadePins      []grenadeWeaponKey
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
@@ -154,6 +156,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		lastFreezeTimeEndTick:         -1,
 		bombPlantPosition:             r3.Vector{},
 		lastGrenadeThrownByPlayer:     make(map[uint64]*Shot),
+		grenadePinPulls:               make(map[grenadeWeaponKey]grenadePinPull),
 		playersUntyingAnHostage:       make(map[uint64]int),
 		droppedWeapons:                make(map[common.UniqueID]uint64),
 		roundWeaponOwners:             make(map[common.UniqueID]uint64),
@@ -309,6 +312,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.isRoundEndDetected = false
 	analyzer.lastFreezeTimeEndTick = -1
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
+	analyzer.resetGrenadePins()
 	analyzer.playersUntyingAnHostage = make(map[uint64]int)
 	analyzer.droppedWeapons = make(map[common.UniqueID]uint64)
 	analyzer.roundWeaponOwners = make(map[common.UniqueID]uint64)
@@ -342,6 +346,7 @@ func (analyzer *Analyzer) reset() {
 }
 
 func (analyzer *Analyzer) resetCurrentRound() {
+	analyzer.resetGrenadePins()
 	analyzer.match.resetRound(analyzer.currentRound.Number)
 	analyzer.createPlayersEconomies()
 	analyzer.initLastPlayersPosition()
@@ -538,6 +543,7 @@ func (analyzer *Analyzer) createRound() {
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
+	analyzer.resetGrenadePins()
 	analyzer.playersUntyingAnHostage = map[uint64]int{}
 	analyzer.droppedWeapons = make(map[common.UniqueID]uint64)
 	analyzer.roundWeaponOwners = make(map[common.UniqueID]uint64)
@@ -680,6 +686,7 @@ func (analyzer *Analyzer) defaultAnnouncementWinPanelMatchHandler(event events.A
 func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	parser := analyzer.parser
 	match := analyzer.match
+	analyzer.registerUtilityPinHandlers()
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()

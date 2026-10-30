@@ -142,7 +142,7 @@
 检测投掷时玩家按下的按键（Attack/Attack2/Jump/WASD/Walk），输出为独立布尔字段。
 
 - 按键窗口起点：取 `max(PinPulledTick, throwTick - 0.5s)`（两者中较晚/较大的 tick，即更接近投掷时刻的那个）
-  - `PinPulledTick`：通过武器实体的 `m_fPinPullTime` 属性回算拉环时刻的 tick
+  - `PinPulledTick`：武器的 `m_fPinPullTime` 发生有效正值变化时，直接记录当前 demo tick，无需服务器时间换算
   - 0.5s 窗口：固定回溯 `tickRate/2` 个 tick 作为 fallback
 - 扫描 `match.PlayerButtons` 中该窗口内的所有按键记录，累积 OR 得到最终状态
 - `HasJump` 最终被引擎属性 `m_bJumpThrow`（即 `IsJumpThrow`）覆盖，确保准确性
@@ -159,8 +159,11 @@
   - `run`：speed2D ≥ 180
 #### 事件流程
 ```
+武器 m_fPinPullTime 发生有效变化
+ → 按武器实例记录当前 demo tick
+
 WeaponFire 事件
- → newUtilityFromShot(): 创建 Utility, 提取武器实体的 m_fPinPullTime 计算 PinPulledTick
+ → newUtilityFromShot(): 创建 Utility，读取已记录的 PinPulledTick
  → applyUtilityThrowButtons(): 首次按键检测 (isJumpThrow 未知)
 
 GrenadeProjectileThrow 事件
@@ -180,7 +183,7 @@ GrenadeProjectileThrow 事件
 - `has move right`: D（右移）
 - `has walk`: Shift（静步）
 **拉环与投掷分类：**
-- `pin pulled tick`: 拉环时刻的 tick 号（通过 `m_fPinPullTime` 回算，0 表示未检测到）
+- `pin pulled tick`: 录像中观测到拔栓的 demo tick（0 表示未观测到，包括实体首次出现时已经拔栓的情况）
 - `mouse type by strength`: 鼠标操作分类（`left_click`/`double_click`/`right_click`）
 - `is jump throw`: 是否为跳投（引擎属性 `m_bJumpThrow`）
 - `throw strength`: 投掷力度（引擎属性 `m_flThrowStrength`，0 为游戏 bug）
@@ -198,8 +201,10 @@ GrenadeProjectileThrow 事件
 - tick 间隙：demo 中可能存在 tick 跳跃（如 31622→31624），必须使用实际 tick 差计算时间间隔
 - `m_flThrowStrength` 部分道具为 0：游戏 bug 导致未赋值，使用 `calcThrowStrength()` 公式回算
 - `m_fPinPullTime` 不可用：部分 demo 或 bot 可能没有该属性，fallback 到 0.5s 固定窗口
+- 初始属性值不算新拔栓，重复值不会移动已记录的 tick；属性复位时清除记录。销毁清理推迟到帧末，以保留同帧投出事件需要的数据；使用实体序列号隔离复用的实体编号。
 #### 相关文件
 - `pkg/api/utility.go` — Utility 结构体、所有分类函数、按键检测逻辑
+- `pkg/api/utility_pin.go` — 直接记录拔栓 demo tick，处理武器实例生命周期
 - `pkg/api/utils.go` — `getPlayerVelocity()` 位置差分速度计算
 - `pkg/api/analyzer.go` — FrameDone handler（位置/tick 轮转）、WeaponFire/GrenadeProjectileThrow 事件处理
 - `pkg/api/match.go` — Match 结构体中的位置/tick 历史映射
@@ -208,7 +213,7 @@ GrenadeProjectileThrow 事件
 ### 使用方法
 预编译的二进制文件可在 [releases 页面](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases) 下载。
 ## ⚠️ 已知问题
-2026-10-30 的近期 demo 审计发现：`getPinPulledTick()` 混用了服务器时间与录像相对时间，可能输出晚于投掷时刻的拉环 tick，并使道具按键回看窗口失效。这些字段在修正时钟转换前不应视为可靠结果。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
+2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。部分 demo 的首回合仍缺少解码后的按键事件，因此有效拔栓 tick 不代表按键输入一定可用。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
 ### 倒霉统计
 - **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。当解析器确认路径不可用时，启发式回退会在同一回合内把每条伤害匹配到同攻击者、同武器的最近一次先前开枪记录，以及受害者最近一次先前位置记录；再根据武器模型参数（`BaseDamage`、`RangeModifier`、`ArmorRatio`、`HeadMultiplier`）、hitgroup、距离衰减、以及受害者护甲/头盔状态，估算“非穿墙情况下本应造成的生命值伤害”；如果实际生命值伤害明显低于这个理论非穿墙伤害估计，则将该伤害标记为 wallbang。`true wallbang damage taken` 仅保留该解析器确认路径。
 - **CS2 坠落伤害**：`demoinfocs-golang v5` 在部分 CS2 demo 中，可能会把真实的 world/fall 伤害的 typed `PlayerHurt.Weapon` 错误推断为 `C4`。为避免误判，当前分析器会改用 generic `player_hurt` 的环境伤害事件进行判断，并排除与 `BombExplode` 同 frame 的候选伤害。

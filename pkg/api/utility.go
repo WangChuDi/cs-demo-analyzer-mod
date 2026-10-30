@@ -141,34 +141,6 @@ func getUtilityThrowStrength(projectile *common.GrenadeProjectile) float64 {
 	return 0
 }
 
-func getPinPulledTick(analyzer *Analyzer, weaponEntity st.Entity) int {
-	if weaponEntity == nil {
-		return 0
-	}
-	val, ok := weaponEntity.PropertyValue("m_fPinPullTime")
-	if !ok {
-		return 0
-	}
-	pinPullTime := float64(val.Float())
-	if pinPullTime <= 0 {
-		return 0
-	}
-
-	tickTime := analyzer.parser.TickTime().Seconds()
-	if tickTime <= 0 {
-		return 0
-	}
-
-	currentTick := analyzer.currentTick()
-	currentTime := analyzer.parser.CurrentTime().Seconds()
-	elapsed := currentTime - pinPullTime
-	ticksAgo := int(elapsed / tickTime)
-	pinTick := currentTick - ticksAgo
-	if pinTick < 0 {
-		return 0
-	}
-	return pinTick
-}
 func classifyThrowTypeByStrength(utility *Utility) UtilityThrowType {
 	if utility.ThrowStrength == 1.0 {
 		return UtilityThrowTypeLeftClick
@@ -256,7 +228,7 @@ func applyUtilityThrowButtons(analyzer *Analyzer, utility *Utility) {
 	}
 	fallbackStart := getThrowButtonWindowStartTick(analyzer, utility.Tick)
 	startTick := fallbackStart
-	if utility.PinPulledTick > 0 && utility.PinPulledTick > startTick {
+	if utility.PinPulledTick > startTick && utility.PinPulledTick <= utility.Tick {
 		startTick = utility.PinPulledTick
 	}
 	buttonState := getThrowButtonState(analyzer.match, utility.ThrowerSteamID64, startTick, utility.Tick)
@@ -284,6 +256,9 @@ func getThrowButtonWindowStartTick(analyzer *Analyzer, endTick int) int {
 
 func getThrowButtonState(match *Match, steamID64 uint64, startTick int, endTick int) throwButtonState {
 	state := throwButtonState{}
+	if match == nil || startTick > endTick {
+		return state
+	}
 	var lastState uint64
 	lastStateTick := -1
 	windowInitialized := false

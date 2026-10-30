@@ -184,7 +184,7 @@ Uses the synchronized parser's `Player.Velocity()`. Upstream now resolves the ne
 Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output as individual boolean fields.
 
 - Button window start: uses the later of `PinPulledTick` or `throwTick - 0.5s` as the window start
-  - `PinPulledTick`: computed from the weapon entity's `m_fPinPullTime` property, converted back to a tick number
+  - `PinPulledTick`: records the demo tick when the weapon's `m_fPinPullTime` changes to a valid positive value; no server-time conversion is used
   - 0.5s window: fixed lookback of `tickRate/2` ticks as fallback
 - Scans all `match.PlayerButtons` records within the window, accumulating via OR to get the final state
 - `HasJump` is ultimately overridden by the engine property `m_bJumpThrow` (i.e. `IsJumpThrow`) for accuracy
@@ -203,8 +203,11 @@ Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output
 
 #### Event Flow
 ```
+Weapon m_fPinPullTime changes
+ → records the current demo tick for this weapon instance
+
 WeaponFire event
- → newUtilityFromShot(): creates Utility, extracts m_fPinPullTime from weapon entity to compute PinPulledTick
+ → newUtilityFromShot(): creates Utility and reads the recorded PinPulledTick
  → applyUtilityThrowButtons(): first button detection (isJumpThrow unknown)
 
 GrenadeProjectileThrow event
@@ -226,7 +229,7 @@ GrenadeProjectileThrow event
 - `has walk`: Shift (Walk)
 
 **Pin Pull & Throw Classification:**
-- `pin pulled tick`: Tick when the pin was pulled (computed from `m_fPinPullTime`, 0 = not detected)
+- `pin pulled tick`: Demo tick when the pin pull was observed (0 = not observed, including a grenade already primed when its entity first appears)
 - `mouse type by strength`: Mouse action classification (`left_click`/`double_click`/`right_click`)
 - `is jump throw`: Whether it's a jump throw (engine property `m_bJumpThrow`)
 - `throw strength`: Throw strength (engine property `m_flThrowStrength`, 0 = game bug)
@@ -246,9 +249,11 @@ GrenadeProjectileThrow event
 - Tick gaps: demos may have tick jumps (e.g. 31622→31624), must use actual tick delta for time interval calculation
 - `m_flThrowStrength` == 0: game bug leaves it unassigned, uses `calcThrowStrength()` formula as fallback
 - `m_fPinPullTime` unavailable: some demos or bots may lack this property, falls back to 0.5s fixed window
+- Initial property values are not treated as new pulls. Repeated values do not move the recorded tick. Reset values clear it; destroyed weapons are removed at frame end so same-frame throw events can still use it. Entity serial numbers prevent reused indices from sharing pull records.
 
 #### Related Files
 - `pkg/api/utility.go` — Utility struct, all classification functions, button detection logic
+- `pkg/api/utility_pin.go` — Observed demo-tick pin tracking and weapon lifecycle handling
 - `pkg/api/utils.go` — `getPlayerVelocity()` position-delta velocity calculation
 - `pkg/api/analyzer.go` — FrameDone handler (position/tick rotation), WeaponFire/GrenadeProjectileThrow event handlers
 - `pkg/api/match.go` — Position/tick history maps in Match struct
@@ -263,7 +268,7 @@ Ready-to-use binaries are available on the [releases page](https://github.com/Wa
 
 ## ⚠️ Known Issues
 
-The 2026-10-30 recent-demo audit found an unresolved clock mismatch in `getPinPulledTick()`: `m_fPinPullTime` uses server time while `Parser.CurrentTime()` uses recording-relative time. Invalid pin ticks also invalidate the intended utility button lookback window. Treat these fields as unreliable until that conversion is corrected. Missing raw footsteps, aim-punch properties, or bullet-penetration events must be distinguished from real zero values.
+The pin-time clock mismatch found in the 2026-10-30 audit is fixed by recording observed demo ticks directly. Pin times remain unknown when no pull update was observed. Some demos still lack decoded first-round button events, so a valid pin tick does not guarantee available button input. Missing raw footsteps, aim-punch properties, or bullet-penetration events must also be distinguished from real zero values.
 
 ### Unlucky Statistics
 - **Wallbang Damage**: Outward wallbang reporting (`Damage.IsWallbang`, `wallbang damage dealt`, `wallbang damage taken`) combines parser-confirmed penetration signals when available with a heuristic fallback path. This fallback is needed because current demos/parser signals do not reliably expose direct non-lethal penetration extraction in all cases. When the parser-confirmed path is unavailable, the heuristic matches each damage to the nearest prior shot from the same attacker/weapon and to the nearest prior victim position in the same round, estimates the expected non-wallbang health damage from the weapon model (`BaseDamage`, `RangeModifier`, `ArmorRatio`, `HeadMultiplier`), hitgroup, distance falloff, and victim armor/helmet state, and marks the damage as wallbang when the observed health damage is meaningfully lower than that expected non-wallbang estimate. `true wallbang damage taken` remains parser-confirmed only (`BulletDamage`/`NumPenetrations` same-frame correlation).
