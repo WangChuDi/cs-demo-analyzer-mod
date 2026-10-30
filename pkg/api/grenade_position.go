@@ -6,15 +6,14 @@ import (
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 type GrenadePosition struct {
-	Frame            int                  `json:"frame"`
 	Tick             int                  `json:"tick"`
 	RoundNumber      int                  `json:"roundNumber"`
 	GrenadeID        string               `json:"grenadeId"`
-	ProjectileID     int64                `json:"projectileId"`
+	ProjectileID     string               `json:"projectileId"`
 	X                float64              `json:"x"`
 	Y                float64              `json:"y"`
 	Z                float64              `json:"z"`
@@ -58,15 +57,13 @@ func newGrenadePositionFromProjectile(analyzer *Analyzer, projectile *common.Gre
 	velocity := getPlayerVelocity(thrower, analyzer)
 	projectileVelocity := getGrenadeProjectileVelocity(analyzer, projectile)
 
-	parser := analyzer.parser
 	throwerTeam := thrower.Team
 	speed := vectorSpeed(projectileVelocity)
 	return &GrenadePosition{
-		Frame:            parser.CurrentFrame(),
 		Tick:             analyzer.currentTick(),
 		RoundNumber:      analyzer.currentRound.Number,
-		GrenadeID:        projectile.WeaponInstance.UniqueID2().String(),
-		ProjectileID:     projectile.UniqueID(),
+		GrenadeID:        projectile.WeaponInstance.UniqueID().String(),
+		ProjectileID:     projectile.UniqueID().String(),
 		GrenadeName:      equipmentToWeaponName[projectile.WeaponInstance.Type],
 		X:                projectile.Position().X,
 		Y:                projectile.Position().Y,

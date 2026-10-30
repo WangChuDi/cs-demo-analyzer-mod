@@ -5,8 +5,8 @@ import (
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
 type UtilityType string
@@ -29,45 +29,45 @@ const (
 )
 
 type Utility struct {
-	Frame            int              `json:"frame"`
-	Tick             int              `json:"tick"`
-	RoundNumber      int              `json:"roundNumber"`
-	UtilityType      UtilityType      `json:"utilityType"`
-	HasAttack     bool             `json:"hasAttack"`
-	HasAttack2    bool             `json:"hasAttack2"`
-	HasJump       bool             `json:"hasJump"`
-	HasForward    bool             `json:"hasForward"`
-	HasBack       bool             `json:"hasBack"`
-	HasMoveLeft   bool             `json:"hasMoveLeft"`
-	HasMoveRight  bool             `json:"hasMoveRight"`
-	HasWalk       bool             `json:"hasWalk"`
-	PinPulledTick int              `json:"pinPulledTick"`
+	Frame               int              `json:"frame"`
+	Tick                int              `json:"tick"`
+	RoundNumber         int              `json:"roundNumber"`
+	UtilityType         UtilityType      `json:"utilityType"`
+	HasAttack           bool             `json:"hasAttack"`
+	HasAttack2          bool             `json:"hasAttack2"`
+	HasJump             bool             `json:"hasJump"`
+	HasForward          bool             `json:"hasForward"`
+	HasBack             bool             `json:"hasBack"`
+	HasMoveLeft         bool             `json:"hasMoveLeft"`
+	HasMoveRight        bool             `json:"hasMoveRight"`
+	HasWalk             bool             `json:"hasWalk"`
+	PinPulledTick       int              `json:"pinPulledTick"`
 	MouseTypeByStrength UtilityThrowType `json:"mouseTypeByStrength"`
-	GrenadeID        string           `json:"grenadeId"`
-	ProjectileID     int64            `json:"projectileId"`
-	X                float64          `json:"x"`
-	Y                float64          `json:"y"`
-	Z                float64          `json:"z"`
-	ThrowerSteamID64 uint64           `json:"throwerSteamId"`
-	ThrowerName      string           `json:"throwerName"`
-	ThrowerSide      common.Team      `json:"throwerSide"`
-	ThrowerTeamName  string           `json:"throwerTeamName"`
-	ThrowerVelocityX float64          `json:"throwerVelocityX"`
-	ThrowerVelocityY float64          `json:"throwerVelocityY"`
-	ThrowerVelocityZ float64          `json:"throwerVelocityZ"`
-	ThrowerSpeed2D   float64          `json:"throwerSpeed2d"`
-	ThrowerSpeedType string           `json:"throwerSpeedType"`
-	ThrowerPitch     float32          `json:"throwerPitch"`
-	ThrowerYaw       float32          `json:"throwerYaw"`
-	IsJumpThrow      bool             `json:"isJumpThrow"`
-	ThrowStrength    float64          `json:"throwStrength"`
-	InitialVelocityX float64          `json:"initialVelocityX"`
-	InitialVelocityY float64          `json:"initialVelocityY"`
-	InitialVelocityZ float64          `json:"initialVelocityZ"`
-	InitialSpeed     float64          `json:"initialSpeed"`
-	InitialPositionX float64          `json:"initialPositionX"`
-	InitialPositionY float64          `json:"initialPositionY"`
-	InitialPositionZ float64          `json:"initialPositionZ"`
+	GrenadeID           string           `json:"grenadeId"`
+	ProjectileID        string           `json:"projectileId"`
+	X                   float64          `json:"x"`
+	Y                   float64          `json:"y"`
+	Z                   float64          `json:"z"`
+	ThrowerSteamID64    uint64           `json:"throwerSteamId"`
+	ThrowerName         string           `json:"throwerName"`
+	ThrowerSide         common.Team      `json:"throwerSide"`
+	ThrowerTeamName     string           `json:"throwerTeamName"`
+	ThrowerVelocityX    float64          `json:"throwerVelocityX"`
+	ThrowerVelocityY    float64          `json:"throwerVelocityY"`
+	ThrowerVelocityZ    float64          `json:"throwerVelocityZ"`
+	ThrowerSpeed2D      float64          `json:"throwerSpeed2d"`
+	ThrowerSpeedType    string           `json:"throwerSpeedType"`
+	ThrowerPitch        float32          `json:"throwerPitch"`
+	ThrowerYaw          float32          `json:"throwerYaw"`
+	IsJumpThrow         bool             `json:"isJumpThrow"`
+	ThrowStrength       float64          `json:"throwStrength"`
+	InitialVelocityX    float64          `json:"initialVelocityX"`
+	InitialVelocityY    float64          `json:"initialVelocityY"`
+	InitialVelocityZ    float64          `json:"initialVelocityZ"`
+	InitialSpeed        float64          `json:"initialSpeed"`
+	InitialPositionX    float64          `json:"initialPositionX"`
+	InitialPositionY    float64          `json:"initialPositionY"`
+	InitialPositionZ    float64          `json:"initialPositionZ"`
 }
 
 func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player, weaponEntity st.Entity) *Utility {

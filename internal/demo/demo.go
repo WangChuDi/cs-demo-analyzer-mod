@@ -15,7 +15,8 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/filepath"
 	str "github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/msg"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msg"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msgs2"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -48,6 +49,10 @@ var fiveEPlayDemoNameRegex = regexp.MustCompile(`^g\d+-(.*)[a-zA-Z0-9_]*$`)
 // Default format: {TIME}_{MATCH_ID}_{MAP}_{TEAM1}_vs_{TEAM2}
 // https://shobhit-pathak.github.io/MatchZy/gotv/#recording-demos
 var matchZyDemoNameRegex = regexp.MustCompile(`^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})_(\d+)_([a-zA-Z0-9_]+)_(.+?)_vs_(.+)$`)
+
+// Esportligaen servers name follow the pattern "[{MATCH_ID}] {MAP}: {TEAM1} vs. {TEAM2}".
+// Example: "[37980] de_mirage: Trelleborg Marine Systems DK vs. ForeFeit B"
+var esportligaenServerNameRegex = regexp.MustCompile(`^\[\d+\] [a-z0-9_]+: .+ vs\. .+$`)
 
 // Reads the .info file associated with a demo if it exists and returns its content as bytes.
 func getMatchInfoProtoBytes(demoFilePath string) []byte {
@@ -126,7 +131,7 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 		br.ReadVarInt32() // tick
 		size := br.ReadVarInt32()
 		bytes := br.ReadBytes(int(size))
-		var header msg.CDemoFileHeader
+		var header msgs2.CDemoFileHeader
 		err := proto.Unmarshal(bytes, &header)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse CDemoFileHeader msg")
@@ -317,6 +322,10 @@ func GetDemoSource(demo *Demo) constants.DemoSource {
 
 	if strings.Contains(serverName, "esplay") {
 		return constants.DemoSourceEsplay
+	}
+
+	if esportligaenServerNameRegex.MatchString(serverName) {
+		return constants.DemoSourceEsportligaen
 	}
 
 	if strings.Contains(serverName, "pracc.com") {

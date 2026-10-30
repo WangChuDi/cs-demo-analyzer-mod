@@ -1,11 +1,10 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 type BombDefuseStart struct {
-	Frame                  int     `json:"frame"`
 	Tick                   int     `json:"tick"`
 	RoundNumber            int     `json:"roundNumber"`
 	PlanterSteamID64       uint64  `json:"defuserSteamId"`
@@ -17,10 +16,8 @@ type BombDefuseStart struct {
 }
 
 func newBombDefuseStart(analyzer *Analyzer, player *common.Player) *BombDefuseStart {
-	parser := analyzer.parser
 
 	return &BombDefuseStart{
-		Frame:                  parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
 		PlanterName:            player.Name,

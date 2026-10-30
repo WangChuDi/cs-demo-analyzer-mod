@@ -135,13 +135,7 @@
 
 **1. 投掷者速度计算 (`utils.go: getPlayerVelocity`)**
 
-使用位置差分法（position-delta）计算玩家速度，而非引擎属性（`m_vecVelocity`/`m_vecBaseVelocity` 不可靠）。
-
-- 主路径：`velocity = (currentPos - lastPos) / (tickDelta * tickTime)`
-- 回退路径：当 `currentPos == lastPos` 时（因引擎实体更新顺序问题，手雷弹体创建先于玩家位置更新），使用 `(lastPos - prevPos)` 计算
-- 在 `FrameDone` handler 中维护每个玩家的两帧位置历史（`lastPlayersPosition`/`prevPlayersPosition`）和对应 tick（`lastPlayersTick`/`prevPlayersTick`）
-- 仅在 tick 实际变化时才轮转 `prev = last`，防止重复 tick 帧覆盖 prev
-- Round 开始时通过 `initLastPlayersPosition()` 初始化位置和 tick 映射
+2026-10-30 同步原版 v1.13.0 后，改用解析器的 `Player.Velocity()`。上游已经修复速度属性解析，并为旧 demo 提供基于快照服务器 tick 的速度推导。构造解析器时启用 `EagerVelocityTracking`，确保手雷创建事件之前已有位置历史。构建要求 Go 1.27+；标准事件导出采用上游的 tick 字段，二开事件关联所需的 frame 仅保留在内部。
 
 **2. 按键检测系统 (`utility.go: applyUtilityThrowButtons`)**
 
@@ -214,11 +208,7 @@ GrenadeProjectileThrow 事件
 ### 使用方法
 预编译的二进制文件可在 [releases 页面](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases) 下载。
 ## ⚠️ 已知问题
-由于 `demoinfocs-golang v5` 在某些事件（特别是 `HeGrenadeExplode` 和 `SmokeStart`）中无法可靠地获取速度属性，我们使用了基于玩家位置差分的手动速度计算方案。
-该方案对大多数事件（如 `Footstep` 和 `Shot`）能提供准确的速度，但在某些边界情况下速度可能不可用（如比赛第一个 tick）。
-仅影响：
-- `HeGrenadeExplode`（投掷者速度）
-- `SmokeStart`（投掷者速度）
+2026-10-30 的近期 demo 审计发现：`getPinPulledTick()` 混用了服务器时间与录像相对时间，可能输出晚于投掷时刻的拉环 tick，并使道具按键回看窗口失效。这些字段在修正时钟转换前不应视为可靠结果。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
 ### 倒霉统计
 - **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。当解析器确认路径不可用时，启发式回退会在同一回合内把每条伤害匹配到同攻击者、同武器的最近一次先前开枪记录，以及受害者最近一次先前位置记录；再根据武器模型参数（`BaseDamage`、`RangeModifier`、`ArmorRatio`、`HeadMultiplier`）、hitgroup、距离衰减、以及受害者护甲/头盔状态，估算“非穿墙情况下本应造成的生命值伤害”；如果实际生命值伤害明显低于这个理论非穿墙伤害估计，则将该伤害标记为 wallbang。`true wallbang damage taken` 仅保留该解析器确认路径。
 - **CS2 坠落伤害**：`demoinfocs-golang v5` 在部分 CS2 demo 中，可能会把真实的 world/fall 伤害的 typed `PlayerHurt.Weapon` 错误推断为 `C4`。为避免误判，当前分析器会改用 generic `player_hurt` 的环境伤害事件进行判断，并排除与 `BombExplode` 同 frame 的候选伤害。

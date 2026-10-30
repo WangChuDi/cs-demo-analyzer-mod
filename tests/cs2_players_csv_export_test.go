@@ -104,7 +104,8 @@ func TestPlayersCSVExport_CounterStrafeColumnsAndTeamDamageOrder(t *testing.T) {
 	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot count", "51")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot hit count", "6")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "first shot accuracy", "11.764706")
-	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing success rate", "31.372551")
+	// Upstream's snapshot-tick velocity marks one additional first shot as moving.
+	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing success rate", "29.411766")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing avg delta tick", "4.744681")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing delta stddev tick", "11.629874")
 	assertCSVCellEquals(t, playerRow, indexByHeader, "counter-strafing a->d avg delta tick", "2.080000")

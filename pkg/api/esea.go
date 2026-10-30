@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
 const (
@@ -60,7 +60,6 @@ func createEseaAnalyzer(analyzer *Analyzer) {
 			consecutiveMatchRestartCount = 0
 			currentRound := analyzer.currentRound
 			currentRound.StartTick = analyzer.currentTick()
-			currentRound.StartFrame = parser.CurrentFrame()
 
 			// Some players may have joined the wrong team when entering the server, in that case they are silently
 			// switched to the correct team right before the LO3.
@@ -94,7 +93,6 @@ func createEseaAnalyzer(analyzer *Analyzer) {
 		freezetimeEnded := !event.NewIsFreezetime
 		if freezetimeEnded {
 			analyzer.currentRound.FreezeTimeEndTick = analyzer.currentTick()
-			analyzer.currentRound.FreezeTimeEndFrame = parser.CurrentFrame()
 			analyzer.lastFreezeTimeEndTick = analyzer.currentTick()
 		}
 	})
@@ -142,12 +140,13 @@ func createEseaAnalyzer(analyzer *Analyzer) {
 					return
 				}
 
-				// Remove coaches from players
+				// Remove coaches from players and record them as coaches
 				for _, player := range parser.GameState().Participants().All() {
 					if player.EntityID == entity.ID() {
 						if analyzer.match.PlayersBySteamID[player.SteamID64] != nil {
 							delete(analyzer.match.PlayersBySteamID, player.SteamID64)
 						}
+						analyzer.registerCoach(player, teamNumber)
 						break
 					}
 				}

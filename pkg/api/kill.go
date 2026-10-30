@@ -7,12 +7,13 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type Kill struct {
-	Frame            int                  `json:"frame"`
+	// Frame is retained internally for fork event correlation, not exported.
+	Frame            int                  `json:"-"`
 	Tick             int                  `json:"tick"`
 	RoundNumber      int                  `json:"roundNumber"`
 	WeaponType       constants.WeaponType `json:"weaponType"`
@@ -85,7 +86,6 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		fmt.Println("Player kill event without victim occurred")
 		return nil
 	}
-	parser := analyzer.parser
 	match := analyzer.match
 	var killerName string = "World"
 	var killerSteamID uint64
@@ -189,7 +189,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	victimPosition := event.Victim.Position()
 
 	return &Kill{
-		Frame:                    parser.CurrentFrame(),
+		Frame:                    analyzer.parser.CurrentFrame(),
 		Tick:                     analyzer.currentTick(),
 		RoundNumber:              analyzer.currentRound.Number,
 		KillerName:               killerName,

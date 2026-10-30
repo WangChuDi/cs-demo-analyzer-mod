@@ -5,12 +5,13 @@ import (
 
 	"github.com/akiver/cs-demo-analyzer/internal/math"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type Damage struct {
-	Frame        int `json:"frame"`
+	// Frame is retained internally for fork event correlation, not exported.
+	Frame        int `json:"-"`
 	Tick         int `json:"tick"`
 	RoundNumber  int `json:"roundNumber"`
 	HealthDamage int `json:"healthDamage"`
@@ -102,7 +103,6 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		fmt.Println("Player hurt event without weapon occurred")
 		return nil
 	}
-	parser := analyzer.parser
 	match := analyzer.match
 	attackerSteamID := uint64(0)
 	attackerSide := common.TeamUnassigned
@@ -118,8 +118,8 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 	}
 
 	return &Damage{
+		Frame:                    analyzer.parser.CurrentFrame(),
 		RoundNumber:              analyzer.currentRound.Number,
-		Frame:                    parser.CurrentFrame(),
 		Tick:                     analyzer.currentTick(),
 		HealthDamage:             math.Max(0, event.HealthDamageTaken),
 		ArmorDamage:              math.Max(0, event.ArmorDamageTaken),
@@ -138,7 +138,7 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		WeaponName:               equipmentToWeaponName[event.Weapon.Type],
 		WeaponType:               getEquipmentWeaponType(*event.Weapon),
 		HitGroup:                 event.HitGroup,
-		WeaponUniqueID:           event.Weapon.UniqueID2().String(),
+		WeaponUniqueID:           event.Weapon.UniqueID().String(),
 		IsVictimAirborne:         event.Player.IsAirborne(),
 		IsAttackerAirborne:       isAttackerAirborne,
 	}
@@ -187,7 +187,7 @@ func newFallDamageFromGenericPlayerHurt(analyzer *Analyzer, event events.Generic
 		VictimTeamName:           match.Team(victim.Team).Name,
 		HitGroup:                 events.HitGroupGeneric,
 		WeaponName:               constants.WeaponWorld,
-		WeaponType:               constants.WeaponTypeUnknown,
+		WeaponType:               constants.WeaponTypeWorld,
 		WeaponUniqueID:           "",
 		IsVictimAirborne:         victim.IsAirborne(),
 		IsAttackerAirborne:       false,

@@ -2,12 +2,11 @@ package api
 
 import (
 	"github.com/akiver/cs-demo-analyzer/internal/converters"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type BombDefused struct {
-	Frame                      int     `json:"frame"`
 	Tick                       int     `json:"tick"`
 	RoundNumber                int     `json:"roundNumber"`
 	Site                       string  `json:"site"`
@@ -39,7 +38,6 @@ func newBombDefused(analyzer *Analyzer, event events.BombDefused) *BombDefused {
 	}
 
 	return &BombDefused{
-		Frame:                      parser.CurrentFrame(),
 		Tick:                       analyzer.currentTick(),
 		RoundNumber:                analyzer.currentRound.Number,
 		DefuserName:                player.Name,

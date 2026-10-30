@@ -3,16 +3,15 @@ package api
 import (
 	"fmt"
 
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type SmokeStart struct {
-	Frame            int         `json:"frame"`
 	Tick             int         `json:"tick"`
 	RoundNumber      int         `json:"roundNumber"`
 	GrenadeID        string      `json:"grenadeId"`
-	ProjectileID     int64       `json:"projectileId"`
+	ProjectileID     string      `json:"projectileId"`
 	X                float64     `json:"x"`
 	Y                float64     `json:"y"`
 	Z                float64     `json:"z"`
@@ -41,22 +40,14 @@ func newSmokeStartFromGameEvent(analyzer *Analyzer, event events.SmokeStart) *Sm
 	}
 
 	throwerTeam := thrower.Team
-	parser := analyzer.parser
-	var projectileID int64
-	for _, projectile := range parser.GameState().GrenadeProjectiles() {
-		if projectile.WeaponInstance.UniqueID2() == grenade.UniqueID2() {
-			projectileID = projectile.UniqueID()
-			break
-		}
-	}
+	projectileID := findGrenadeProjectileID(analyzer, grenade.UniqueID(), event.Position)
 
 	velocity := getPlayerVelocity(thrower, analyzer)
 
 	return &SmokeStart{
-		Frame:            parser.CurrentFrame(),
 		Tick:             analyzer.currentTick(),
 		RoundNumber:      analyzer.currentRound.Number,
-		GrenadeID:        grenade.UniqueID2().String(),
+		GrenadeID:        grenade.UniqueID().String(),
 		ProjectileID:     projectileID,
 		X:                event.Position.X,
 		Y:                event.Position.Y,

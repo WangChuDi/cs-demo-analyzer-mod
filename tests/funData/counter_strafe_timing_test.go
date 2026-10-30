@@ -9,10 +9,10 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/tests/testsutils"
-	demoinfocs "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs"
-	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	demoinfocs "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
+	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
 type standaloneCounterStrafeDirection int

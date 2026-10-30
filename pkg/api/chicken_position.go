@@ -1,11 +1,17 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
+type chickenEntity struct {
+	id     int
+	entity sendtables.Entity
+}
+
 type ChickenPosition struct {
-	Frame       int     `json:"frame"`
+	// Unique ID of the chicken in the match, not exported because it's used only to group positions by chicken.
+	chickenID   int
 	Tick        int     `json:"tick"`
 	RoundNumber int     `json:"roundNumber"`
 	X           float64 `json:"x"`
@@ -13,11 +19,11 @@ type ChickenPosition struct {
 	Z           float64 `json:"z"`
 }
 
-func newChickenPositionFromEntity(analyzer *Analyzer, entity sendtables.Entity) *ChickenPosition {
-	parser := analyzer.parser
+func newChickenPositionFromEntity(analyzer *Analyzer, chicken *chickenEntity) *ChickenPosition {
+	entity := chicken.entity
 
 	return &ChickenPosition{
-		Frame:       parser.CurrentFrame(),
+		chickenID:   chicken.id,
 		Tick:        analyzer.currentTick(),
 		RoundNumber: analyzer.currentRound.Number,
 		X:           entity.Position().X,

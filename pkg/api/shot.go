@@ -7,19 +7,20 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 
 	"github.com/golang/geo/r3"
-	common "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
 type Shot struct {
-	Frame                  int                  `json:"frame"`
+	// Frame is retained internally for fork event correlation, not exported.
+	Frame                  int                  `json:"-"`
 	Tick                   int                  `json:"tick"`
 	RoundNumber            int                  `json:"roundNumber"`
 	WeaponName             constants.WeaponName `json:"weaponName"`
 	WeaponType             constants.WeaponType `json:"weaponType"`
 	WeaponID               string               `json:"weaponId"`
-	ProjectileID           int64                `json:"projectileId"` // Available only for grenades
+	ProjectileID           string               `json:"projectileId"` // Available only for grenades
 	X                      float64              `json:"x"`
 	Y                      float64              `json:"y"`
 	Z                      float64              `json:"z"`
@@ -105,7 +106,8 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		RoundNumber:            analyzer.currentRound.Number,
 		WeaponName:             weaponName,
 		WeaponType:             weaponType,
-		WeaponID:               event.Weapon.UniqueID2().String(),
+		WeaponID:               event.Weapon.UniqueID().String(),
+		ProjectileID:           noProjectileID,
 		X:                      shooter.Position().X,
 		Y:                      shooter.Position().Y,
 		Z:                      shooter.Position().Z,

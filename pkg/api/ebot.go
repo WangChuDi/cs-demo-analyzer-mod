@@ -6,8 +6,8 @@ import (
 
 	s "github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
-	sendtables "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/sendtables"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	sendtables "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
 )
 
 func createEbotAnalyzer(analyzer *Analyzer) {
@@ -28,9 +28,7 @@ func createEbotAnalyzer(analyzer *Analyzer) {
 
 	resetCurrentRound := func() {
 		currentRound := analyzer.currentRound
-		currentRound.StartFrame = analyzer.parser.CurrentFrame()
 		currentRound.StartTick = analyzer.currentTick()
-		currentRound.FreezeTimeEndFrame = -1
 		currentRound.FreezeTimeEndTick = -1
 	}
 
@@ -93,7 +91,6 @@ func createEbotAnalyzer(analyzer *Analyzer) {
 			matchStarted = event.NewIsStarted
 			if matchStarted && !matchStartDetected {
 				currentRound := analyzer.currentRound
-				currentRound.StartFrame = parser.CurrentFrame()
 				currentRound.StartTick = analyzer.currentTick()
 				analyzer.updateTeamNames()
 				analyzer.createPlayersEconomies()
@@ -127,7 +124,6 @@ func createEbotAnalyzer(analyzer *Analyzer) {
 				analyzer.createPlayersEconomies()
 			} else {
 				analyzer.currentRound.FreezeTimeEndTick = analyzer.currentTick()
-				analyzer.currentRound.FreezeTimeEndFrame = parser.CurrentFrame()
 				analyzer.lastFreezeTimeEndTick = analyzer.currentTick()
 			}
 		})

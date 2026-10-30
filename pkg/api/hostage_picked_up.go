@@ -1,11 +1,10 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 type HostagePickedUp struct {
-	Frame                  int     `json:"frame"`
 	Tick                   int     `json:"tick"`
 	RoundNumber            int     `json:"roundNumber"`
 	HostageEntityId        int     `json:"hostageEntityId"`
@@ -17,10 +16,8 @@ type HostagePickedUp struct {
 }
 
 func newHostagePickedUp(analyzer *Analyzer, hostage *common.Hostage) *HostagePickedUp {
-	parser := analyzer.parser
 
 	return &HostagePickedUp{
-		Frame:                  parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
 		PlayerSteamID64:        hostage.Leader().SteamID64,

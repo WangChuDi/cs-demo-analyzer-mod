@@ -12,81 +12,82 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 // Match is the root struct that contains relevant data from a demo.
 // It excludes data from warmup / halftime / after match.
 type Match struct {
-	Checksum                  string                      `json:"checksum"`
-	Game                      constants.Game              `json:"game"`
-	DemoFilePath              string                      `json:"demoFilePath"`
-	DemoFileName              string                      `json:"demoFileName"`
-	Source                    constants.DemoSource        `json:"source"`
-	Type                      constants.DemoType          `json:"type"`
-	MapName                   string                      `json:"mapName"`
-	ShareCode                 string                      `json:"shareCode"` // Valve demos only, the .info file must be next to the .dem file to be able to generate it
-	TickCount                 int                         `json:"tickCount"`
-	TickRate                  float64                     `json:"tickrate"`
-	FrameRate                 float64                     `json:"framerate"`
-	Date                      time.Time                   `json:"date"`
-	Duration                  time.Duration               `json:"duration"`
-	ServerName                string                      `json:"serverName"`
-	ClientName                string                      `json:"clientName"`
-	NetworkProtocol           int                         `json:"networkProtocol"`
-	BuildNumber               int                         `json:"buildNumber"` // CS2 only
-	GameType                  constants.GameType          `json:"gameType"`
-	GameMode                  constants.GameMode          `json:"gameMode"`
-	gameModeStr               constants.GameModeStr       // CS2 only, the game mode as a string coming from the CSVCMsg_ServerInfo msg
-	IsRanked                  bool                        `json:"isRanked"`
-	MaxRounds                 int                         `json:"maxRounds"` // mp_maxrounds if detected or based on final scores
-	OvertimeCount             int                         `json:"overtimeCount"`
-	HasVacLiveBan             bool                        `json:"hasVacLiveBan"`
-	TeamA                     *Team                       `json:"teamA"` // Team A is the Team that started as CT
-	TeamB                     *Team                       `json:"teamB"` // Team B is the Team that started as T
-	Winner                    *Team                       `json:"winner"`
-	PlayersBySteamID          map[uint64]*Player          `json:"players"`
-	Kills                     []*Kill                     `json:"kills"` // Includes suicides and bomb explosions too
-	Shots                     []*Shot                     `json:"shots"`
-	Rounds                    []*Round                    `json:"rounds"`
-	Clutches                  []*Clutch                   `json:"clutches"`
-	BombsPlanted              []*BombPlanted              `json:"bombsPlanted"`
-	BombsDefused              []*BombDefused              `json:"bombsDefused"`
-	BombsExploded             []*BombExploded             `json:"bombsExploded"`
-	BombsPlantStart           []*BombPlantStart           `json:"bombsPlantStart"`
-	BombsDefuseStart          []*BombDefuseStart          `json:"bombsDefuseStart"`
-	PlayersFlashed            []*PlayerFlashed            `json:"playersFlashed"`
-	GrenadePositions          []*GrenadePosition          `json:"grenadePositions"`
-	InfernoPositions          []*InfernoPosition          `json:"infernoPositions"`
-	HostagePickUpStart        []*HostagePickUpStart       `json:"hostagePickUpStart"`
-	HostagePickedUp           []*HostagePickedUp          `json:"hostagePickedUp"`
-	HostageRescued            []*HostageRescued           `json:"hostageRescued"`
-	HostagePositions          []*HostagePosition          `json:"hostagePositions"`
-	SmokesStart               []*SmokeStart               `json:"smokesStart"`
-	DecoysStart               []*DecoyStart               `json:"decoysStart"`
-	Utilities                 []*Utility                  `json:"utilities"`
-	HeGrenadesExplode         []*HeGrenadeExplode         `json:"heGrenadesExplode"`
-	FlashbangsExplode         []*FlashbangExplode         `json:"flashbangsExplode"`
-	GrenadeBounces            []*GrenadeBounce            `json:"grenadeBounces"`
-	GrenadeProjectilesDestroy []*GrenadeProjectileDestroy `json:"grenadeProjectilesDestroy"`
-	ChickenPositions          []*ChickenPosition          `json:"chickenPositions"`
-	ChickenDeaths             []*ChickenDeath             `json:"chickenDeaths"`
-	Damages                   []*Damage                   `json:"damages"`
-	PlayerPositions           []*PlayerPosition           `json:"playerPositions"`
-	PlayersBuy                []*PlayerBuy                `json:"playersBuy"`
-	PlayerEconomies           []*PlayerEconomy            `json:"playerEconomies"`
-	PlayerButtons             []*funData.PlayerButtons    `json:"playerButtons"`
-	ChatMessages              []*ChatMessage              `json:"chatMessages"`
-	Footsteps                 []*Footstep                 `json:"footsteps"`
-	AwpHoldDeaths             []*AwpHoldDeath             `json:"awpHoldDeaths"`
-	scoreTeamA                *int
-	scoreTeamB                *int
-	lastPlayersPosition       map[uint64]r3.Vector
-	prevPlayersPosition       map[uint64]r3.Vector
-	lastPlayersTick           map[uint64]int
-	prevPlayersTick           map[uint64]int
-	hasCounterStrafeRoundIndexes bool
-	counterStrafeShotsByRoundPlayer map[roundPlayerKey][]*Shot
+	Checksum                          string                      `json:"checksum"`
+	Game                              constants.Game              `json:"game"`
+	DemoFilePath                      string                      `json:"demoFilePath"`
+	DemoFileName                      string                      `json:"demoFileName"`
+	Source                            constants.DemoSource        `json:"source"`
+	Type                              constants.DemoType          `json:"type"`
+	MapName                           string                      `json:"mapName"`
+	ShareCode                         string                      `json:"shareCode"` // Valve demos only, the .info file must be next to the .dem file to be able to generate it
+	TickCount                         int                         `json:"tickCount"`
+	TickRate                          float64                     `json:"tickrate"`
+	FrameRate                         float64                     `json:"framerate"`
+	Date                              time.Time                   `json:"date"`
+	Duration                          time.Duration               `json:"duration"`
+	ServerName                        string                      `json:"serverName"`
+	ClientName                        string                      `json:"clientName"`
+	NetworkProtocol                   int                         `json:"networkProtocol"`
+	BuildNumber                       int                         `json:"buildNumber"` // CS2 only
+	GameType                          constants.GameType          `json:"gameType"`
+	GameMode                          constants.GameMode          `json:"gameMode"`
+	gameModeStr                       constants.GameModeStr       // CS2 only, the game mode as a string coming from the CSVCMsg_ServerInfo msg
+	IsRanked                          bool                        `json:"isRanked"`
+	MaxRounds                         int                         `json:"maxRounds"` // mp_maxrounds if detected or based on final scores
+	OvertimeCount                     int                         `json:"overtimeCount"`
+	HasVacLiveBan                     bool                        `json:"hasVacLiveBan"`
+	TeamA                             *Team                       `json:"teamA"` // Team A is the Team that started as CT
+	TeamB                             *Team                       `json:"teamB"` // Team B is the Team that started as T
+	Winner                            *Team                       `json:"winner"`
+	PlayersBySteamID                  map[uint64]*Player          `json:"players"`
+	Kills                             []*Kill                     `json:"kills"` // Includes suicides and bomb explosions too
+	Shots                             []*Shot                     `json:"shots"`
+	Rounds                            []*Round                    `json:"rounds"`
+	Clutches                          []*Clutch                   `json:"clutches"`
+	BombsPlanted                      []*BombPlanted              `json:"bombsPlanted"`
+	BombsDefused                      []*BombDefused              `json:"bombsDefused"`
+	BombsExploded                     []*BombExploded             `json:"bombsExploded"`
+	BombsPlantStart                   []*BombPlantStart           `json:"bombsPlantStart"`
+	BombsDefuseStart                  []*BombDefuseStart          `json:"bombsDefuseStart"`
+	PlayersFlashed                    []*PlayerFlashed            `json:"playersFlashed"`
+	GrenadePositions                  []*GrenadePosition          `json:"grenadePositions"`
+	InfernoPositions                  []*InfernoPosition          `json:"infernoPositions"`
+	HostagePickUpStart                []*HostagePickUpStart       `json:"hostagePickUpStart"`
+	HostagePickedUp                   []*HostagePickedUp          `json:"hostagePickedUp"`
+	HostageRescued                    []*HostageRescued           `json:"hostageRescued"`
+	HostagePositions                  []*HostagePosition          `json:"hostagePositions"`
+	SmokesStart                       []*SmokeStart               `json:"smokesStart"`
+	DecoysStart                       []*DecoyStart               `json:"decoysStart"`
+	Utilities                         []*Utility                  `json:"utilities"`
+	HeGrenadesExplode                 []*HeGrenadeExplode         `json:"heGrenadesExplode"`
+	FlashbangsExplode                 []*FlashbangExplode         `json:"flashbangsExplode"`
+	GrenadeBounces                    []*GrenadeBounce            `json:"grenadeBounces"`
+	GrenadeProjectilesDestroy         []*GrenadeProjectileDestroy `json:"grenadeProjectilesDestroy"`
+	ChickenPositions                  []*ChickenPosition          `json:"chickenPositions"`
+	ChickenDeaths                     []*ChickenDeath             `json:"chickenDeaths"`
+	Damages                           []*Damage                   `json:"damages"`
+	PlayerPositions                   []*PlayerPosition           `json:"playerPositions"`
+	PlayersBuy                        []*PlayerBuy                `json:"playersBuy"`
+	PlayerEconomies                   []*PlayerEconomy            `json:"playerEconomies"`
+	PlayerButtons                     []*funData.PlayerButtons    `json:"playerButtons"`
+	ChatMessages                      []*ChatMessage              `json:"chatMessages"`
+	Footsteps                         []*Footstep                 `json:"footsteps"`
+	AwpHoldDeaths                     []*AwpHoldDeath             `json:"awpHoldDeaths"`
+	Coaches                           []*Coach                    `json:"coaches"`
+	scoreTeamA                        *int
+	scoreTeamB                        *int
+	lastPlayersPosition               map[uint64]r3.Vector
+	prevPlayersPosition               map[uint64]r3.Vector
+	lastPlayersTick                   map[uint64]int
+	prevPlayersTick                   map[uint64]int
+	hasCounterStrafeRoundIndexes      bool
+	counterStrafeShotsByRoundPlayer   map[roundPlayerKey][]*Shot
 	counterStrafeButtonsByRoundPlayer map[roundPlayerKey][]*funData.PlayerButtons
 }
 
@@ -97,12 +98,16 @@ type MatchJSON struct {
 	GameModeStr string `json:"gameModeStr"`
 }
 
-func (match *Match) MarshalJSON() ([]byte, error) {
-
-	return json.Marshal(MatchJSON{
+// toJSON returns the value the match is marshalled as.
+func (match *Match) toJSON() MatchJSON {
+	return MatchJSON{
 		MatchAlias:  (*MatchAlias)(match),
 		GameModeStr: match.GameModeStr().String(),
-	})
+	}
+}
+
+func (match *Match) MarshalJSON() ([]byte, error) {
+	return json.Marshal(match.toJSON())
 }
 
 func (match Match) GameModeStr() constants.GameModeStr {
@@ -256,8 +261,8 @@ func (match *Match) computeResultStats() {
 	// Listening on CCSTeam.m_scoreTotal or the event ScoreUpdated is not reliable with non Valve demos.
 	isFirstHalf := true
 	for roundIndex, round := range match.Rounds {
-		if match.FrameRate > 0 {
-			round.Duration = int64(((float64(round.EndFrame) - float64(round.StartFrame)) / match.FrameRate) * 1000)
+		if match.TickRate > 0 {
+			round.Duration = int64(((float64(round.EndTick) - float64(round.StartTick)) / match.TickRate) * 1000)
 		}
 
 		if round.WinnerSide == round.TeamASide {
@@ -341,63 +346,64 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 	}
 
 	match := Match{
-		Checksum:                  demoInfo.Checksum,
-		Source:                    source,
-		Game:                      game,
-		Type:                      "GOTV", // By default assume it's a GOTV demo, it will be updated during parsing.
-		ShareCode:                 demoInfo.ShareCode,
-		TickCount:                 demoInfo.TickCount,
-		Date:                      demoInfo.Date,
-		DemoFilePath:              demoInfo.FilePath,
-		DemoFileName:              demoInfo.FileName,
-		TickRate:                  demoInfo.TickRate,
-		MapName:                   demoInfo.MapName,
-		FrameRate:                 demoInfo.FrameRate,
-		Duration:                  demoInfo.Duration,
-		ServerName:                demoInfo.ServerName,
-		ClientName:                demoInfo.ClientName,
-		BuildNumber:               demoInfo.BuildNumber,
-		NetworkProtocol:           demoInfo.NetworkProtocol,
-		PlayersBySteamID:          make(map[uint64]*Player),
-		Rounds:                    []*Round{},
-		Kills:                     []*Kill{},
-		Clutches:                  []*Clutch{},
-		BombsPlanted:              []*BombPlanted{},
-		BombsDefused:              []*BombDefused{},
-		BombsExploded:             []*BombExploded{},
-		BombsPlantStart:           []*BombPlantStart{},
-		BombsDefuseStart:          []*BombDefuseStart{},
-		Damages:                   []*Damage{},
-		Shots:                     []*Shot{},
-		PlayersFlashed:            []*PlayerFlashed{},
-		PlayersBuy:                []*PlayerBuy{},
-		PlayerEconomies:           []*PlayerEconomy{},
-		PlayerPositions:           []*PlayerPosition{},
-		GrenadePositions:          []*GrenadePosition{},
-		GrenadeBounces:            []*GrenadeBounce{},
-		InfernoPositions:          []*InfernoPosition{},
-		SmokesStart:               []*SmokeStart{},
-		DecoysStart:               []*DecoyStart{},
-		Utilities:                 []*Utility{},
-		HeGrenadesExplode:         []*HeGrenadeExplode{},
-		FlashbangsExplode:         []*FlashbangExplode{},
-		HostagePickUpStart:        []*HostagePickUpStart{},
-		HostagePickedUp:           []*HostagePickedUp{},
-		HostageRescued:            []*HostageRescued{},
-		HostagePositions:          []*HostagePosition{},
-		ChickenPositions:          []*ChickenPosition{},
-		ChatMessages:              []*ChatMessage{},
-		ChickenDeaths:             []*ChickenDeath{},
-		GrenadeProjectilesDestroy: []*GrenadeProjectileDestroy{},
-		PlayerButtons:             []*funData.PlayerButtons{},
-		Footsteps:                 []*Footstep{},
-		AwpHoldDeaths:             []*AwpHoldDeath{},
-		lastPlayersPosition:       make(map[uint64]r3.Vector),
-		prevPlayersPosition:       make(map[uint64]r3.Vector),
-		lastPlayersTick:           make(map[uint64]int),
-		prevPlayersTick:           make(map[uint64]int),
-		hasCounterStrafeRoundIndexes: false,
-		counterStrafeShotsByRoundPlayer: make(map[roundPlayerKey][]*Shot),
+		Checksum:                          demoInfo.Checksum,
+		Source:                            source,
+		Game:                              game,
+		Type:                              "GOTV", // By default assume it's a GOTV demo, it will be updated during parsing.
+		ShareCode:                         demoInfo.ShareCode,
+		TickCount:                         demoInfo.TickCount,
+		Date:                              demoInfo.Date,
+		DemoFilePath:                      demoInfo.FilePath,
+		DemoFileName:                      demoInfo.FileName,
+		TickRate:                          demoInfo.TickRate,
+		MapName:                           demoInfo.MapName,
+		FrameRate:                         demoInfo.FrameRate,
+		Duration:                          demoInfo.Duration,
+		ServerName:                        demoInfo.ServerName,
+		ClientName:                        demoInfo.ClientName,
+		BuildNumber:                       demoInfo.BuildNumber,
+		NetworkProtocol:                   demoInfo.NetworkProtocol,
+		PlayersBySteamID:                  make(map[uint64]*Player),
+		Rounds:                            []*Round{},
+		Kills:                             []*Kill{},
+		Clutches:                          []*Clutch{},
+		BombsPlanted:                      []*BombPlanted{},
+		BombsDefused:                      []*BombDefused{},
+		BombsExploded:                     []*BombExploded{},
+		BombsPlantStart:                   []*BombPlantStart{},
+		BombsDefuseStart:                  []*BombDefuseStart{},
+		Damages:                           []*Damage{},
+		Shots:                             []*Shot{},
+		PlayersFlashed:                    []*PlayerFlashed{},
+		PlayersBuy:                        []*PlayerBuy{},
+		PlayerEconomies:                   []*PlayerEconomy{},
+		PlayerPositions:                   []*PlayerPosition{},
+		GrenadePositions:                  []*GrenadePosition{},
+		GrenadeBounces:                    []*GrenadeBounce{},
+		InfernoPositions:                  []*InfernoPosition{},
+		SmokesStart:                       []*SmokeStart{},
+		DecoysStart:                       []*DecoyStart{},
+		Utilities:                         []*Utility{},
+		HeGrenadesExplode:                 []*HeGrenadeExplode{},
+		FlashbangsExplode:                 []*FlashbangExplode{},
+		HostagePickUpStart:                []*HostagePickUpStart{},
+		HostagePickedUp:                   []*HostagePickedUp{},
+		HostageRescued:                    []*HostageRescued{},
+		HostagePositions:                  []*HostagePosition{},
+		ChickenPositions:                  []*ChickenPosition{},
+		ChatMessages:                      []*ChatMessage{},
+		Coaches:                           []*Coach{},
+		ChickenDeaths:                     []*ChickenDeath{},
+		GrenadeProjectilesDestroy:         []*GrenadeProjectileDestroy{},
+		PlayerButtons:                     []*funData.PlayerButtons{},
+		Footsteps:                         []*Footstep{},
+		AwpHoldDeaths:                     []*AwpHoldDeath{},
+		lastPlayersPosition:               make(map[uint64]r3.Vector),
+		prevPlayersPosition:               make(map[uint64]r3.Vector),
+		lastPlayersTick:                   make(map[uint64]int),
+		prevPlayersTick:                   make(map[uint64]int),
+		hasCounterStrafeRoundIndexes:      false,
+		counterStrafeShotsByRoundPlayer:   make(map[roundPlayerKey][]*Shot),
 		counterStrafeButtonsByRoundPlayer: make(map[roundPlayerKey][]*funData.PlayerButtons),
 	}
 
@@ -408,6 +414,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 
 func (match *Match) reset() {
 	match.PlayersBySteamID = make(map[uint64]*Player)
+	match.Coaches = []*Coach{}
 	match.Rounds = []*Round{}
 	match.Kills = []*Kill{}
 	match.Clutches = []*Clutch{}
@@ -434,7 +441,6 @@ func (match *Match) reset() {
 	match.HostageRescued = []*HostageRescued{}
 	match.HostagePositions = []*HostagePosition{}
 	match.ChickenPositions = []*ChickenPosition{}
-	match.ChatMessages = []*ChatMessage{}
 	match.ChickenDeaths = []*ChickenDeath{}
 	match.GrenadeProjectilesDestroy = []*GrenadeProjectileDestroy{}
 	match.PlayerEconomies = []*PlayerEconomy{}
@@ -466,9 +472,6 @@ func (match *Match) resetRound(roundNumber int) {
 	})
 	match.BombsExploded = slice.Filter(match.BombsExploded, func(event *BombExploded, index int) bool {
 		return event.RoundNumber != roundNumber
-	})
-	match.ChatMessages = slice.Filter(match.ChatMessages, func(msg *ChatMessage, index int) bool {
-		return msg.RoundNumber != roundNumber
 	})
 	match.ChickenDeaths = slice.Filter(match.ChickenDeaths, func(death *ChickenDeath, index int) bool {
 		return death.RoundNumber != roundNumber

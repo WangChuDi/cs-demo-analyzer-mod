@@ -7,7 +7,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 const (

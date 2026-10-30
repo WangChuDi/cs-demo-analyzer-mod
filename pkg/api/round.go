@@ -5,21 +5,17 @@ import (
 	"strings"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type Round struct {
 	analyzer            *Analyzer
 	Number              int                   `json:"number"`
 	StartTick           int                   `json:"startTick"`
-	StartFrame          int                   `json:"startFrame"`
 	FreezeTimeEndTick   int                   `json:"freezeTimeEndTick"`
-	FreezeTimeEndFrame  int                   `json:"freezeTimeEndFrame"`
 	EndTick             int                   `json:"endTick"`
-	EndFrame            int                   `json:"endFrame"`
 	EndOfficiallyTick   int                   `json:"endOfficiallyTick"`
-	EndOfficiallyFrame  int                   `json:"endOfficiallyFrame"`
 	OvertimeNumber      int                   `json:"overtimeNumber"`
 	TeamAName           string                `json:"teamAName"`
 	TeamBName           string                `json:"teamBName"`
@@ -137,16 +133,14 @@ func newRound(number int, analyzer *Analyzer) *Round {
 	var weaponsIds []string
 	for _, playingPlayer := range analyzer.parser.GameState().Participants().Playing() {
 		for _, weapon := range playingPlayer.Weapons() {
-			weaponsIds = append(weaponsIds, weapon.UniqueID2().String())
+			weaponsIds = append(weaponsIds, weapon.UniqueID().String())
 		}
 	}
 
 	round := &Round{
 		analyzer:               analyzer,
 		Number:                 number,
-		StartFrame:             analyzer.parser.CurrentFrame(),
 		StartTick:              analyzer.currentTick(),
-		FreezeTimeEndFrame:     -1,
 		FreezeTimeEndTick:      -1,
 		OvertimeNumber:         analyzer.match.OvertimeCount,
 		TeamAName:              analyzer.match.TeamA.Name,

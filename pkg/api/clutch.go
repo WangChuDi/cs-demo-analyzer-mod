@@ -1,11 +1,10 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 type Clutch struct {
-	Frame             int         `json:"frame"`
 	Tick              int         `json:"tick"`
 	RoundNumber       int         `json:"roundNumber"`
 	OpponentCount     int         `json:"opponentCount"`
@@ -18,10 +17,8 @@ type Clutch struct {
 }
 
 func newClutch(analyzer *Analyzer, clutcher *common.Player, side common.Team, opponentCount int) *Clutch {
-	parser := analyzer.parser
 
 	return &Clutch{
-		Frame:             parser.CurrentFrame(),
 		Tick:              analyzer.currentTick(),
 		Side:              side,
 		OpponentCount:     opponentCount,

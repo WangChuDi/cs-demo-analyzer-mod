@@ -11,11 +11,11 @@ const (
 	// These thresholds are used by the wallbang heuristic path because demos/parser signals often do not expose
 	// direct non-lethal penetration damage information reliably.
 	HeuristicDamageAttributionMaxShotFrameDistance = 48
-	HeuristicWallbangMaxVictimPositionFrameDelta = 48
-	HeuristicWallbangHelmetSnapshotFrameWindow   = 8
-	HeuristicWallbangMinDelta                    = 1.0
-	HeuristicWallbangMinLossRatio                = 0.0
-	HeuristicWallbangIncludeHeadshots            = true
+	HeuristicWallbangMaxVictimPositionFrameDelta   = 48
+	HeuristicWallbangHelmetSnapshotFrameWindow     = 8
+	HeuristicWallbangMinDelta                      = 1.0
+	HeuristicWallbangMinLossRatio                  = 0.0
+	HeuristicWallbangIncludeHeadshots              = true
 )
 
 var HeuristicWallbangWeaponDamageModels = map[WeaponName]HeuristicWallbangWeaponDamageModel{

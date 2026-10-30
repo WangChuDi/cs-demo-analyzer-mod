@@ -2,8 +2,8 @@ package api
 
 import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/msg"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msgs2"
 )
 
 func createValveAnalyzer(analyzer *Analyzer) {
@@ -11,13 +11,12 @@ func createValveAnalyzer(analyzer *Analyzer) {
 	match := analyzer.match
 	analyzer.matchStarted = parser.GameState().IsMatchStarted
 
-	parser.RegisterNetMessageHandler(func(srvInfo *msg.CSVCMsg_ServerInfo) {
+	parser.RegisterNetMessageHandler(func(srvInfo *msgs2.CSVCMsg_ServerInfo) {
 		match.gameModeStr = constants.GameModeStr(srvInfo.GameSessionConfig.GetGamemode())
 	})
 
 	parser.RegisterEventHandler(func(event events.MatchStart) {
 		currentRound := analyzer.currentRound
-		currentRound.StartFrame = parser.CurrentFrame()
 		currentRound.StartTick = analyzer.currentTick()
 		analyzer.updateTeamNames()
 	})

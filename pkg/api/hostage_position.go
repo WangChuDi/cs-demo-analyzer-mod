@@ -1,11 +1,14 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
 )
 
 type HostagePosition struct {
-	Frame       int                 `json:"frame"`
+	// Used to identify the hostage, entity IDs are re-used once an entity is destroyed but not with the same serial number.
+	// Not exported because they are used only to group positions by hostage.
+	entityID    int
+	serialNum   int
 	Tick        int                 `json:"tick"`
 	RoundNumber int                 `json:"roundNumber"`
 	X           float64             `json:"x"`
@@ -15,10 +18,10 @@ type HostagePosition struct {
 }
 
 func newHostagePositionFromHostage(analyzer *Analyzer, hostage *common.Hostage) *HostagePosition {
-	parser := analyzer.parser
 
 	return &HostagePosition{
-		Frame:       parser.CurrentFrame(),
+		entityID:    hostage.Entity.ID(),
+		serialNum:   hostage.Entity.SerialNum(),
 		Tick:        analyzer.currentTick(),
 		RoundNumber: analyzer.currentRound.Number,
 		X:           hostage.Position().X,

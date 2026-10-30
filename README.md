@@ -5,6 +5,8 @@
 
 This is a modified fork of the original [CS Demo Analyzer](https://github.com/akiver/cs-demo-analyzer), designed to extract additional "fun" statistics from CS2 demos.
 
+Synced with upstream v1.13.0 (`8374d4e`) on 2026-10-30. Building requires Go 1.27+. Standard event exports follow upstream's tick-based schema; internal frame information is retained for the fork's event correlation and AWP reaction metrics. Projectile IDs now follow upstream's decimal string format.
+
 ## 🚀 Added Features
 
 ### 🧛 Leech & Feed Statistics
@@ -175,13 +177,7 @@ The utility throw analysis involves three core systems: **velocity calculation**
 
 **1. Thrower Velocity Calculation (`utils.go: getPlayerVelocity`)**
 
-Uses position-delta method to calculate player velocity. Engine properties (`m_vecVelocity`/`m_vecBaseVelocity`) are unreliable.
-
-- Primary path: `velocity = (currentPos - lastPos) / (tickDelta * tickTime)`
-- Fallback path: When `currentPos == lastPos` (due to engine entity update ordering — grenade projectile entity is created before player pawn position is updated in the same frame), uses `(lastPos - prevPos)` instead
-- Maintains two-frame position history per player (`lastPlayersPosition`/`prevPlayersPosition`) and corresponding ticks (`lastPlayersTick`/`prevPlayersTick`) in the `FrameDone` handler
-- Position history rotation (`prev = last`) only occurs when the tick actually changes, preventing duplicate-tick frames from corrupting the prev value
-- Position and tick maps are initialized at round start via `initLastPlayersPosition()`
+Uses the synchronized parser's `Player.Velocity()`. Upstream now resolves the networked velocity properties and derives velocity from snapshot server ticks for older demos. The parser enables `EagerVelocityTracking` so velocity history is available before grenade creation events. This replaces the fork's older manual position-delta workaround.
 
 **2. Button Detection System (`utility.go: applyUtilityThrowButtons`)**
 
@@ -267,13 +263,7 @@ Ready-to-use binaries are available on the [releases page](https://github.com/Wa
 
 ## ⚠️ Known Issues
 
-Due to limitations in `demoinfocs-golang v5` regarding reliable velocity property access for some events (specifically `HeGrenadeExplode` and `SmokeStart`), we have implemented a manual velocity calculation workaround using player position deltas between ticks.
-
-While this workaround provides accurate velocity for most events (like `Footstep` and `Shot`), there might still be edge cases where velocity is unavailable (e.g., first tick of the match).
-
-This affects only:
-- `HeGrenadeExplode` (thrower velocity)
-- `SmokeStart` (thrower velocity)
+The 2026-10-30 recent-demo audit found an unresolved clock mismatch in `getPinPulledTick()`: `m_fPinPullTime` uses server time while `Parser.CurrentTime()` uses recording-relative time. Invalid pin ticks also invalidate the intended utility button lookback window. Treat these fields as unreliable until that conversion is corrected. Missing raw footsteps, aim-punch properties, or bullet-penetration events must be distinguished from real zero values.
 
 ### Unlucky Statistics
 - **Wallbang Damage**: Outward wallbang reporting (`Damage.IsWallbang`, `wallbang damage dealt`, `wallbang damage taken`) combines parser-confirmed penetration signals when available with a heuristic fallback path. This fallback is needed because current demos/parser signals do not reliably expose direct non-lethal penetration extraction in all cases. When the parser-confirmed path is unavailable, the heuristic matches each damage to the nearest prior shot from the same attacker/weapon and to the nearest prior victim position in the same round, estimates the expected non-wallbang health damage from the weapon model (`BaseDamage`, `RangeModifier`, `ArmorRatio`, `HeadMultiplier`), hitgroup, distance falloff, and victim armor/helmet state, and marks the damage as wallbang when the observed health damage is meaningfully lower than that expected non-wallbang estimate. `true wallbang damage taken` remains parser-confirmed only (`BulletDamage`/`NumPenetrations` same-frame correlation).
@@ -472,8 +462,50 @@ main();
 
 #### Tests
 
-1. `./download-demos.sh` it will download the demos used for the tests
-2. `make test`
+Tests compare the analyzer output against the JSON snapshots stored in `tests/snapshots`.
+
+Every demo is an entry in the `demoTestCases` table in `tests/demos_test.go` and runs as a parallel subtest of `TestDemos`, named `TestDemos/<game>/<name>` (e.g. `TestDemos/cs2/Esportal_6008132_2023_Mirage`). To add a demo, add a row to the table rather than a new file.
+
+First, download the demos used by the tests (one-time setup):
+
+```bash
+./download-demos.sh
+```
+
+#### Running tests
+
+```bash
+# Run all tests
+make test
+
+# Only CS:GO or only CS2 tests
+make test-csgo
+make test-cs2
+```
+
+Pass extra flags to `go test` through the `ARGS` variable. The `-run` value is a regex matched against the slash-separated subtest path:
+
+```bash
+# Run a single demo
+make test ARGS="-run TestDemos/cs2/Esportal_6008132_2023_Mirage"
+
+# Run every demo whose name contains Esportal, in verbose mode
+make test ARGS="-run TestDemos/.*/Esportal -v"
+```
+
+#### Updating snapshots
+
+When the analyzer output legitimately changes, regenerate the snapshots by passing `-update`:
+
+```bash
+# Regenerate all snapshots
+make test ARGS="-update"
+
+# Regenerate the snapshot for a single demo
+make test ARGS="-update -run TestDemos/cs2/Esportal_6008132_2023_Mirage"
+```
+
+Review the resulting snapshot diff before committing.
 
 #### VSCode debugger
 

@@ -1,12 +1,11 @@
 package api
 
 import (
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type ChatMessage struct {
-	Frame           int         `json:"frame"`
 	Tick            int         `json:"tick"`
 	RoundNumber     int         `json:"roundNumber"`
 	Message         string      `json:"message"`
@@ -17,9 +16,7 @@ type ChatMessage struct {
 }
 
 func newChatMessageFromGameEvent(analyzer *Analyzer, event events.ChatMessage) *ChatMessage {
-	parser := analyzer.parser
 	return &ChatMessage{
-		Frame:           parser.CurrentFrame(),
 		Tick:            analyzer.currentTick(),
 		RoundNumber:     analyzer.currentRound.Number,
 		IsSenderAlive:   event.Sender.IsAlive(),

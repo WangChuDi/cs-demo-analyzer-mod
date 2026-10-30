@@ -72,7 +72,7 @@ npm-publish: # Publish a new version of the JS package to npm
 
 	@test -z "`git status --porcelain`" || (echo "Aborting because git is somehow unclean after a commit" && false)
 	@cd js && \
-	npm publish && \
+	npm stage publish && \
 	git push origin main --tags
 
 publish-minor: ## Publish a minor version of the JS package
@@ -85,10 +85,10 @@ test: ## Run all tests
 	go test ./tests/ $(ARGS)
 
 test-csgo: ## Run CS:GO tests
-	go test ./tests/csgo_* $(ARGS)
+	go test ./tests/ -run TestDemos/csgo $(ARGS)
 
 test-cs2: ## Run CS2 tests
-	go test ./tests/cs2_* $(ARGS)
+	go test ./tests/ -run TestDemos/cs2 $(ARGS)
 
 test-verbose: ## Run tests in verbose
 	@"$(MAKE)" --no-print-directory ARGS=-v test

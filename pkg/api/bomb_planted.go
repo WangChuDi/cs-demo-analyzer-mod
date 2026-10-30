@@ -2,11 +2,10 @@ package api
 
 import (
 	"github.com/akiver/cs-demo-analyzer/internal/converters"
-	"github.com/markus-wa/demoinfocs-golang/v5/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
 )
 
 type BombPlanted struct {
-	Frame                  int     `json:"frame"`
 	Tick                   int     `json:"tick"`
 	RoundNumber            int     `json:"roundNumber"`
 	Site                   string  `json:"site"`
@@ -19,11 +18,9 @@ type BombPlanted struct {
 }
 
 func newBombPlanted(analyzer *Analyzer, event events.BombPlanted) *BombPlanted {
-	parser := analyzer.parser
 	player := event.Player
 
 	return &BombPlanted{
-		Frame:                  parser.CurrentFrame(),
 		Tick:                   analyzer.currentTick(),
 		RoundNumber:            analyzer.currentRound.Number,
 		PlanterName:            player.Name,
