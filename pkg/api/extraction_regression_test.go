@@ -125,6 +125,28 @@ func TestDataQualityDistinguishesMissingFromObservedZero(t *testing.T) {
 	}
 }
 
+func TestWallbangHeadshotUsesObservedHelmetInsteadOfInferringFromArmor(t *testing.T) {
+	// A player can have armor without a helmet. The old snapshot fallback inferred
+	// a helmet from armor when the event sample had no recent frame timestamp.
+	damage := &Damage{RoundNumber: 1, Frame: 100, Tick: 100, AttackerSteamID64: 1, VictimSteamID64: 2,
+		WeaponName: "M4A1", WeaponUniqueID: "m4", HitGroup: events.HitGroupHead,
+		HealthDamage: 96, VictimHealth: 100, VictimArmor: 100,
+		victimPosition: &PlayerPosition{HasHelmet: false},
+	}
+	match := &Match{Damages: []*Damage{damage}, Shots: []*Shot{
+		{RoundNumber: 1, Frame: 100, Tick: 100, PlayerSteamID64: 1, WeaponID: "m4"},
+	}}
+	markHeuristicWallbangDamages(match)
+	if !damage.IsWallbang || damage.WallbangDataSource != "heuristic" {
+		t.Fatal("armor alone must not imply a helmet")
+	}
+	damage.victimPosition.HasHelmet = true
+	markHeuristicWallbangDamages(match)
+	if damage.IsWallbang {
+		t.Fatal("observed helmet must change expected headshot damage")
+	}
+}
+
 func TestGameModeRequiresEvidence(t *testing.T) {
 	match := &Match{}
 	if match.GameModeStr() != "unknown" || match.GameModeSource() != "unknown" {
