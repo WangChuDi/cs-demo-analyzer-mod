@@ -152,9 +152,9 @@
 **3. 投掷分类 (`utility.go`)**
 - **MouseTypeByStrength**：通过 `m_flThrowStrength` 属性分类鼠标操作
   - `1.0` → `left_click`，`0.5` → `double_click`（左右键同时）
-  - 当值为 `0`（游戏 bug 未赋值）时，使用 `calcThrowStrength()` 回算：
+  - 其他值使用 `calcThrowStrength()` 回算；零值可能未赋值，死亡时释放也可能缺少有效投出速度：
     `strength = sqrt((initVelX - 1.25*throwerVelX)² + (initVelY - 1.25*throwerVelY)²) / cos(pitch)`
-    阈值：>500 = `left_click`，>300 = `double_click`，其余 = `right_click`
+    仅对有限正值分类：>500 = `left_click`，>300 = `double_click`，其余 = `right_click`。回算值非正数或非有限值时为 `unknown`，不能据此认定右键。
 - **ThrowerSpeedType**：根据 `speed2D` 分类投掷者移动状态
   - `standing`：speed2D == 0
   - `step`：0 < speed2D < 80
@@ -187,9 +187,9 @@ GrenadeProjectileThrow 事件
 - `has walk`: Shift（静步）
 **拉环与投掷分类：**
 - `pin pulled tick`: 录像中观测到拔栓的 demo tick（0 表示未观测到，包括实体首次出现时已经拔栓的情况）
-- `mouse type by strength`: 鼠标操作分类（`left_click`/`double_click`/`right_click`）
+- `mouse type by strength`: 鼠标操作分类（`left_click`/`double_click`/`right_click`/`unknown`）
 - `is jump throw`: 是否为跳投（引擎属性 `m_bJumpThrow`）
-- `throw strength`: 投掷力度（引擎属性 `m_flThrowStrength`，0 为游戏 bug）
+- `throw strength`: 原始引擎属性 `m_flThrowStrength`；不能单凭零值推断鼠标操作
 **投掷者状态：**
 - `thrower velocity x/y/z`: 投掷者速度分量
 - `thrower speed 2d`: 水平面速度（用于分类移动状态）

@@ -23,6 +23,7 @@ const (
 type UtilityThrowType string
 
 const (
+	UtilityThrowTypeUnknown     UtilityThrowType = "unknown"
 	UtilityThrowTypeLeftClick   UtilityThrowType = "left_click"
 	UtilityThrowTypeRightClick  UtilityThrowType = "right_click"
 	UtilityThrowTypeDoubleClick UtilityThrowType = "double_click"
@@ -148,8 +149,12 @@ func classifyThrowTypeByStrength(utility *Utility) UtilityThrowType {
 	if utility.ThrowStrength == 0.5 {
 		return UtilityThrowTypeDoubleClick
 	}
-	// ThrowStrength == 0: game bug, fallback to calculated_strength
+	// Other strengths need a velocity fallback, which can be unavailable for
+	// releases on death. Require positive, finite evidence before inferring a key.
 	calcStrength := calcThrowStrength(utility)
+	if calcStrength <= 0 || math.IsNaN(calcStrength) || math.IsInf(calcStrength, 0) {
+		return UtilityThrowTypeUnknown
+	}
 	if calcStrength > 500 {
 		return UtilityThrowTypeLeftClick
 	}

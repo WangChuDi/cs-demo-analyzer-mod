@@ -194,9 +194,9 @@ Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output
 **3. Throw Classification (`utility.go`)**
 - **MouseTypeByStrength**: classifies mouse action via `m_flThrowStrength` property
   - `1.0` → `left_click`, `0.5` → `double_click` (both buttons simultaneously)
-  - When value is `0` (game bug, unassigned), falls back to `calcThrowStrength()`:
+  - Other values use `calcThrowStrength()` as a fallback; zero may be unassigned, and releases on death may have no usable launch velocity:
     `strength = sqrt((initVelX - 1.25*throwerVelX)² + (initVelY - 1.25*throwerVelY)²) / cos(pitch)`
-    Thresholds: >500 = `left_click`, >300 = `double_click`, else = `right_click`
+    Positive finite thresholds: >500 = `left_click`, >300 = `double_click`, otherwise = `right_click`. Nonpositive or nonfinite fallback values are `unknown`, not evidence of a right click.
 - **ThrowerSpeedType**: classifies thrower movement state by `speed2D`
   - `standing`: speed2D == 0
   - `step`: 0 < speed2D < 80
@@ -232,9 +232,9 @@ GrenadeProjectileThrow event
 
 **Pin Pull & Throw Classification:**
 - `pin pulled tick`: Demo tick when the pin pull was observed (0 = not observed, including a grenade already primed when its entity first appears)
-- `mouse type by strength`: Mouse action classification (`left_click`/`double_click`/`right_click`)
+- `mouse type by strength`: Mouse action classification (`left_click`/`double_click`/`right_click`/`unknown`)
 - `is jump throw`: Whether it's a jump throw (engine property `m_bJumpThrow`)
-- `throw strength`: Throw strength (engine property `m_flThrowStrength`, 0 = game bug)
+- `throw strength`: Raw engine property `m_flThrowStrength`; zero alone does not prove a mouse action
 
 **Thrower State:**
 - `thrower velocity x/y/z`: Thrower velocity components
