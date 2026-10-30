@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/akiver/cs-demo-analyzer/internal/converters"
 	d "github.com/akiver/cs-demo-analyzer/internal/demo"
 	"github.com/akiver/cs-demo-analyzer/internal/slice"
 	"github.com/akiver/cs-demo-analyzer/internal/strings"
@@ -1587,10 +1586,16 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 	parser.RegisterEventHandler(func(event events.ConVarsUpdated) {
 		for conVarName, conVarValue := range event.UpdatedConVars {
+			value, err := strconv.Atoi(conVarValue)
+			if err != nil {
+				continue
+			}
 			if conVarName == "game_type" {
-				match.GameType = constants.GameType(converters.StringToInt(conVarValue))
+				match.GameType = constants.GameType(value)
+				match.HasGameTypeData = true
 			} else if conVarName == "game_mode" {
-				match.GameMode = constants.GameMode(converters.StringToInt(conVarValue))
+				match.GameMode = constants.GameMode(value)
+				match.HasGameModeData = true
 			}
 		}
 	})
@@ -1831,7 +1836,7 @@ func (analyzer *Analyzer) registerBulletDamageAtFrame(event events.BulletDamage,
 			continue
 		}
 
-		if damage.hasBulletDamageData {
+		if damage.HasBulletDamageData {
 			continue
 		}
 

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 	"time"
 
@@ -18,26 +17,30 @@ import (
 // Match is the root struct that contains relevant data from a demo.
 // It excludes data from warmup / halftime / after match.
 type Match struct {
-	Checksum                          string                      `json:"checksum"`
-	Game                              constants.Game              `json:"game"`
-	DemoFilePath                      string                      `json:"demoFilePath"`
-	DemoFileName                      string                      `json:"demoFileName"`
-	Source                            constants.DemoSource        `json:"source"`
-	Type                              constants.DemoType          `json:"type"`
-	MapName                           string                      `json:"mapName"`
-	ShareCode                         string                      `json:"shareCode"` // Valve demos only, the .info file must be next to the .dem file to be able to generate it
-	TickCount                         int                         `json:"tickCount"`
-	TickRate                          float64                     `json:"tickrate"`
-	FrameRate                         float64                     `json:"framerate"`
-	Date                              time.Time                   `json:"date"`
-	Duration                          time.Duration               `json:"duration"`
-	ServerName                        string                      `json:"serverName"`
-	ClientName                        string                      `json:"clientName"`
-	NetworkProtocol                   int                         `json:"networkProtocol"`
-	BuildNumber                       int                         `json:"buildNumber"` // CS2 only
-	GameType                          constants.GameType          `json:"gameType"`
-	GameMode                          constants.GameMode          `json:"gameMode"`
-	gameModeStr                       constants.GameModeStr       // CS2 only, the game mode as a string coming from the CSVCMsg_ServerInfo msg
+	Checksum                          string                `json:"checksum"`
+	Game                              constants.Game        `json:"game"`
+	DemoFilePath                      string                `json:"demoFilePath"`
+	DemoFileName                      string                `json:"demoFileName"`
+	Source                            constants.DemoSource  `json:"source"`
+	Type                              constants.DemoType    `json:"type"`
+	MapName                           string                `json:"mapName"`
+	ShareCode                         string                `json:"shareCode"` // Valve demos only, the .info file must be next to the .dem file to be able to generate it
+	TickCount                         int                   `json:"tickCount"`
+	TickRate                          float64               `json:"tickrate"`
+	FrameRate                         float64               `json:"framerate"`
+	Date                              time.Time             `json:"date"`
+	DateSource                        string                `json:"dateSource"` // match_info or file_mtime
+	Duration                          time.Duration         `json:"duration"`
+	ServerName                        string                `json:"serverName"`
+	ClientName                        string                `json:"clientName"`
+	NetworkProtocol                   int                   `json:"networkProtocol"`
+	BuildNumber                       int                   `json:"buildNumber"` // CS2 only
+	GameType                          constants.GameType    `json:"gameType"`
+	GameMode                          constants.GameMode    `json:"gameMode"`
+	HasGameTypeData                   bool                  `json:"hasGameTypeData"`
+	HasGameModeData                   bool                  `json:"hasGameModeData"`
+	gameModeStr                       constants.GameModeStr // CS2 only, the game mode as a string coming from the CSVCMsg_ServerInfo msg
+	gameModeSource                    string
 	IsRanked                          bool                        `json:"isRanked"`
 	MaxRounds                         int                         `json:"maxRounds"` // mp_maxrounds if detected or based on final scores
 	OvertimeCount                     int                         `json:"overtimeCount"`
@@ -95,14 +98,18 @@ type MatchAlias Match
 
 type MatchJSON struct {
 	*MatchAlias
-	GameModeStr string `json:"gameModeStr"`
+	GameModeStr    string           `json:"gameModeStr"`
+	GameModeSource string           `json:"gameModeSource"`
+	DataQuality    MatchDataQuality `json:"dataQuality"`
 }
 
 // toJSON returns the value the match is marshalled as.
 func (match *Match) toJSON() MatchJSON {
 	return MatchJSON{
-		MatchAlias:  (*MatchAlias)(match),
-		GameModeStr: match.GameModeStr().String(),
+		MatchAlias:     (*MatchAlias)(match),
+		GameModeStr:    match.GameModeStr().String(),
+		GameModeSource: match.GameModeSource(),
+		DataQuality:    match.DataQuality(),
 	}
 }
 
@@ -115,14 +122,25 @@ func (match Match) GameModeStr() constants.GameModeStr {
 		return match.gameModeStr
 	}
 
-	gameModeStr := constants.GameModeMapping[match.GameType][match.GameMode]
-	if gameModeStr != "" {
-		return gameModeStr
+	if match.HasGameTypeData && match.HasGameModeData {
+		if mode := constants.GameModeMapping[match.GameType][match.GameMode]; mode != "" {
+			return mode
+		}
 	}
+	return constants.GameModeStr("unknown")
+}
 
-	fmt.Printf("Unknown game mode string for game type: %d and game mode: %d", match.GameType, match.GameMode)
-
-	return constants.GameModeStrCompetitive
+func (match Match) GameModeSource() string {
+	if match.gameModeStr != "" {
+		if match.gameModeSource != "" {
+			return match.gameModeSource
+		}
+		return "source_hint"
+	}
+	if match.GameModeStr() != "unknown" {
+		return "convars"
+	}
+	return "unknown"
 }
 
 func (match Match) Players() []*Player {
@@ -353,6 +371,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		ShareCode:                         demoInfo.ShareCode,
 		TickCount:                         demoInfo.TickCount,
 		Date:                              demoInfo.Date,
+		DateSource:                        demoInfo.DateSource,
 		DemoFilePath:                      demoInfo.FilePath,
 		DemoFileName:                      demoInfo.FileName,
 		TickRate:                          demoInfo.TickRate,

@@ -14,9 +14,9 @@ func TestPlayerWallbangDamageTaken(t *testing.T) {
 	match := &Match{
 		Damages: []*Damage{
 			{VictimSteamID64: player.SteamID64, HealthDamage: 12},
-			{VictimSteamID64: player.SteamID64, HealthDamage: 35, hasBulletDamageData: true, numPenetrations: 1},
-			{VictimSteamID64: player.SteamID64, HealthDamage: 17, hasBulletDamageData: true, numPenetrations: 2},
-			{VictimSteamID64: 999, HealthDamage: 99, hasBulletDamageData: true, numPenetrations: 3},
+			{VictimSteamID64: player.SteamID64, HealthDamage: 35, HasBulletDamageData: true, NumPenetrations: 1},
+			{VictimSteamID64: player.SteamID64, HealthDamage: 17, HasBulletDamageData: true, NumPenetrations: 2},
+			{VictimSteamID64: 999, HealthDamage: 99, HasBulletDamageData: true, NumPenetrations: 3},
 		},
 	}
 	player.match = match
@@ -41,6 +41,7 @@ func TestMarkHeuristicWallbangDamages(t *testing.T) {
 				HealthDamage:      12,
 				VictimHealth:      100,
 				VictimArmor:       0,
+				victimPosition:    &PlayerPosition{},
 			},
 		},
 		Shots: []*Shot{
@@ -91,8 +92,8 @@ func TestMarkHeuristicWallbangDamages_KeepsTrueWallbang(t *testing.T) {
 				HealthDamage:        12,
 				VictimHealth:        100,
 				VictimArmor:         0,
-				hasBulletDamageData: true,
-				numPenetrations:     1,
+				HasBulletDamageData: true,
+				NumPenetrations:     1,
 			},
 		},
 		Shots: []*Shot{
@@ -141,8 +142,8 @@ func TestMarkHeuristicWallbangDamages_UsesTrueSignalWithoutPositions(t *testing.
 				WeaponUniqueID:      "weapon-1",
 				HitGroup:            events.HitGroupChest,
 				HealthDamage:        12,
-				hasBulletDamageData: true,
-				numPenetrations:     1,
+				HasBulletDamageData: true,
+				NumPenetrations:     1,
 			},
 		},
 	}
@@ -428,11 +429,11 @@ func TestBulletDamageCorrelationSameFrame(t *testing.T) {
 
 	analyzer.registerBulletDamageAtFrame(newBulletDamageEvent(111, 222, 2), 100)
 
-	if !damage.hasBulletDamageData {
+	if !damage.HasBulletDamageData {
 		t.Fatalf("expected same-frame damage to be matched with BulletDamage")
 	}
-	if got, want := damage.numPenetrations, 2; got != want {
-		t.Fatalf("expected numPenetrations %d, got %d", want, got)
+	if got, want := damage.NumPenetrations, 2; got != want {
+		t.Fatalf("expected NumPenetrations %d, got %d", want, got)
 	}
 }
 
@@ -450,11 +451,11 @@ func TestBulletDamageCorrelationBulletDamageBeforePlayerHurtSameFrame(t *testing
 	}
 	analyzer.applyPendingBulletDamageToDamage(damage)
 
-	if !damage.hasBulletDamageData {
+	if !damage.HasBulletDamageData {
 		t.Fatalf("expected same-frame pending BulletDamage to be applied")
 	}
-	if got, want := damage.numPenetrations, 1; got != want {
-		t.Fatalf("expected numPenetrations %d, got %d", want, got)
+	if got, want := damage.NumPenetrations, 1; got != want {
+		t.Fatalf("expected NumPenetrations %d, got %d", want, got)
 	}
 }
 
@@ -471,11 +472,11 @@ func TestBulletDamageCorrelationPlayerHurtBeforeBulletDamageSameFrame(t *testing
 
 	analyzer.registerBulletDamageAtFrame(newBulletDamageEvent(111, 222, 3), 300)
 
-	if !damage.hasBulletDamageData {
+	if !damage.HasBulletDamageData {
 		t.Fatalf("expected same-frame retroactive BulletDamage match")
 	}
-	if got, want := damage.numPenetrations, 3; got != want {
-		t.Fatalf("expected numPenetrations %d, got %d", want, got)
+	if got, want := damage.NumPenetrations, 3; got != want {
+		t.Fatalf("expected NumPenetrations %d, got %d", want, got)
 	}
 }
 
@@ -492,7 +493,7 @@ func TestBulletDamageCorrelationDifferentFrameDoesNotMatch(t *testing.T) {
 
 	analyzer.registerBulletDamageAtFrame(newBulletDamageEvent(111, 222, 1), 401)
 
-	if damage.hasBulletDamageData {
+	if damage.HasBulletDamageData {
 		t.Fatalf("expected different-frame BulletDamage not to match")
 	}
 	if got := len(analyzer.pendingBulletDamageByKey); got != 1 {
@@ -500,7 +501,7 @@ func TestBulletDamageCorrelationDifferentFrameDoesNotMatch(t *testing.T) {
 	}
 
 	analyzer.applyPendingBulletDamageToDamage(damage)
-	if damage.hasBulletDamageData {
+	if damage.HasBulletDamageData {
 		t.Fatalf("expected pending BulletDamage from different frame not to be applied")
 	}
 }
@@ -515,10 +516,10 @@ func newBulletDamageTestAnalyzer() *Analyzer {
 	}
 }
 
-func newBulletDamageEvent(attackerSteamID64 uint64, victimSteamID64 uint64, numPenetrations int) events.BulletDamage {
+func newBulletDamageEvent(attackerSteamID64 uint64, victimSteamID64 uint64, NumPenetrations int) events.BulletDamage {
 	return events.BulletDamage{
 		Attacker:        &common.Player{SteamID64: attackerSteamID64},
 		Victim:          &common.Player{SteamID64: victimSteamID64},
-		NumPenetrations: numPenetrations,
+		NumPenetrations: NumPenetrations,
 	}
 }

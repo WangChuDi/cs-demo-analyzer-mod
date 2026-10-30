@@ -61,12 +61,6 @@ type roundPlayerKey struct {
 	steamID64   uint64
 }
 
-type playerPositionSnapshot struct {
-	position    *PlayerPosition
-	velocity    r3.Vector
-	hasVelocity bool
-}
-
 func generateAwpHoldDeaths(match *Match) {
 	if match == nil {
 		return
@@ -87,7 +81,6 @@ func generateAwpHoldDeaths(match *Match) {
 
 	victimAwpShotsByRoundPlayer := buildVictimAwpShotsByRoundPlayer(match)
 	victimButtonsByRoundPlayer := buildPlayerButtonsByRoundPlayer(match)
-	playerPositionsByRoundPlayer := buildPlayerPositionsByRoundPlayer(match)
 
 	derived := make([]*AwpHoldDeath, 0, len(match.Kills))
 	for _, kill := range match.Kills {
@@ -111,34 +104,17 @@ func generateAwpHoldDeaths(match *Match) {
 			reactionWindowFrames,
 			reactionWindowTicks,
 		)
-		victimSnapshot := nearestPlayerSnapshotAtOrBefore(kill.Tick, playerPositionsByRoundPlayer[key], tickRate)
-		killerSnapshot := nearestPlayerSnapshotAtOrBefore(kill.Tick, playerPositionsByRoundPlayer[roundPlayerKey{roundNumber: kill.RoundNumber, steamID64: kill.KillerSteamID64}], tickRate)
-
+		// Kill captures combat state when the event is handled. Frame-end positions may
+		// already describe a dead player with no active weapon, even at the same tick.
+		// Use event state in both export modes so -positions cannot change statistics.
 		victimPosition := r3.Vector{X: kill.VictimX, Y: kill.VictimY, Z: kill.VictimZ}
-		if victimSnapshot.position != nil {
-			victimPosition = r3.Vector{X: victimSnapshot.position.X, Y: victimSnapshot.position.Y, Z: victimSnapshot.position.Z}
-		}
 		killerPosition := r3.Vector{X: kill.KillerX, Y: kill.KillerY, Z: kill.KillerZ}
-		if killerSnapshot.position != nil {
-			killerPosition = r3.Vector{X: killerSnapshot.position.X, Y: killerSnapshot.position.Y, Z: killerSnapshot.position.Z}
-		}
 
 		victimWeaponName := kill.VictimActiveWeaponName
 		isVictimScoped := kill.VictimIsScoped
 		victimVelocity := r3.Vector{X: kill.VictimVelocityX, Y: kill.VictimVelocityY, Z: kill.VictimVelocityZ}
 		killerVelocity := r3.Vector{X: kill.KillerVelocityX, Y: kill.KillerVelocityY, Z: kill.KillerVelocityZ}
 		victimYaw := kill.VictimYaw
-		if victimSnapshot.position != nil {
-			victimWeaponName = victimSnapshot.position.ActiveWeaponName
-			isVictimScoped = victimSnapshot.position.IsScoping
-			if victimSnapshot.hasVelocity {
-				victimVelocity = victimSnapshot.velocity
-			}
-			victimYaw = victimSnapshot.position.Yaw
-		}
-		if killerSnapshot.position != nil && killerSnapshot.hasVelocity {
-			killerVelocity = killerSnapshot.velocity
-		}
 		isVictimFacingKiller, victimFacingKillerAngleDeg := victimFacingKiller(victimYaw, victimPosition, killerPosition)
 
 		victimSpeed2D := math.Sqrt(victimVelocity.X*victimVelocity.X + victimVelocity.Y*victimVelocity.Y)
@@ -246,30 +222,6 @@ func buildPlayerButtonsByRoundPlayer(match *Match) map[roundPlayerKey][]*funData
 	return buttonsByRoundPlayer
 }
 
-func buildPlayerPositionsByRoundPlayer(match *Match) map[roundPlayerKey][]*PlayerPosition {
-	positionsByRoundPlayer := make(map[roundPlayerKey][]*PlayerPosition)
-	for _, position := range match.PlayerPositions {
-		if position == nil {
-			continue
-		}
-
-		key := roundPlayerKey{roundNumber: position.RoundNumber, steamID64: position.SteamID64}
-		positionsByRoundPlayer[key] = append(positionsByRoundPlayer[key], position)
-	}
-
-	for key := range positionsByRoundPlayer {
-		sort.Slice(positionsByRoundPlayer[key], func(i int, j int) bool {
-			if positionsByRoundPlayer[key][i].Frame == positionsByRoundPlayer[key][j].Frame {
-				return positionsByRoundPlayer[key][i].Tick < positionsByRoundPlayer[key][j].Tick
-			}
-
-			return positionsByRoundPlayer[key][i].Frame < positionsByRoundPlayer[key][j].Frame
-		})
-	}
-
-	return positionsByRoundPlayer
-}
-
 func nearestShotOffset(killFrame int, killTick int, shots []*Shot, emptyShotWindowFrames int, emptyShotWindowTicks int) (*Shot, int, int) {
 	if len(shots) == 0 {
 		return nil, 0, 0
@@ -349,41 +301,6 @@ func hasPostDeathAttackWithinWindow(killFrame int, killTick int, buttons []*funD
 	}
 
 	return false
-}
-
-func nearestPlayerSnapshotAtOrBefore(tick int, positions []*PlayerPosition, tickRate float64) playerPositionSnapshot {
-	if len(positions) == 0 {
-		return playerPositionSnapshot{}
-	}
-
-	firstAfterIndex := sort.Search(len(positions), func(index int) bool {
-		return positions[index].Tick > tick
-	})
-	positionIndex := firstAfterIndex - 1
-	if positionIndex < 0 {
-		return playerPositionSnapshot{}
-	}
-
-	position := positions[positionIndex]
-	velocity := r3.Vector{}
-	hasVelocity := false
-	if positionIndex > 0 {
-		previousPosition := positions[positionIndex-1]
-		tickDelta := position.Tick - previousPosition.Tick
-		if tickDelta > 0 {
-			secondsDelta := float64(tickDelta) / tickRate
-			if secondsDelta > 0 {
-				hasVelocity = true
-				velocity = r3.Vector{
-					X: (position.X - previousPosition.X) / secondsDelta,
-					Y: (position.Y - previousPosition.Y) / secondsDelta,
-					Z: (position.Z - previousPosition.Z) / secondsDelta,
-				}
-			}
-		}
-	}
-
-	return playerPositionSnapshot{position: position, velocity: velocity, hasVelocity: hasVelocity}
 }
 
 func victimFacingKiller(victimYaw float32, victimPosition r3.Vector, killerPosition r3.Vector) (bool, float64) {

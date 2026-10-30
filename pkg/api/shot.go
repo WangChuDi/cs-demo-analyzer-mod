@@ -38,6 +38,9 @@ type Shot struct {
 	RecoilIndex            float32              `json:"recoilIndex"`
 	AimPunchAngleX         float64              `json:"aimPunchAngleX"`
 	AimPunchAngleY         float64              `json:"aimPunchAngleY"`
+	HasAimPunchData        bool                 `json:"hasAimPunchData"`
+	HasViewPunchData       bool                 `json:"hasViewPunchData"`
+	HasRecoilIndexData     bool                 `json:"hasRecoilIndexData"`
 	ViewPunchAngleX        float64              `json:"viewPunchAngleX"`
 	ViewPunchAngleY        float64              `json:"viewPunchAngleY"`
 	IsPlayerRunning        bool                 `json:"isPlayerRunning"`
@@ -58,28 +61,34 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 	}
 
 	var recoilIndex float32
+	var hasRecoilIndexData bool
 	if weaponEntity != nil {
-		if prop, exists := weaponEntity.PropertyValue("m_flRecoilIndex"); exists {
+		if prop, exists := weaponEntity.PropertyValue("m_flRecoilIndex"); exists && prop.Any != nil {
 			recoilIndex = prop.Float()
+			hasRecoilIndexData = true
 		}
 	}
 
 	var aimPunchAngle r3.Vector
 	var viewPunchAngle r3.Vector
+	var hasAimPunchData, hasViewPunchData bool
 	if analyzer.isSource2 {
 		pawnEntity := shooter.PlayerPawnEntity()
-		// This prop may not exist with demos after the Animgraph 2 update
-		if prop, exists := pawnEntity.PropertyValue("m_aimPunchAngle"); exists {
-			aimPunchAngle = prop.R3Vec()
-		}
-
-		// This prop may not exist with demos coming from the early CS2 limited test
-		if prop, exists := pawnEntity.PropertyValue("m_pCameraServices.m_vecCsViewPunchAngle"); exists {
-			viewPunchAngle = prop.R3Vec()
+		if pawnEntity != nil {
+			// These properties can be absent in particular CS2 versions.
+			if prop, exists := pawnEntity.PropertyValue("m_aimPunchAngle"); exists && prop.Any != nil {
+				aimPunchAngle = prop.R3Vec()
+				hasAimPunchData = true
+			}
+			if prop, exists := pawnEntity.PropertyValue("m_pCameraServices.m_vecCsViewPunchAngle"); exists && prop.Any != nil {
+				viewPunchAngle = prop.R3Vec()
+				hasViewPunchData = true
+			}
 		}
 	} else {
 		aimPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_aimPunchAngle").R3Vec()
 		viewPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_viewPunchAngle").R3Vec()
+		hasAimPunchData, hasViewPunchData = true, true
 	}
 
 	velocity := getPlayerVelocity(shooter, analyzer)
@@ -125,6 +134,9 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		RecoilIndex:            recoilIndex,
 		AimPunchAngleX:         aimPunchAngle.X,
 		AimPunchAngleY:         aimPunchAngle.Y,
+		HasAimPunchData:        hasAimPunchData,
+		HasViewPunchData:       hasViewPunchData,
+		HasRecoilIndexData:     hasRecoilIndexData,
 		ViewPunchAngleX:        viewPunchAngle.X,
 		ViewPunchAngleY:        viewPunchAngle.Y,
 		IsPlayerRunning:        isPlayerRunning,

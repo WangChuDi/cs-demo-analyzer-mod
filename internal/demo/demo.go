@@ -28,6 +28,7 @@ type Demo struct {
 	Checksum                      string
 	Filestamp                     string
 	Date                          time.Time
+	DateSource                    string
 	ServerName                    string
 	ClientName                    string
 	MapName                       string
@@ -114,6 +115,7 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 	var networkProtocol int
 	var buildNumber int
 	var date = stats.ModTime()
+	dateSource := "file_mtime"
 	var shareCode string
 	var netMessageDecryptionPublicKey []byte
 	demoType := constants.DemoTypeGOTV
@@ -168,7 +170,10 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 				fmt.Printf("failed to unmarshal MatchInfo message: %v", err)
 			} else {
 				netMessageDecryptionPublicKey = getNetMessageDecryptionKeyFromPubKey(m.Watchablematchinfo.GetClDecryptdataKeyPub())
-				date = getDateFromMatchTime(m.GetMatchtime())
+				if m.GetMatchtime() > 0 {
+					date = getDateFromMatchTime(m.GetMatchtime())
+					dateSource = "match_info"
+				}
 				rounds := m.GetRoundstatsall()
 				if len(rounds) > 0 {
 					lastRound := rounds[len(rounds)-1]
@@ -217,7 +222,10 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 				fmt.Printf("failed to unmarshal MatchInfo message: %v", err)
 			} else {
 				netMessageDecryptionPublicKey = getNetMessageDecryptionKeyFromPubKey(m.Watchablematchinfo.GetClDecryptdataKeyPub())
-				date = getDateFromMatchTime(m.GetMatchtime())
+				if m.GetMatchtime() > 0 {
+					date = getDateFromMatchTime(m.GetMatchtime())
+					dateSource = "match_info"
+				}
 				lastRound := m.GetRoundstatsLegacy()
 				rounds := m.GetRoundstatsall()
 				if lastRound == nil && len(rounds) > 0 {
@@ -241,6 +249,7 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 		Filestamp:                     filestamp,
 		Checksum:                      checksum,
 		Date:                          date,
+		DateSource:                    dateSource,
 		ServerName:                    serverName,
 		ClientName:                    clientName,
 		Duration:                      duration,

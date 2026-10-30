@@ -1678,9 +1678,9 @@ func (player *Player) roundCount() int {
 }
 
 func (player *Player) oneVsXClutches(opponentCount int) []*Clutch {
-	clutches := player.Clutches()
+	clutches := []*Clutch{}
 	for _, clutch := range player.match.Clutches {
-		if clutch.OpponentCount == opponentCount {
+		if clutch.ClutcherSteamID64 == player.SteamID64 && clutch.OpponentCount == opponentCount {
 			clutches = append(clutches, clutch)
 		}
 	}

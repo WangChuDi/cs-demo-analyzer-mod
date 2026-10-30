@@ -21,7 +21,12 @@ type Damage struct {
 	// It is true when either:
 	//  1. parser-confirmed penetration is available (damage.isWallbang(), from BulletDamage/NumPenetrations), or
 	//  2. heuristic fallback classifies the damage as wallbang (wallbang.go), used when direct non-lethal extraction is unavailable.
-	IsWallbang               bool                 `json:"isWallbang"`
+	IsWallbang bool `json:"isWallbang"`
+	// WallbangDataSource is bullet_damage, heuristic, or unavailable. A false
+	// IsWallbang with source unavailable is not evidence of an unobstructed shot.
+	WallbangDataSource       string               `json:"wallbangDataSource"`
+	HasBulletDamageData      bool                 `json:"hasBulletDamageData"`
+	NumPenetrations          int                  `json:"numPenetrations"`
 	AttackerSteamID64        uint64               `json:"attackerSteamId"`
 	AttackerSide             common.Team          `json:"attackerSide"`
 	AttackerTeamName         string               `json:"attackerTeamName"`
@@ -40,8 +45,7 @@ type Damage struct {
 	WeaponUniqueID           string               `json:"weaponUniqueId"`
 	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
 	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
-	hasBulletDamageData      bool
-	numPenetrations          int
+	victimPosition           *PlayerPosition
 	isFallDamage             bool
 }
 
@@ -77,12 +81,12 @@ func (damage *Damage) isValidPlayerDamageEvent(player *Player) bool {
 }
 
 func (damage *Damage) isWallbang() bool {
-	return damage.hasBulletDamageData && damage.numPenetrations > 0
+	return damage.HasBulletDamageData && damage.NumPenetrations > 0
 }
 
 func (damage *Damage) setBulletDamageData(numPenetrations int) {
-	damage.hasBulletDamageData = true
-	damage.numPenetrations = numPenetrations
+	damage.HasBulletDamageData = true
+	damage.NumPenetrations = numPenetrations
 }
 
 func newDamageMatchFrameKey(roundNumber int, frame int, attackerSteamID64 uint64, victimSteamID64 uint64) damageMatchFrameKey {
@@ -116,6 +120,13 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		isAttackerControllingBot = event.Attacker.IsControllingBot()
 		isAttackerAirborne = event.Attacker.IsAirborne()
 	}
+	// Only retain the state needed by the damage model, independently of the
+	// optional per-frame position export (and before frame-end/death updates).
+	var victimPosition *PlayerPosition
+	if (!analyzer.isSource2 && event.Player.Entity != nil) || (analyzer.isSource2 && event.Player.PlayerPawnEntity() != nil) {
+		position := event.Player.Position()
+		victimPosition = &PlayerPosition{X: position.X, Y: position.Y, Z: position.Z, HasHelmet: event.Player.HasHelmet()}
+	}
 
 	return &Damage{
 		Frame:                    analyzer.parser.CurrentFrame(),
@@ -141,6 +152,7 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		WeaponUniqueID:           event.Weapon.UniqueID().String(),
 		IsVictimAirborne:         event.Player.IsAirborne(),
 		IsAttackerAirborne:       isAttackerAirborne,
+		victimPosition:           victimPosition,
 	}
 }
 

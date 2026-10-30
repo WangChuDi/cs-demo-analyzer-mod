@@ -14,11 +14,6 @@ type wallbangShotKey struct {
 	weaponID string
 }
 
-type wallbangPositionKey struct {
-	round   int
-	steamID uint64
-}
-
 type shotIndexEntry struct {
 	frame int
 	tick  int
@@ -30,82 +25,70 @@ func markHeuristicWallbangDamages(match *Match) {
 		return
 	}
 
-	// The parser gives a reliable true wallbang signal for bullet penetrations only when BulletDamage can be
-	// correlated to PlayerHurt in the same frame (see damage.isWallbang()). For non-lethal damage this direct signal
-	// is frequently unavailable, so we approximate wallbang detection heuristically for outward reporting.
-	haveHeuristicData := len(match.Shots) > 0 && len(match.PlayerPositions) > 0
-
-	var shotIndex map[wallbangShotKey][]shotIndexEntry
-	var positionIndex map[wallbangPositionKey][]*PlayerPosition
-	if haveHeuristicData {
-		shotIndex = buildWallbangHeuristicShotIndex(match.Shots)
-		positionIndex = buildWallbangHeuristicPositionIndex(match.PlayerPositions)
-	}
+	shotIndex := buildWallbangHeuristicShotIndex(match.Shots)
 
 	for _, damage := range match.Damages {
-		isTrueWallbang := damage.isWallbang()
-		if haveHeuristicData {
-			damage.IsWallbang = isTrueWallbang || isSuspectedWallbangDamage(damage, shotIndex, positionIndex)
+		if damage == nil {
 			continue
 		}
-
-		damage.IsWallbang = isTrueWallbang
+		if damage.HasBulletDamageData {
+			// An observed zero is authoritative too; never override it with a heuristic.
+			damage.IsWallbang = damage.isWallbang()
+			damage.WallbangDataSource = "bullet_damage"
+			continue
+		}
+		damage.IsWallbang, damage.WallbangDataSource = classifyHeuristicWallbangDamage(damage, shotIndex)
 	}
 }
 
-func isSuspectedWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry, positionIndex map[wallbangPositionKey][]*PlayerPosition) bool {
+func classifyHeuristicWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry) (bool, string) {
 	if damage == nil {
-		return false
+		return false, "unavailable"
 	}
 
 	if damage.AttackerSteamID64 == 0 || damage.VictimSteamID64 == 0 {
-		return false
-	}
-
-	if damage.isWallbang() {
-		return false
+		return false, "unavailable"
 	}
 
 	model, exists := constants.HeuristicWallbangWeaponDamageModels[damage.WeaponName]
 	if !exists {
-		return false
+		return false, "unavailable"
 	}
 
 	if !constants.HeuristicWallbangIncludeHeadshots && isHeadHit(damage.HitGroup) {
-		return false
+		return false, "unavailable"
 	}
 
 	matchedShot := nearestShotForWallbangDamage(damage, shotIndex)
 	if matchedShot == nil {
-		return false
+		return false, "unavailable"
 	}
 
-	victimPosition := nearestVictimPositionForWallbangDamage(damage, positionIndex)
-	distance := 0.0
-	if victimPosition != nil {
-		distance = euclideanDistance3D(matchedShot.X, matchedShot.Y, matchedShot.Z, victimPosition.X, victimPosition.Y, victimPosition.Z)
+	victimPosition := damage.victimPosition
+	if victimPosition == nil {
+		return false, "unavailable"
 	}
+	distance := euclideanDistance3D(matchedShot.X, matchedShot.Y, matchedShot.Z, victimPosition.X, victimPosition.Y, victimPosition.Z)
 
-	victimHasHelmet := resolveVictimHasHelmet(damage, victimPosition)
-	expected := expectedHealthDamageHeuristic(model, damage.HitGroup, distance, damage.VictimArmor, victimHasHelmet)
+	expected := expectedHealthDamageHeuristic(model, damage.HitGroup, distance, damage.VictimArmor, victimPosition.HasHelmet)
 	expected = capExpectedHealthDamage(expected, damage.VictimHealth)
 	observed := float64(damage.HealthDamage)
 
 	delta := expected - observed
 	if delta <= 0 || expected <= 0 {
-		return false
+		return false, "heuristic"
 	}
 
 	if delta < constants.HeuristicWallbangMinDelta {
-		return false
+		return false, "heuristic"
 	}
 
 	lossRatio := delta / expected
 	if lossRatio < constants.HeuristicWallbangMinLossRatio {
-		return false
+		return false, "heuristic"
 	}
 
-	return true
+	return true, "heuristic"
 }
 
 func buildWallbangHeuristicShotIndex(shots []*Shot) map[wallbangShotKey][]shotIndexEntry {
@@ -126,30 +109,6 @@ func buildWallbangHeuristicShotIndex(shots []*Shot) map[wallbangShotKey][]shotIn
 			}
 
 			return index[key][i].frame < index[key][j].frame
-		})
-	}
-
-	return index
-}
-
-func buildWallbangHeuristicPositionIndex(positions []*PlayerPosition) map[wallbangPositionKey][]*PlayerPosition {
-	index := make(map[wallbangPositionKey][]*PlayerPosition)
-	for _, position := range positions {
-		if position.SteamID64 == 0 {
-			continue
-		}
-
-		key := wallbangPositionKey{round: position.RoundNumber, steamID: position.SteamID64}
-		index[key] = append(index[key], position)
-	}
-
-	for key := range index {
-		sort.Slice(index[key], func(i int, j int) bool {
-			if index[key][i].Frame == index[key][j].Frame {
-				return index[key][i].Tick < index[key][j].Tick
-			}
-
-			return index[key][i].Frame < index[key][j].Frame
 		})
 	}
 
@@ -191,41 +150,6 @@ func nearestShotForWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey]
 	return best
 }
 
-func nearestVictimPositionForWallbangDamage(damage *Damage, positionIndex map[wallbangPositionKey][]*PlayerPosition) *PlayerPosition {
-	key := wallbangPositionKey{round: damage.RoundNumber, steamID: damage.VictimSteamID64}
-	positions, exists := positionIndex[key]
-	if !exists || len(positions) == 0 {
-		return nil
-	}
-
-	var best *PlayerPosition
-	bestFrameDelta := math.MaxInt
-	bestTickDelta := math.MaxInt
-
-	for _, position := range positions {
-		if position.Frame > damage.Frame {
-			continue
-		}
-		if position.Frame == damage.Frame && position.Tick > damage.Tick {
-			continue
-		}
-
-		frameDelta := absInt(position.Frame - damage.Frame)
-		if frameDelta > constants.HeuristicWallbangMaxVictimPositionFrameDelta {
-			continue
-		}
-
-		tickDelta := absInt(position.Tick - damage.Tick)
-		if frameDelta < bestFrameDelta || (frameDelta == bestFrameDelta && tickDelta < bestTickDelta) {
-			best = position
-			bestFrameDelta = frameDelta
-			bestTickDelta = tickDelta
-		}
-	}
-
-	return best
-}
-
 func expectedHealthDamageHeuristic(model constants.HeuristicWallbangWeaponDamageModel, hitGroup events.HitGroup, distance float64, victimArmor int, victimHasHelmet bool) float64 {
 	if distance < 0 {
 		distance = 0
@@ -245,26 +169,6 @@ func expectedHealthDamageHeuristic(model constants.HeuristicWallbangWeaponDamage
 	}
 
 	return clampFloat(healthDamage, 0, postHitgroup)
-}
-
-func resolveVictimHasHelmet(damage *Damage, victimPosition *PlayerPosition) bool {
-	if !isHeadHit(damage.HitGroup) {
-		if victimPosition != nil {
-			return victimPosition.HasHelmet
-		}
-
-		return false
-	}
-
-	if victimPosition != nil && absInt(damage.Frame-victimPosition.Frame) <= constants.HeuristicWallbangHelmetSnapshotFrameWindow {
-		return victimPosition.HasHelmet
-	}
-
-	if damage.VictimArmor > 0 {
-		return true
-	}
-
-	return false
 }
 
 func effectiveArmorHealthRatio(raw float64) float64 {

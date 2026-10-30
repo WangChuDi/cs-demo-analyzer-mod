@@ -22,6 +22,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 	outputPath = outputPath + string(os.PathSeparator) + match.DemoFileName
 
 	var writeMatch = func() {
+		quality := match.DataQuality()
 		header := []string{
 			"checksum",
 			"game",
@@ -53,6 +54,17 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"overtime count",
 			"max rounds",
 			"has vac live ban",
+			"date source",
+			"game mode source",
+			"has game type data",
+			"has game mode data",
+			"footsteps status",
+			"footstep event count",
+			"aim punch sample count",
+			"view punch sample count",
+			"recoil index sample count",
+			"bullet damage matched count",
+			"wallbang heuristic evaluated count",
 		}
 
 		winnerName := ""
@@ -92,6 +104,17 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			converters.IntToString(match.OvertimeCount),
 			converters.IntToString(match.MaxRounds),
 			converters.BoolToString(match.HasVacLiveBan),
+			match.DateSource,
+			match.GameModeSource(),
+			converters.BoolToString(match.HasGameTypeData),
+			converters.BoolToString(match.HasGameModeData),
+			quality.FootstepsStatus,
+			converters.IntToString(quality.FootstepEventCount),
+			converters.IntToString(quality.AimPunchSampleCount),
+			converters.IntToString(quality.ViewPunchSampleCount),
+			converters.IntToString(quality.RecoilIndexSampleCount),
+			converters.IntToString(quality.BulletDamageMatchedCount),
+			converters.IntToString(quality.WallbangHeuristicEvaluatedCount),
 		}
 
 		csv.WriteLinesIntoCsvFile(outputPath+"_match.csv", [][]string{
@@ -447,6 +470,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"view punch angle y",
 			"is player running",
 			"match checksum",
+			"has aim punch data",
+			"has view punch data",
+			"has recoil index data",
 		}
 
 		lines := [][]string{header}
@@ -479,6 +505,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(shot.ViewPunchAngleY),
 				converters.BoolToString(shot.IsPlayerRunning),
 				match.Checksum,
+				converters.BoolToString(shot.HasAimPunchData),
+				converters.BoolToString(shot.HasViewPunchData),
+				converters.BoolToString(shot.HasRecoilIndexData),
 			}
 			lines = append(lines, line)
 		}
@@ -799,6 +828,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"is victim airborne",
 			"is wallbang",
 			"match checksum",
+			"has bullet damage data",
+			"num penetrations",
+			"wallbang data source",
 		}
 
 		lines := [][]string{header}
@@ -828,6 +860,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(damage.IsVictimAirborne),
 				converters.BoolToString(damage.IsWallbang),
 				match.Checksum,
+				converters.BoolToString(damage.HasBulletDamageData),
+				converters.IntToString(damage.NumPenetrations),
+				damage.WallbangDataSource,
 			}
 			lines = append(lines, line)
 		}

@@ -217,8 +217,13 @@ GrenadeProjectileThrow 事件
 预编译的二进制文件可在 [releases 页面](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases) 下载。
 ## ⚠️ 已知问题
 2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。官方 v6.0.0-rc.1 的完整数据包基线播种已恢复本次样本的首回合按键，无需移植 v4 的额外补丁；Aurora–MOUZ Cache 样本首回合有 4,421 条按键状态变化，覆盖全部 10 名玩家及 5 次投掷。不能恢复的输入片段仍保留未知。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
+
+后续修复了 1vX 汇总的玩家与对手人数过滤，并让 AWP 判定使用击杀事件当时的状态。穿墙启发式直接保存伤害事件时的受害者位置及头盔状态，不再依赖 `-positions`；该开关只控制轨迹导出。样本两种模式均为 2 条 AWP 架枪死亡、328 点启发式穿墙伤害，这些仍是模型判定，未逐条回看录像。
+
+CSV/JSON 新增射击可用性（`has aim punch data`、`has view punch data`、`has recoil index data`）、伤害可用性（`has bullet damage data`、`num penetrations`、`wallbang data source`）和比赛级样本计数；JSON 使用 camelCase 键及 `dataQuality` 对象。数值必须结合标志读取：穿墙来源为 `bullet_damage`、`heuristic` 或 `unavailable`，已观测的零次穿透优先于启发式；`footsteps status=not_observed` 不等于没有走动。缺失模式证据返回 `unknown`，`game mode source` 区分 `server_info`、`convars`、`source_hint` 与 `unknown`。`date source=file_mtime` 明确标记文件时间回退，只有有效 `.info` 时间才标为 `match_info`。固定列 CSDM 格式保持原布局，不提供这些新增标志；已有数据库数据需要重新分析、导入后才能得到更正。
+
 ### 倒霉统计
-- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。当解析器确认路径不可用时，启发式回退会在同一回合内把每条伤害匹配到同攻击者、同武器的最近一次先前开枪记录，以及受害者最近一次先前位置记录；再根据武器模型参数（`BaseDamage`、`RangeModifier`、`ArmorRatio`、`HeadMultiplier`）、hitgroup、距离衰减、以及受害者护甲/头盔状态，估算“非穿墙情况下本应造成的生命值伤害”；如果实际生命值伤害明显低于这个理论非穿墙伤害估计，则将该伤害标记为 wallbang。`true wallbang damage taken` 仅保留该解析器确认路径。
+- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式在同回合匹配同攻击者、同武器的最近先前射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup 和距离衰减估算非穿墙伤害，再判断实际伤害是否明显不足。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 `BulletDamage`/`NumPenetrations` 同 frame 关联的确认路径。
 - **CS2 坠落伤害**：此前使用 `demoinfocs-golang v5` 时，在部分 CS2 demo 中发现 typed `PlayerHurt.Weapon` 会把真实 world/fall 伤害误判为 `C4`。当前保留 generic `player_hurt` 环境伤害判断，并排除与 `BombExplode` 同 frame 的候选伤害。
 ## 📝 TODO
 ### 🤡 小丑时刻
