@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/golang/geo v0.0.0-20261029132150-f51d36688936
-	github.com/markus-wa/demoinfocs-golang/v4 v4.5.1
+	github.com/markus-wa/demoinfocs-golang/v6 v6.0.0-rc.1
 	github.com/markus-wa/gobitread v0.2.5
 	github.com/pkg/errors v0.9.1
 	google.golang.org/protobuf v1.36.12
@@ -17,5 +17,3 @@ require (
 	github.com/markus-wa/ice-cipher-go v1.0.0 // indirect
 	github.com/markus-wa/quickhull-go/v2 v2.2.0 // indirect
 )
-
-replace github.com/markus-wa/demoinfocs-golang/v4 v4.5.1 => github.com/WangChuDi/demoinfocs-golang/v4 v4.5.2-0.20261030102424-38b5c297c18f

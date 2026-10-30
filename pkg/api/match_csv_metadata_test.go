@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
 )
 
 func TestMatchCSVMetadataColumnAlignment(t *testing.T) {

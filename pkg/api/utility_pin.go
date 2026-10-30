@@ -3,8 +3,8 @@ package api
 import (
 	"math"
 
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/sendtables"
 )
 
 // Entity indices are reused; the serial number identifies the weapon instance.
@@ -35,7 +35,7 @@ func (analyzer *Analyzer) registerUtilityPinHandlers() {
 }
 
 func grenadePinPullTime(value st.PropertyValue) float32 {
-	if value.S2 && value.Any == nil {
+	if value.Any == nil {
 		return 0
 	}
 	t := value.Float()
@@ -45,16 +45,21 @@ func grenadePinPullTime(value st.PropertyValue) float32 {
 	return t
 }
 
-func (analyzer *Analyzer) trackGrenadePinPull(entity st.Entity) {
+func (analyzer *Analyzer) trackGrenadePinPull(entity *st.Entity) {
 	property := entity.Property("m_fPinPullTime")
 	if property == nil {
 		return
 	}
 	key := grenadeWeaponKey{entity.ID(), entity.SerialNum()}
+	property.OnUpdate(analyzer.grenadePinPullHandler(key, property.Value(), analyzer.currentTick))
+	entity.OnDestroy(analyzer.grenadePinDestroyedHandler(key))
+}
+
+func (analyzer *Analyzer) grenadePinPullHandler(key grenadeWeaponKey, initial st.PropertyValue, currentTick func() int) st.PropertyUpdateHandler {
 	// OnUpdate also sends the initial value. A grenade already primed when it
 	// enters the recording has no observed pull tick and must remain unknown (0).
-	previousTime := grenadePinPullTime(property.Value())
-	property.OnUpdate(func(value st.PropertyValue) {
+	previousTime := grenadePinPullTime(initial)
+	return func(value st.PropertyValue) {
 		pinTime := grenadePinPullTime(value)
 		if pinTime == previousTime {
 			return
@@ -64,7 +69,7 @@ func (analyzer *Analyzer) trackGrenadePinPull(entity st.Entity) {
 		if pinTime == 0 {
 			return
 		}
-		tick := analyzer.currentTick()
+		tick := currentTick()
 		if tick <= 0 {
 			return
 		}
@@ -72,12 +77,15 @@ func (analyzer *Analyzer) trackGrenadePinPull(entity st.Entity) {
 			analyzer.grenadePinPulls = make(map[grenadeWeaponKey]grenadePinPull)
 		}
 		analyzer.grenadePinPulls[key] = grenadePinPull{time: pinTime, tick: tick}
-	})
-	entity.OnDestroy(func() {
+	}
+}
+
+func (analyzer *Analyzer) grenadePinDestroyedHandler(key grenadeWeaponKey) func() {
+	return func() {
 		// CS2 can destroy the weapon before dispatching its WeaponFire in the
 		// same frame. Keep the pull tick until those events have been processed.
 		analyzer.destroyedGrenadePins = append(analyzer.destroyedGrenadePins, key)
-	})
+	}
 }
 
 func (analyzer *Analyzer) cleanupDestroyedGrenadePins() {
@@ -92,16 +100,20 @@ func (analyzer *Analyzer) resetGrenadePins() {
 	analyzer.destroyedGrenadePins = nil
 }
 
-func getPinPulledTick(analyzer *Analyzer, weaponEntity st.Entity) int {
+func getPinPulledTick(analyzer *Analyzer, weaponEntity *st.Entity) int {
 	if analyzer == nil || weaponEntity == nil {
 		return 0
 	}
-	pull, ok := analyzer.grenadePinPulls[grenadeWeaponKey{weaponEntity.ID(), weaponEntity.SerialNum()}]
-	if !ok || pull.tick <= 0 || pull.tick > analyzer.currentTick() {
+	value, ok := weaponEntity.PropertyValue("m_fPinPullTime")
+	if !ok {
 		return 0
 	}
-	value, ok := weaponEntity.PropertyValue("m_fPinPullTime")
-	if !ok || grenadePinPullTime(value) != pull.time {
+	return analyzer.observedPinPulledTick(grenadeWeaponKey{weaponEntity.ID(), weaponEntity.SerialNum()}, value, analyzer.currentTick())
+}
+
+func (analyzer *Analyzer) observedPinPulledTick(key grenadeWeaponKey, value st.PropertyValue, currentTick int) int {
+	pull, ok := analyzer.grenadePinPulls[key]
+	if !ok || pull.tick <= 0 || pull.tick > currentTick || grenadePinPullTime(value) != pull.time {
 		return 0
 	}
 	return pull.tick

@@ -7,9 +7,9 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 
 	"github.com/golang/geo/r3"
-	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	common "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
+	st "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/sendtables"
 )
 
 type Shot struct {
@@ -49,7 +49,7 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		return nil
 	}
 
-	var weaponEntity st.Entity
+	var weaponEntity *st.Entity
 	activeWeapon := shooter.ActiveWeapon()
 	if activeWeapon != nil {
 		weaponEntity = activeWeapon.Entity

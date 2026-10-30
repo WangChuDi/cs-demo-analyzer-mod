@@ -5,8 +5,8 @@ import (
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
+	st "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/sendtables"
 )
 
 type UtilityType string
@@ -70,7 +70,7 @@ type Utility struct {
 	InitialPositionZ    float64          `json:"initialPositionZ"`
 }
 
-func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player, weaponEntity st.Entity) *Utility {
+func newUtilityFromShot(analyzer *Analyzer, shot *Shot, thrower *common.Player, weaponEntity *st.Entity) *Utility {
 	if shot == nil {
 		return nil
 	}
@@ -125,7 +125,7 @@ func getUtilityIsJumpThrow(projectile *common.GrenadeProjectile) bool {
 	if projectile == nil || projectile.WeaponInstance == nil || projectile.WeaponInstance.Entity == nil {
 		return false
 	}
-	if val, ok := projectile.WeaponInstance.Entity.PropertyValue("m_bJumpThrow"); ok {
+	if val, ok := projectile.WeaponInstance.Entity.PropertyValue("m_bJumpThrow"); ok && val.Any != nil {
 		return val.BoolVal()
 	}
 	return false
@@ -135,7 +135,7 @@ func getUtilityThrowStrength(projectile *common.GrenadeProjectile) float64 {
 	if projectile == nil || projectile.WeaponInstance == nil || projectile.WeaponInstance.Entity == nil {
 		return 0
 	}
-	if val, ok := projectile.WeaponInstance.Entity.PropertyValue("m_flThrowStrength"); ok {
+	if val, ok := projectile.WeaponInstance.Entity.PropertyValue("m_flThrowStrength"); ok && val.Any != nil {
 		return float64(val.Float())
 	}
 	return 0
@@ -187,7 +187,7 @@ func getUtilityInitialVelocity(projectile *common.GrenadeProjectile) r3.Vector {
 	if projectile == nil || projectile.Entity == nil {
 		return r3.Vector{}
 	}
-	if val, ok := projectile.Entity.PropertyValue("m_vInitialVelocity"); ok {
+	if val, ok := projectile.Entity.PropertyValue("m_vInitialVelocity"); ok && val.Any != nil {
 		return val.R3Vec()
 	}
 	return r3.Vector{}
@@ -197,7 +197,7 @@ func getUtilityInitialPosition(projectile *common.GrenadeProjectile) r3.Vector {
 	if projectile == nil || projectile.Entity == nil {
 		return r3.Vector{}
 	}
-	if val, ok := projectile.Entity.PropertyValue("m_vInitialPosition"); ok {
+	if val, ok := projectile.Entity.PropertyValue("m_vInitialPosition"); ok && val.Any != nil {
 		return val.R3Vec()
 	}
 	return r3.Vector{}
@@ -227,11 +227,15 @@ func applyUtilityThrowButtons(analyzer *Analyzer, utility *Utility) {
 		return
 	}
 	fallbackStart := getThrowButtonWindowStartTick(analyzer, utility.Tick)
+	applyUtilityThrowButtonsInWindow(analyzer.match, utility, fallbackStart)
+}
+
+func applyUtilityThrowButtonsInWindow(match *Match, utility *Utility, fallbackStart int) {
 	startTick := fallbackStart
 	if utility.PinPulledTick > startTick && utility.PinPulledTick <= utility.Tick {
 		startTick = utility.PinPulledTick
 	}
-	buttonState := getThrowButtonState(analyzer.match, utility.ThrowerSteamID64, startTick, utility.Tick)
+	buttonState := getThrowButtonState(match, utility.ThrowerSteamID64, startTick, utility.Tick)
 	applyButtonStateToUtility(utility, buttonState)
 }
 

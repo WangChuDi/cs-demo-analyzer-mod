@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/akiver/cs-demo-analyzer/internal/converters"
 	d "github.com/akiver/cs-demo-analyzer/internal/demo"
@@ -14,10 +16,12 @@ import (
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/funData"
 	"github.com/golang/geo/r3"
-	dem "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	st "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/sendtables"
+	dem "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/msg"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/option"
+	st "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/sendtables"
 )
 
 const (
@@ -32,7 +36,7 @@ const (
 )
 
 type Analyzer struct {
-	parser             dem.Parser
+	parser             *dem.Parser
 	match              *Match
 	currentRound       *Round
 	matchStarted       func() bool
@@ -126,14 +130,16 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	}
 	defer file.Close()
 
-	parserConfig := dem.DefaultParserConfig
-	parserConfig.DisableMimicSource1Events = demo.Type == constants.DemoTypePOV
 	// Older CS2 demos don't network the players velocity, it's derived from their positions which must be tracked
 	// before the first Player.Velocity() call, otherwise it returns 0.
-	parserConfig.EagerVelocityTracking = true
-
-	parser := dem.NewParserWithConfig(file, parserConfig)
+	parser := dem.NewParser(file,
+		option.DisableMimicSource1Events(demo.Type == constants.DemoTypePOV),
+		option.EagerVelocityTracking(true),
+		option.NetMessageDecryptionKey(demo.NetMessageDecryptionPublicKey),
+	)
 	defer parser.Close()
+	var fileInfo *msg.CDemoFileInfo
+	parser.RegisterNetMessageHandler(func(info *msg.CDemoFileInfo) { fileInfo = info })
 
 	source := options.Source
 	if source == "" {
@@ -227,7 +233,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		return nil, errors.New("unknown demo source, please specify the source with the -source flag (UnknownSource)")
 	}
 
-	err = parser.ParseToEnd()
+	err = parser.ParseToEnd(context.Background())
 	// Do not stop if the demo is corrupted, usually the error occurs at the end of the parsing.
 	// Depending on how far we were able to parse the demo we may still have data.
 	isCorruptedDemo := errors.Is(err, dem.ErrUnexpectedEndOfDemo)
@@ -235,19 +241,25 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		return nil, err
 	}
 
-	// Prefer the final demo header, falling back for recordings without CDemoFileInfo.
-	header := parser.Header()
-	match.TickCount = header.PlaybackTicks
+	// v6 exposes the trailing recording metadata as a net message rather than Header().
+	// Preserve the existing whole-second playback duration when CDemoFileInfo is absent.
+	if fileInfo != nil {
+		match.TickCount = int(fileInfo.GetPlaybackTicks())
+		match.Duration = time.Duration(fileInfo.GetPlaybackTime()) * time.Second
+	}
 	if match.TickCount == 0 {
 		match.TickCount = analyzer.currentTick()
 	}
-	match.Duration = header.PlaybackTime
 	if match.Duration == 0 {
-		match.Duration = parser.CurrentTime()
+		if tickRate := parser.TickRate(); tickRate > 0 {
+			match.Duration = time.Duration(float64(match.TickCount)/tickRate) * time.Second
+		} else {
+			match.Duration = parser.CurrentTime().Truncate(time.Second)
+		}
 	}
 	if match.Duration > 0 {
-		frames := int(header.PlaybackFrames)
-		if frames == 0 {
+		frames := parser.FrameCount()
+		if frames <= 0 {
 			frames = parser.CurrentFrame()
 		}
 		match.FrameRate = float64(frames) / match.Duration.Seconds()
@@ -365,9 +377,9 @@ func (analyzer *Analyzer) initLastPlayersPosition() {
 
 // entityIntProperty returns the int value of the entity property with the given name.
 // It returns false when the property doesn't exist or has never been networked (Source 2 only).
-func entityIntProperty(entity st.Entity, name string) (int, bool) {
+func entityIntProperty(entity *st.Entity, name string) (int, bool) {
 	prop, exists := entity.PropertyValue(name)
-	if !exists || (prop.S2 && prop.Any == nil) {
+	if !exists || prop.Any == nil {
 		return 0, false
 	}
 
@@ -707,7 +719,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	if analyzer.isSource2 {
 		parser.RegisterEventHandler(func(events.DataTablesParsed) {
 			// CS2 team names are based on players' clan tag, keep them in sync when a player's clan tag changes.
-			parser.ServerClasses().FindByName("CCSPlayerController").OnEntityCreated(func(entity st.Entity) {
+			parser.ServerClasses().FindByName("CCSPlayerController").OnEntityCreated(func(entity *st.Entity) {
 				entity.Property("m_szClan").OnUpdate(func(value st.PropertyValue) {
 					analyzer.updateTeamNames()
 				})
@@ -1209,7 +1221,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		if event.Weapon.Class() == common.EqClassGrenade {
 			analyzer.lastGrenadeThrownByPlayer[shot.PlayerSteamID64] = shot
-			var grenadeWeaponEntity st.Entity
+			var grenadeWeaponEntity *st.Entity
 			if event.Weapon != nil {
 				grenadeWeaponEntity = event.Weapon.Entity
 			}
@@ -1585,7 +1597,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 	parser.RegisterEventHandler(func(event events.DataTablesParsed) {
 		serverClasses := parser.ServerClasses()
-		serverClasses.FindByName("CChicken").OnEntityCreated(func(entity st.Entity) {
+		serverClasses.FindByName("CChicken").OnEntityCreated(func(entity *st.Entity) {
 			analyzer.chickenCount++
 			chicken := &chickenEntity{
 				id:     analyzer.chickenCount,
@@ -1647,7 +1659,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			// We don't have the problem with CS2 demos because the parser dispatch bomb events using props updates
 			// rather than game events.
 			// TODO move it to demoinfocs?
-			serverClasses.FindByName("CPlantedC4").OnEntityCreated(func(bombEntity st.Entity) {
+			serverClasses.FindByName("CPlantedC4").OnEntityCreated(func(bombEntity *st.Entity) {
 				// Old CSGO demos don't have these properties (~ before end of 2018).
 				siteProp := bombEntity.Property("m_nBombSite")
 				defuserProp := bombEntity.Property("m_hBombDefuser")
@@ -1693,7 +1705,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			})
 		}
 
-		serverClasses.FindByName("CCSGameRulesProxy").OnEntityCreated(func(entity st.Entity) {
+		serverClasses.FindByName("CCSGameRulesProxy").OnEntityCreated(func(entity *st.Entity) {
 			// Fallback to detect rounds end for demos missing round end events.
 			// ! Don't use m_eRoundWinReason because it's not available with old demos (at least 2014)
 			roundWinStatusProperty := entity.Property("cs_gamerules_data.m_iRoundWinStatus")

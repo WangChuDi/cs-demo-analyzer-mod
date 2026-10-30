@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"flag"
@@ -18,10 +19,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	demoinfocs "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
-	common "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
-	events "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/events"
-	msg "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msgs2"
+	demoinfocs "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs"
+	common "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
+	events "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
+	msg "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/msg"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -564,7 +565,7 @@ func processDemo(demoPath string) DemoResult {
 		}
 	})
 
-	err = p.ParseToEnd()
+	err = p.ParseToEnd(context.Background())
 	if err != nil {
 		result.Error = fmt.Sprintf("failed to parse: %v", err)
 	}

@@ -137,7 +137,7 @@
 
 2026-10-30 同步原版 v1.13.0 后，改用解析器的 `Player.Velocity()`。上游已经修复速度属性解析，并为旧 demo 提供基于快照服务器 tick 的速度推导。构造解析器时启用 `EagerVelocityTracking`，确保手雷创建事件之前已有位置历史。构建要求 Go 1.27+；标准事件导出采用上游的 tick 字段，二开事件关联所需的 frame 仅保留在内部。
 
-依赖版本说明：同步前的二开使用 demoinfocs v5.2.0；本次同步采用原版 CSDA 指定的 v4 分支提交 `b5a02b17ce7a`。该分支已有本工具使用的按键专用解码、即时速度跟踪与 `Player.Velocity()` API，v5.2.0 不能仅更换导入路径直接替代。目前通过 `go.mod` 固定到 [WangChuDi/demoinfocs-golang 的 `38b5c297c18f`](https://github.com/WangChuDi/demoinfocs-golang/commit/38b5c297c18f68dfffa34346ab6c0edca2e74d71)，在原版指定提交上仅修复首回合按键 baseline。
+依赖版本说明：同步前使用 demoinfocs v5.2.0，同步原版时曾采用带首回合按键补丁的 v4。现在按要求升级为官方 [demoinfocs v6.0.0-rc.1](https://github.com/markus-wa/demoinfocs-golang/tree/v6.0.0-rc.1)（候选发布版，提交 `4c79f7b51239`），不再引用 v4 或本地替换依赖。v6 已原生提供按键专用解码、完整数据包基线播种及速度跟踪。构造器使用 `option.EagerVelocityTracking(true)`，解析需要显式 context，实体和属性回调适配为指针类型。v6 仅支持 CS2；旧 CS:GO demo 需使用此前版本。
 
 **2. 按键检测系统 (`utility.go: applyUtilityThrowButtons`)**
 
@@ -148,7 +148,7 @@
   - 0.5s 窗口：固定回溯 `tickRate/2` 个 tick 作为 fallback
 - 扫描 `match.PlayerButtons` 中该窗口内的所有按键记录，累积 OR 得到最终状态
 - `HasJump` 最终被引擎属性 `m_bJumpThrow`（即 `IsJumpThrow`）覆盖，确保准确性
-- 首回合只有 delta 命令时，若 delta 明确写入绝对 `buttonstate1`（含零）或重置其父字段，解析器即可建立按键 baseline；不包含按钮字段的未知 delta 仍保留未知，不补造输入。命令序号与 ring 校验保持生效。
+- v6 从完整数据包内的 usercmd 快照建立基线，再处理正常消息流中的 delta，恢复此前缺失的首回合输入；数据包内用来建立基线的命令不会额外派发事件。未知或不匹配的基线仍告警，命令序号与 ring 校验保持生效。
 **3. 投掷分类 (`utility.go`)**
 - **MouseTypeByStrength**：通过 `m_flThrowStrength` 属性分类鼠标操作
   - `1.0` → `left_click`，`0.5` → `double_click`（左右键同时）
@@ -216,7 +216,7 @@ GrenadeProjectileThrow 事件
 ### 使用方法
 预编译的二进制文件可在 [releases 页面](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases) 下载。
 ## ⚠️ 已知问题
-2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。首回合按键因缺少完整 usercmd baseline 而被丢弃的问题已在固定的解析器依赖中修复；Aurora–MOUZ Cache 样本首回合恢复 4,421 条按键状态变化，覆盖全部 10 名玩家及 5 次投掷。对于没有任何可恢复按键字段的片段，仍不能补造输入。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
+2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。官方 v6.0.0-rc.1 的完整数据包基线播种已恢复本次样本的首回合按键，无需移植 v4 的额外补丁；Aurora–MOUZ Cache 样本首回合有 4,421 条按键状态变化，覆盖全部 10 名玩家及 5 次投掷。不能恢复的输入片段仍保留未知。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
 ### 倒霉统计
 - **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）采用“解析器确认优先 + 启发式回退”的组合语义。原因是当前 demo/parser 信号在部分场景下无法稳定直接提取非致命穿墙事件；当可用时会使用 `BulletDamage`/`NumPenetrations` 的同 frame 关联作为真实信号。当解析器确认路径不可用时，启发式回退会在同一回合内把每条伤害匹配到同攻击者、同武器的最近一次先前开枪记录，以及受害者最近一次先前位置记录；再根据武器模型参数（`BaseDamage`、`RangeModifier`、`ArmorRatio`、`HeadMultiplier`）、hitgroup、距离衰减、以及受害者护甲/头盔状态，估算“非穿墙情况下本应造成的生命值伤害”；如果实际生命值伤害明显低于这个理论非穿墙伤害估计，则将该伤害标记为 wallbang。`true wallbang damage taken` 仅保留该解析器确认路径。
 - **CS2 坠落伤害**：此前使用 `demoinfocs-golang v5` 时，在部分 CS2 demo 中发现 typed `PlayerHurt.Weapon` 会把真实 world/fall 伤害误判为 `C4`。当前保留 generic `player_hurt` 环境伤害判断，并排除与 `BombExplode` 同 frame 的候选伤害。

@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/golang/geo/r3"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
 )
 
 // The synchronized parser resolves networked velocity properties and derives

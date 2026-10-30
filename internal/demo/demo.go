@@ -15,8 +15,7 @@ import (
 	"github.com/akiver/cs-demo-analyzer/internal/filepath"
 	str "github.com/akiver/cs-demo-analyzer/internal/strings"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msg"
-	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/msgs2"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/msg"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -131,7 +130,7 @@ func GetDemoFromPath(demoPath string) (*Demo, error) {
 		br.ReadVarInt32() // tick
 		size := br.ReadVarInt32()
 		bytes := br.ReadBytes(int(size))
-		var header msgs2.CDemoFileHeader
+		var header msg.CDemoFileHeader
 		err := proto.Unmarshal(bytes, &header)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse CDemoFileHeader msg")
