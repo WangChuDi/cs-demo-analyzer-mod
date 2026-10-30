@@ -41,6 +41,8 @@ type Analyzer struct {
 	matchStarted       func() bool
 	postProcess        func(analyzer *Analyzer)
 	isSource2          bool
+	serverTick         int
+	hasServerTick      bool
 	isFirstRoundOfHalf bool
 	// Flag to handle demos with missing round end events.
 	isRoundEndDetected bool
@@ -76,6 +78,8 @@ type Analyzer struct {
 	fallDamageFrameBySteamID      map[uint64]int
 	pendingCS2FallDamages         map[int][]*Damage
 	pendingBulletDamageByKey      map[damageMatchFrameKey][]int
+	pendingFireBulletAimPunch     []fireBulletAimPunch
+	pendingPlayerBulletHits       []playerBulletHit
 	chickenEntities               []*chickenEntity
 	// Used to give a unique ID to each chicken, entity IDs are re-used once an entity is destroyed.
 	chickenCount int
@@ -340,6 +344,8 @@ func (analyzer *Analyzer) reset() {
 	analyzer.fallDamageFrameBySteamID = make(map[uint64]int)
 	analyzer.pendingCS2FallDamages = make(map[int][]*Damage)
 	analyzer.pendingBulletDamageByKey = make(map[damageMatchFrameKey][]int)
+	analyzer.pendingFireBulletAimPunch = nil
+	analyzer.pendingPlayerBulletHits = nil
 	analyzer.lastGrenadeProjectilePosition = make(map[common.UniqueID]grenadeProjectilePositionSample)
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
@@ -705,7 +711,10 @@ func (analyzer *Analyzer) defaultAnnouncementWinPanelMatchHandler(event events.A
 
 func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	analyzer.parser.RegisterNetMessageHandler(analyzer.match.applyServerInfo)
+	analyzer.parser.RegisterNetMessageHandler(analyzer.updateServerTick)
+	analyzer.parser.RegisterNetMessageHandler(analyzer.updateSnapshotTick)
 	analyzer.registerSoundFootstepHandler()
+	analyzer.registerDirectShotSignals()
 	parser := analyzer.parser
 	match := analyzer.match
 	analyzer.registerUtilityPinHandlers()

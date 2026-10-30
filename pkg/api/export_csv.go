@@ -493,6 +493,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"aim punch unpredictable base angle x",
 			"aim punch unpredictable base angle y",
 			"aim punch unpredictable base angle z",
+			"has aim punch server tick data",
+			"aim punch data source",
 		}
 
 		lines := [][]string{header}
@@ -546,6 +548,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(base.UnpredictableAngle.X),
 				converters.Float64ToString(base.UnpredictableAngle.Y),
 				converters.Float64ToString(base.UnpredictableAngle.Z),
+				converters.BoolToString(base.HasServerTickData),
+				shot.AimPunchDataSource,
 			}
 			lines = append(lines, line)
 		}
@@ -870,6 +874,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"num penetrations",
 			"wallbang data source",
 			"has kill penetration data",
+			"has player bullet hit data",
 		}
 
 		lines := [][]string{header}
@@ -903,6 +908,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(damage.NumPenetrations),
 				damage.WallbangDataSource,
 				converters.BoolToString(damage.HasKillPenetrationData),
+				converters.BoolToString(damage.HasPlayerBulletHitData),
 			}
 			lines = append(lines, line)
 		}

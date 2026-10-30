@@ -30,7 +30,7 @@ func matchKillPenetrations(match *Match) {
 			continue
 		}
 		damage := candidates[0]
-		if damage.HasBulletDamageData {
+		if damage.HasBulletDamageData || damage.HasPlayerBulletHitData {
 			continue
 		}
 		damage.HasKillPenetrationData = true

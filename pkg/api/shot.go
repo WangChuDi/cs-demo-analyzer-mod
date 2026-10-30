@@ -39,18 +39,20 @@ type Shot struct {
 	AimPunchAngleX         float64              `json:"aimPunchAngleX"`
 	AimPunchAngleY         float64              `json:"aimPunchAngleY"`
 	HasAimPunchData        bool                 `json:"hasAimPunchData"`
+	AimPunchDataSource     string               `json:"aimPunchDataSource"`
 	HasViewPunchData       bool                 `json:"hasViewPunchData"`
 	HasRecoilIndexData     bool                 `json:"hasRecoilIndexData"`
 	ViewPunchAngleX        float64              `json:"viewPunchAngleX"`
 	ViewPunchAngleY        float64              `json:"viewPunchAngleY"`
 	IsPlayerRunning        bool                 `json:"isPlayerRunning"`
 	// AimPunchBase is the networked base state, not the instantaneous angle.
-	// Its ticks use the server clock; Tick above uses the demo clock.
+	// Its decoded ticks use the server clock; Tick above uses the demo clock.
 	AimPunchBase *AimPunchBase `json:"aimPunchBase,omitempty"`
 }
 
 type AimPunchBase struct {
 	ServerTick               int       `json:"serverTick"`
+	HasServerTickData        bool      `json:"hasServerTickData"`
 	PredictableTick          int       `json:"predictableTick"`
 	PredictableTickFraction  float32   `json:"predictableTickFraction"`
 	PredictableAngle         r3.Vector `json:"predictableAngle"`
@@ -59,7 +61,21 @@ type AimPunchBase struct {
 	UnpredictableAngle       r3.Vector `json:"unpredictableAngle"`
 }
 
-func readAimPunchBase(pawn *st.Entity, serverTick int) *AimPunchBase {
+// demoinfocs v6.0.0-rc.1 falls back to unsigned varints for GameTick_t.
+// These fields are sent as signed int32 (ZigZag); retaining the unsigned wire
+// value doubles positive ticks. Accept an already decoded int32 as well.
+func aimPunchGameTick(value st.PropertyValue) (int, bool) {
+	switch tick := value.Any.(type) {
+	case int32:
+		return int(tick), true
+	case uint32:
+		return int(int32(tick>>1) ^ -int32(tick&1)), true
+	default:
+		return 0, false
+	}
+}
+
+func readAimPunchBase(pawn *st.Entity, serverTick int, hasServerTick bool) *AimPunchBase {
 	if pawn == nil {
 		return nil
 	}
@@ -72,9 +88,14 @@ func readAimPunchBase(pawn *st.Entity, serverTick int) *AimPunchBase {
 		}
 		values[i] = value
 	}
-	return &AimPunchBase{ServerTick: serverTick, PredictableTick: int(values[0].UInt32()), PredictableTickFraction: values[1].Float(),
+	predictableTick, predictableOK := aimPunchGameTick(values[0])
+	unpredictableTick, unpredictableOK := aimPunchGameTick(values[4])
+	if !predictableOK || !unpredictableOK {
+		return nil
+	}
+	return &AimPunchBase{ServerTick: serverTick, HasServerTickData: hasServerTick, PredictableTick: predictableTick, PredictableTickFraction: values[1].Float(),
 		PredictableAngle: values[2].R3Vec(), PredictableAngleVelocity: values[3].R3Vec(),
-		UnpredictableTick: int(values[4].UInt32()), UnpredictableAngle: values[5].R3Vec()}
+		UnpredictableTick: unpredictableTick, UnpredictableAngle: values[5].R3Vec()}
 }
 
 func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
@@ -103,11 +124,12 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 	var aimPunchAngle r3.Vector
 	var viewPunchAngle r3.Vector
 	var hasAimPunchData, hasViewPunchData bool
+	aimPunchDataSource := "unavailable"
 	var aimPunchBase *AimPunchBase
 	if analyzer.isSource2 {
 		pawnEntity := shooter.PlayerPawnEntity()
 		if pawnEntity != nil {
-			aimPunchBase = readAimPunchBase(pawnEntity, analyzer.parser.GameState().IngameTick())
+			aimPunchBase = readAimPunchBase(pawnEntity, analyzer.serverTick, analyzer.hasServerTick)
 			// These properties can be absent in particular CS2 versions.
 			if prop, exists := pawnEntity.PropertyValue("m_aimPunchAngle"); exists && prop.Any != nil {
 				aimPunchAngle = prop.R3Vec()
@@ -122,6 +144,9 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		aimPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_aimPunchAngle").R3Vec()
 		viewPunchAngle = shooter.Entity.PropertyValueMust("localdata.m_Local.m_viewPunchAngle").R3Vec()
 		hasAimPunchData, hasViewPunchData = true, true
+	}
+	if hasAimPunchData {
+		aimPunchDataSource = "entity"
 	}
 
 	velocity := getPlayerVelocity(shooter, analyzer)
@@ -168,6 +193,7 @@ func newShot(analyzer *Analyzer, event events.WeaponFire) *Shot {
 		AimPunchAngleX:         aimPunchAngle.X,
 		AimPunchAngleY:         aimPunchAngle.Y,
 		HasAimPunchData:        hasAimPunchData,
+		AimPunchDataSource:     aimPunchDataSource,
 		HasViewPunchData:       hasViewPunchData,
 		HasRecoilIndexData:     hasRecoilIndexData,
 		AimPunchBase:           aimPunchBase,

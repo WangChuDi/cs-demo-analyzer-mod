@@ -42,6 +42,11 @@ func markHeuristicWallbangDamages(match *Match) {
 			damage.WallbangDataSource = "kill_event"
 			continue
 		}
+		if damage.HasPlayerBulletHitData {
+			damage.IsWallbang = damage.isWallbang()
+			damage.WallbangDataSource = "player_bullet_hit"
+			continue
+		}
 		damage.IsWallbang, damage.WallbangDataSource = classifyHeuristicWallbangDamage(damage, shotIndex)
 	}
 }
