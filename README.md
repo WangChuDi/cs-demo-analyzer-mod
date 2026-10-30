@@ -179,6 +179,8 @@ The utility throw analysis involves three core systems: **velocity calculation**
 
 Uses the synchronized parser's `Player.Velocity()`. Upstream now resolves the networked velocity properties and derives velocity from snapshot server ticks for older demos. The parser enables `EagerVelocityTracking` so velocity history is available before grenade creation events. This replaces the fork's older manual position-delta workaround.
 
+The fork used demoinfocs v5.2.0 before the upstream v1.13.0 merge. That merge adopted upstream's v4 commit `b5a02b17ce7a`, which provides the button-only decoder and velocity APIs used here. The dependency is now pinned to [WangChuDi/demoinfocs-golang commit `38b5c297c18f`](https://github.com/WangChuDi/demoinfocs-golang/commit/38b5c297c18f68dfffa34346ab6c0edca2e74d71), adding the initial button-baseline repair to that same v4 base.
+
 **2. Button Detection System (`utility.go: applyUtilityThrowButtons`)**
 
 Detects buttons pressed during the throw (Attack/Attack2/Jump/WASD/Walk), output as individual boolean fields.
@@ -268,11 +270,11 @@ Ready-to-use binaries are available on the [releases page](https://github.com/Wa
 
 ## ⚠️ Known Issues
 
-The pin-time clock mismatch found in the 2026-10-30 audit is fixed by recording observed demo ticks directly. Pin times remain unknown when no pull update was observed. Some demos still lack decoded first-round button events, so a valid pin tick does not guarantee available button input. Missing raw footsteps, aim-punch properties, or bullet-penetration events must also be distinguished from real zero values.
+The pin-time clock mismatch found in the 2026-10-30 audit is fixed by recording observed demo ticks directly. Pin times remain unknown when no pull update was observed. The pinned parser also recovers an initial button-only baseline from deltas that explicitly write buttonstate1 (including zero) or reset its parents. Unrelated deltas remain unknown; command-number and ring validation remain enforced. The Aurora–MOUZ Cache sample now exports 4,421 first-round button-state changes for all ten players, recovering mouse input for all five first-round throws. Missing raw footsteps, aim-punch properties, or bullet-penetration events must also be distinguished from real zero values.
 
 ### Unlucky Statistics
 - **Wallbang Damage**: Outward wallbang reporting (`Damage.IsWallbang`, `wallbang damage dealt`, `wallbang damage taken`) combines parser-confirmed penetration signals when available with a heuristic fallback path. This fallback is needed because current demos/parser signals do not reliably expose direct non-lethal penetration extraction in all cases. When the parser-confirmed path is unavailable, the heuristic matches each damage to the nearest prior shot from the same attacker/weapon and to the nearest prior victim position in the same round, estimates the expected non-wallbang health damage from the weapon model (`BaseDamage`, `RangeModifier`, `ArmorRatio`, `HeadMultiplier`), hitgroup, distance falloff, and victim armor/helmet state, and marks the damage as wallbang when the observed health damage is meaningfully lower than that expected non-wallbang estimate. `true wallbang damage taken` remains parser-confirmed only (`BulletDamage`/`NumPenetrations` same-frame correlation).
-- **CS2 Fall Damage**: `demoinfocs-golang v5` can report typed `PlayerHurt.Weapon` as `C4` for true world/fall damage in some CS2 demos. To avoid that, the analyzer currently classifies CS2 fall damage from generic `player_hurt` environment-damage events and excludes candidates that occur on the same frame as `BombExplode`.
+- **CS2 Fall Damage**: The previous demoinfocs v5 dependency could report typed `PlayerHurt.Weapon` as `C4` for true world/fall damage in some CS2 demos. The analyzer retains generic `player_hurt` environment-damage classification and excludes candidates that occur on the same frame as `BombExplode`.
 
 
 ## 📝 TODO
