@@ -7,6 +7,9 @@ type MatchDataQuality struct {
 	FootstepEventCount              int    `json:"footstepEventCount"`
 	ShotCount                       int    `json:"shotCount"`
 	AimPunchSampleCount             int    `json:"aimPunchSampleCount"`
+	AimPunchBaseSampleCount         int    `json:"aimPunchBaseSampleCount"`
+	SoundFootstepCount              int    `json:"soundFootstepCount"`
+	KillPenetrationMatchedCount     int    `json:"killPenetrationMatchedCount"`
 	ViewPunchSampleCount            int    `json:"viewPunchSampleCount"`
 	RecoilIndexSampleCount          int    `json:"recoilIndexSampleCount"`
 	DamageCount                     int    `json:"damageCount"`
@@ -24,12 +27,20 @@ func (match *Match) DataQuality() MatchDataQuality {
 	if len(match.Footsteps) > 0 {
 		quality.FootstepsStatus = "observed"
 	}
+	for _, footstep := range match.Footsteps {
+		if footstep != nil && footstep.DataSource == "sound_event" {
+			quality.SoundFootstepCount++
+		}
+	}
 	for _, shot := range match.Shots {
 		if shot == nil {
 			continue
 		}
 		if shot.HasAimPunchData {
 			quality.AimPunchSampleCount++
+		}
+		if shot.AimPunchBase != nil {
+			quality.AimPunchBaseSampleCount++
 		}
 		if shot.HasViewPunchData {
 			quality.ViewPunchSampleCount++
@@ -44,6 +55,9 @@ func (match *Match) DataQuality() MatchDataQuality {
 		}
 		if damage.HasBulletDamageData {
 			quality.BulletDamageMatchedCount++
+		}
+		if damage.WallbangDataSource == "kill_event" {
+			quality.KillPenetrationMatchedCount++
 		}
 		if damage.WallbangDataSource == "heuristic" {
 			quality.WallbangHeuristicEvaluatedCount++

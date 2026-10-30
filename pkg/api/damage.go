@@ -19,13 +19,14 @@ type Damage struct {
 	// IsWallbang is the outward/public wallbang flag.
 	//
 	// It is true when either:
-	//  1. parser-confirmed penetration is available (damage.isWallbang(), from BulletDamage/NumPenetrations), or
+	//  1. parser-confirmed penetration is available (BulletDamage or an unambiguous fatal Kill), or
 	//  2. heuristic fallback classifies the damage as wallbang (wallbang.go), used when direct non-lethal extraction is unavailable.
 	IsWallbang bool `json:"isWallbang"`
-	// WallbangDataSource is bullet_damage, heuristic, or unavailable. A false
+	// WallbangDataSource is bullet_damage, kill_event, heuristic, or unavailable. A false
 	// IsWallbang with source unavailable is not evidence of an unobstructed shot.
 	WallbangDataSource       string               `json:"wallbangDataSource"`
 	HasBulletDamageData      bool                 `json:"hasBulletDamageData"`
+	HasKillPenetrationData   bool                 `json:"hasKillPenetrationData"`
 	NumPenetrations          int                  `json:"numPenetrations"`
 	AttackerSteamID64        uint64               `json:"attackerSteamId"`
 	AttackerSide             common.Team          `json:"attackerSide"`
@@ -81,7 +82,7 @@ func (damage *Damage) isValidPlayerDamageEvent(player *Player) bool {
 }
 
 func (damage *Damage) isWallbang() bool {
-	return damage.HasBulletDamageData && damage.NumPenetrations > 0
+	return (damage.HasBulletDamageData || damage.HasKillPenetrationData) && damage.NumPenetrations > 0
 }
 
 func (damage *Damage) setBulletDamageData(numPenetrations int) {

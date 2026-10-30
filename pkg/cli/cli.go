@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api"
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
@@ -17,9 +18,16 @@ type cliArgs struct {
 	outputPath       string
 	format           string
 	minifyJSON       bool
+	matchDate        string
 }
 
 func (cli *cliArgs) validateArgs() error {
+	if cli.matchDate != "" {
+		date, err := time.Parse(time.RFC3339, cli.matchDate)
+		if err != nil || date.IsZero() {
+			return errors.New("match-date must be a nonzero RFC3339 timestamp with timezone")
+		}
+	}
 	if cli.demoPath == "" {
 		return errors.New("demo file path required, example: -demo-path path/to/demo.dem")
 	}
@@ -51,6 +59,7 @@ func (cli *cliArgs) fromArgs(args []string) error {
 	fs.StringVar(&cli.outputPath, "output", "", "Output folder or file path, must be a folder when exporting to CSV (mandatory)")
 	fs.StringVar(&cli.format, "format", "csv", "Export format, valid values: "+api.FormatValidExportFormats())
 	fs.StringVar(&cli.source, "source", "", "Force demo's source, valid values: "+api.FormatValidDemoSources())
+	fs.StringVar(&cli.matchDate, "match-date", os.Getenv("CSDA_MATCH_DATE"), "External match date (RFC3339); falls back to CSDA_MATCH_DATE; .info takes precedence")
 	fs.BoolVar(&cli.includePositions, "positions", false, "Include entities (players, grenades...) positions (default false)")
 	fs.BoolVar(&cli.minifyJSON, "minify", false, "Minify JSON file, it has effect only when -format is set to json")
 
@@ -74,11 +83,13 @@ func Run(args []string) int {
 		return 2
 	}
 
+	matchDate, _ := time.Parse(time.RFC3339, cli.matchDate)
 	err = api.AnalyzeAndExportDemo(cli.demoPath, cli.outputPath, api.AnalyzeAndExportDemoOptions{
 		IncludePositions: cli.includePositions,
 		Source:           constants.DemoSource(cli.source),
 		Format:           constants.ExportFormat(cli.format),
 		MinifyJSON:       cli.minifyJSON,
+		MatchDate:        matchDate,
 	})
 
 	if err != nil {

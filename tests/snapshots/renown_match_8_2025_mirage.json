@@ -17,7 +17,7 @@
   "networkProtocol": 14055,
   "buildNumber": 10231,
   "gameType": 0,
-  "gameMode": 0,
+  "gameMode": 1,
   "isRanked": false,
   "maxRounds": 24,
   "overtimeCount": 0,

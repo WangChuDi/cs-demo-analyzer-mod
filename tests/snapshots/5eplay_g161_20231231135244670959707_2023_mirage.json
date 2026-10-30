@@ -17,7 +17,7 @@
   "networkProtocol": 13983,
   "buildNumber": 9842,
   "gameType": 0,
-  "gameMode": 0,
+  "gameMode": 1,
   "isRanked": false,
   "maxRounds": 24,
   "overtimeCount": 0,
@@ -134745,5 +134745,5 @@
   ],
   "chatMessages": [],
   "coaches": [],
-  "gameModeStr": "unknown"
+  "gameModeStr": "competitive"
 }

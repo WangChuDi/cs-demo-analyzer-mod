@@ -72,6 +72,7 @@ type Analyzer struct {
 	bombExplodeFrames             map[int]bool
 	lastGrenadeProjectilePosition map[common.UniqueID]grenadeProjectilePositionSample
 	pendingFootsteps              []events.Footstep
+	pendingSoundFootsteps         []soundFootstep
 	fallDamageFrameBySteamID      map[uint64]int
 	pendingCS2FallDamages         map[int][]*Damage
 	pendingBulletDamageByKey      map[damageMatchFrameKey][]int
@@ -105,6 +106,9 @@ func sortedEntityIDs[T any](scratch []int, entities map[int]T) []int {
 type AnalyzeDemoOptions struct {
 	IncludePositions bool
 	Source           constants.DemoSource
+	// MatchDate is an optional authoritative external date, used only when the
+	// demo has no .info match time. The export identifies this external source.
+	MatchDate time.Time
 }
 
 func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
@@ -150,6 +154,9 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	}
 
 	match := newMatch(source, demo)
+	if match.DateSource == "file_mtime" && !options.MatchDate.IsZero() {
+		match.Date, match.DateSource = options.MatchDate, "external_metadata"
+	}
 
 	analyzer := &Analyzer{
 		parser:                        parser,
@@ -282,6 +289,7 @@ type AnalyzeAndExportDemoOptions struct {
 	Source           constants.DemoSource
 	Format           constants.ExportFormat
 	MinifyJSON       bool
+	MatchDate        time.Time
 }
 
 func AnalyzeAndExportDemo(demoPath string, outputPath string, options AnalyzeAndExportDemoOptions) error {
@@ -296,6 +304,7 @@ func AnalyzeAndExportDemo(demoPath string, outputPath string, options AnalyzeAnd
 	match, err := analyzeDemo(demoPath, AnalyzeDemoOptions{
 		IncludePositions: options.IncludePositions,
 		Source:           options.Source,
+		MatchDate:        options.MatchDate,
 	})
 
 	if err != nil {
@@ -695,6 +704,8 @@ func (analyzer *Analyzer) defaultAnnouncementWinPanelMatchHandler(event events.A
 }
 
 func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
+	analyzer.parser.RegisterNetMessageHandler(analyzer.match.applyServerInfo)
+	analyzer.registerSoundFootstepHandler()
 	parser := analyzer.parser
 	match := analyzer.match
 	analyzer.registerUtilityPinHandlers()
@@ -940,23 +951,12 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 
 		if !analyzer.matchStarted() {
+			analyzer.pendingFootsteps = nil
+			analyzer.pendingSoundFootsteps = nil
 			return
 		}
 
-		for _, event := range analyzer.pendingFootsteps {
-			player := event.Player
-			if player == nil {
-				continue
-			}
-
-			velocity := getPlayerVelocity(player, analyzer)
-
-			footstep := newFootstep(analyzer, event, velocity.X, velocity.Y, velocity.Z)
-			if footstep != nil {
-				match.Footsteps = append(match.Footsteps, footstep)
-			}
-		}
-		analyzer.pendingFootsteps = nil
+		analyzer.flushFootsteps()
 
 		currentTick := analyzer.currentTick()
 		for _, player := range parser.GameState().Participants().Playing() {
@@ -1875,5 +1875,6 @@ func defaultPostProcess(analyzer *Analyzer) {
 	}
 
 	generateAwpHoldDeaths(match)
+	matchKillPenetrations(match)
 	markHeuristicWallbangDamages(match)
 }

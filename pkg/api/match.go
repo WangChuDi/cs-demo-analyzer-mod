@@ -29,7 +29,7 @@ type Match struct {
 	TickRate                          float64               `json:"tickrate"`
 	FrameRate                         float64               `json:"framerate"`
 	Date                              time.Time             `json:"date"`
-	DateSource                        string                `json:"dateSource"` // match_info or file_mtime
+	DateSource                        string                `json:"dateSource"` // match_info, external_metadata or file_mtime
 	Duration                          time.Duration         `json:"duration"`
 	ServerName                        string                `json:"serverName"`
 	ClientName                        string                `json:"clientName"`

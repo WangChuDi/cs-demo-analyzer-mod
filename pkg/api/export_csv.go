@@ -65,6 +65,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"recoil index sample count",
 			"bullet damage matched count",
 			"wallbang heuristic evaluated count",
+			"aim punch base sample count",
+			"sound footstep count",
+			"kill penetration matched count",
 		}
 
 		winnerName := ""
@@ -115,6 +118,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			converters.IntToString(quality.RecoilIndexSampleCount),
 			converters.IntToString(quality.BulletDamageMatchedCount),
 			converters.IntToString(quality.WallbangHeuristicEvaluatedCount),
+			converters.IntToString(quality.AimPunchBaseSampleCount),
+			converters.IntToString(quality.SoundFootstepCount),
+			converters.IntToString(quality.KillPenetrationMatchedCount),
 		}
 
 		csv.WriteLinesIntoCsvFile(outputPath+"_match.csv", [][]string{
@@ -473,10 +479,28 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"has aim punch data",
 			"has view punch data",
 			"has recoil index data",
+			"has aim punch base data",
+			"aim punch server tick",
+			"aim punch predictable base tick",
+			"aim punch predictable base tick fraction",
+			"aim punch predictable base angle x",
+			"aim punch predictable base angle y",
+			"aim punch predictable base angle z",
+			"aim punch predictable base angle velocity x",
+			"aim punch predictable base angle velocity y",
+			"aim punch predictable base angle velocity z",
+			"aim punch unpredictable base tick",
+			"aim punch unpredictable base angle x",
+			"aim punch unpredictable base angle y",
+			"aim punch unpredictable base angle z",
 		}
 
 		lines := [][]string{header}
 		for _, shot := range match.Shots {
+			base := shot.AimPunchBase
+			if base == nil {
+				base = &AimPunchBase{}
+			}
 			line := []string{
 				converters.IntToString(shot.Tick),
 				converters.IntToString(shot.RoundNumber),
@@ -508,6 +532,20 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(shot.HasAimPunchData),
 				converters.BoolToString(shot.HasViewPunchData),
 				converters.BoolToString(shot.HasRecoilIndexData),
+				converters.BoolToString(shot.AimPunchBase != nil),
+				converters.IntToString(base.ServerTick),
+				converters.IntToString(base.PredictableTick),
+				converters.Float32ToString(base.PredictableTickFraction),
+				converters.Float64ToString(base.PredictableAngle.X),
+				converters.Float64ToString(base.PredictableAngle.Y),
+				converters.Float64ToString(base.PredictableAngle.Z),
+				converters.Float64ToString(base.PredictableAngleVelocity.X),
+				converters.Float64ToString(base.PredictableAngleVelocity.Y),
+				converters.Float64ToString(base.PredictableAngleVelocity.Z),
+				converters.IntToString(base.UnpredictableTick),
+				converters.Float64ToString(base.UnpredictableAngle.X),
+				converters.Float64ToString(base.UnpredictableAngle.Y),
+				converters.Float64ToString(base.UnpredictableAngle.Z),
 			}
 			lines = append(lines, line)
 		}
@@ -831,6 +869,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"has bullet damage data",
 			"num penetrations",
 			"wallbang data source",
+			"has kill penetration data",
 		}
 
 		lines := [][]string{header}
@@ -863,6 +902,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(damage.HasBulletDamageData),
 				converters.IntToString(damage.NumPenetrations),
 				damage.WallbangDataSource,
+				converters.BoolToString(damage.HasKillPenetrationData),
 			}
 			lines = append(lines, line)
 		}
@@ -1840,6 +1880,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"yaw",
 			"pitch",
 			"match checksum",
+			"data source",
+			"sound event name",
 		}
 
 		lines := [][]string{header}
@@ -1862,6 +1904,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float32ToString(footstep.Yaw),
 				converters.Float32ToString(footstep.Pitch),
 				match.Checksum,
+				footstep.DataSource,
+				footstep.SoundEventName,
 			}
 			lines = append(lines, line)
 		}

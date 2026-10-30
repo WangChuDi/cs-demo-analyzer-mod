@@ -22,6 +22,8 @@ type Footstep struct {
 	PlayerVelocityZ        float64     `json:"playerVelocityZ"`
 	Yaw                    float32     `json:"yaw"`
 	Pitch                  float32     `json:"pitch"`
+	DataSource             string      `json:"dataSource"`
+	SoundEventName         string      `json:"soundEventName,omitempty"`
 }
 
 func newFootstep(analyzer *Analyzer, event events.Footstep, velocityX, velocityY, velocityZ float64) *Footstep {
@@ -49,5 +51,6 @@ func newFootstep(analyzer *Analyzer, event events.Footstep, velocityX, velocityY
 		PlayerVelocityZ:        velocityZ,
 		Yaw:                    player.ViewDirectionX(),
 		Pitch:                  player.ViewDirectionY(),
+		DataSource:             "game_event",
 	}
 }

@@ -55,7 +55,7 @@ func TestMatchCSVMetadataColumnAlignment(t *testing.T) {
 func TestCSVAvailabilityColumnsDistinguishObservedZero(t *testing.T) {
 	ct, tt := common.TeamCounterTerrorists, common.TeamTerrorists
 	match := &Match{DemoFileName: "availability", TeamA: &Team{CurrentSide: &ct}, TeamB: &Team{CurrentSide: &tt},
-		Shots:   []*Shot{{}, {HasAimPunchData: true, HasViewPunchData: true, HasRecoilIndexData: true}},
+		Shots:   []*Shot{{}, {HasAimPunchData: true, HasViewPunchData: true, HasRecoilIndexData: true, AimPunchBase: &AimPunchBase{PredictableTick: 100, ServerTick: 110}}},
 		Damages: []*Damage{{}, {HasBulletDamageData: true}},
 	}
 	markHeuristicWallbangDamages(match)
@@ -64,7 +64,7 @@ func TestCSVAvailabilityColumnsDistinguishObservedZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	for table, expected := range map[string]map[string][2]string{
-		"shots":   {"has aim punch data": {"0", "1"}, "has view punch data": {"0", "1"}, "has recoil index data": {"0", "1"}},
+		"shots":   {"has aim punch data": {"0", "1"}, "has view punch data": {"0", "1"}, "has recoil index data": {"0", "1"}, "has aim punch base data": {"0", "1"}, "aim punch predictable base tick": {"0", "100"}, "aim punch server tick": {"0", "110"}},
 		"damages": {"has bullet damage data": {"0", "1"}, "num penetrations": {"0", "0"}, "wallbang data source": {"unavailable", "bullet_damage"}},
 	} {
 		f, err := os.Open(filepath.Join(dir, "availability_"+table+".csv"))

@@ -82,7 +82,7 @@
   - `wallbang kill count`：被穿墙击杀的次数。
   - `wallbang damage dealt`：造成的对外穿墙伤害（基于 `Damage.IsWallbang`，可用时使用解析器确认信号，否则回退启发式判定）。
   - `wallbang damage taken`：受到的对外穿墙伤害（基于 `Damage.IsWallbang`，可用时使用解析器确认信号，否则回退启发式判定）。
-  - `true wallbang damage taken`：仅统计解析器确认的穿墙承伤（`BulletDamage`/`NumPenetrations` 同 frame 关联）。
+  - `true wallbang damage taken`：仅统计解析器确认的穿墙承伤（BulletDamage 或唯一匹配的正穿透击杀）。
 
 - **射击表 (`_shots.csv`)**：
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
@@ -220,10 +220,16 @@ GrenadeProjectileThrow 事件
 
 后续修复了 1vX 汇总的玩家与对手人数过滤，并让 AWP 判定使用击杀事件当时的状态。穿墙启发式直接保存伤害事件时的受害者位置及头盔状态，不再依赖 `-positions`；该开关只控制轨迹导出。样本两种模式均为 2 条 AWP 架枪死亡、424 点启发式穿墙伤害，这些仍是模型判定，未逐条回看录像。
 
-CSV/JSON 新增射击可用性（`has aim punch data`、`has view punch data`、`has recoil index data`）、伤害可用性（`has bullet damage data`、`num penetrations`、`wallbang data source`）和比赛级样本计数；JSON 使用 camelCase 键及 `dataQuality` 对象。数值必须结合标志读取：穿墙来源为 `bullet_damage`、`heuristic` 或 `unavailable`，已观测的零次穿透优先于启发式；`footsteps status=not_observed` 不等于没有走动。缺失模式证据返回 `unknown`，`game mode source` 区分 `server_info`、`convars`、`source_hint` 与 `unknown`。`date source=file_mtime` 明确标记文件时间回退，只有有效 `.info` 时间才标为 `match_info`。固定列 CSDM 格式保持原布局，不提供这些新增标志；已有数据库数据需要重新分析、导入后才能得到更正。
+CSV/JSON 提供射击与伤害可用性标记、比赛级样本计数（JSON 的 `dataQuality`），数值必须结合标志读取。穿透来源区分 `bullet_damage`、`kill_event`、`heuristic`、`unavailable`；已观测的 BulletDamage（含零）始终优先。正穿透击杀仅关联同回合、帧、双方玩家及武器唯一匹配的致命伤害，不补此前非致命伤害，也不冒充 `has bullet damage data`。样本新增 3 次确认穿透共 123 点致命伤害，与原有 424 点启发式伤害合计 547 点。
+
+脚步新增 SoS 声音恢复：只接受游戏资源中已知 CT/T 脚步声，按 pawn 实体编号映射玩家，帧末与旧游戏事件去重；排除落地声、装备声和未知哈希。`data source`、`sound event name` 标明来源。样本恢复 8,999 条、覆盖 10 人，不保证每份 demo 完整，也不能据此判断某个敌人实际听到了什么。
+
+新版 AimPunchServices 的基准角度、角速度及服务器 tick 单独导出为 `aimPunchBase`（CSV 的 `aim punch ... base ...`），样本 1,899 条。基准状态不等于开火瞬时后坐力；旧属性缺失时 `has aim punch data` 仍为假。基准 tick 应与 `aim punch server tick` 比较，不能与 demo tick 相减。
+
+ServerInfo 的 VBKV 配置经 CRC 和完整结构验证后读取活动 `c_game_type/c_game_mode`，来源为 `server_info_data`，不使用地图默认值。缺少证据仍返回 unknown。外部日期可通过 `-match-date '2026-10-29T00:00:00+08:00'` 或 `CSDA_MATCH_DATE` 传入；优先级为有效 `.info`、外部日期、文件修改时间，分别标为 `match_info`、`external_metadata`、`file_mtime`。固定列 CSDM 布局保持兼容；旧数据库结果需重跑分析及导入。
 
 ### 倒霉统计
-- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式在同回合匹配同攻击者、同武器的最近先前射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup 和距离衰减估算非穿墙伤害，再判断实际伤害是否明显不足。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 `BulletDamage`/`NumPenetrations` 同 frame 关联的确认路径。
+- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式在同回合匹配同攻击者、同武器的最近先前射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup 和距离衰减估算非穿墙伤害，再判断实际伤害是否明显不足。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 BulletDamage 或唯一匹配的正穿透击杀的确认路径。
 - **CS2 坠落伤害**：此前使用 `demoinfocs-golang v5` 时，在部分 CS2 demo 中发现 typed `PlayerHurt.Weapon` 会把真实 world/fall 伤害误判为 `C4`。当前保留 generic `player_hurt` 环境伤害判断，并排除与 `BombExplode` 同 frame 的候选伤害。
 ## 📝 TODO
 ### 🤡 小丑时刻
