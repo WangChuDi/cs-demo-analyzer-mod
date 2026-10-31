@@ -66,6 +66,9 @@ type Analyzer struct {
 	posthumousDeaths          map[uint64]posthumousDeath
 	pendingUtilityImpactKill  *Kill
 	utilityImpactLifetimes    map[common.UniqueID]*utilityImpactLifetime
+	summonTrackers            map[uint64]*summonTracker
+	armorCheckRound           int
+	armorCheckTick            int
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
@@ -336,6 +339,7 @@ func (analyzer *Analyzer) currentTick() int {
 }
 
 func (analyzer *Analyzer) reset() {
+	analyzer.resetBehaviorTracking()
 	analyzer.isFirstRoundOfHalf = true
 	analyzer.isRoundEndDetected = false
 	analyzer.lastFreezeTimeEndTick = -1
@@ -376,6 +380,7 @@ func (analyzer *Analyzer) reset() {
 }
 
 func (analyzer *Analyzer) resetCurrentRound() {
+	analyzer.resetBehaviorTracking()
 	analyzer.resetGrenadePins()
 	analyzer.match.resetRound(analyzer.currentRound.Number)
 	analyzer.createPlayersEconomies()
@@ -570,6 +575,7 @@ func (analyzer *Analyzer) processMatchStart() {
 
 // This creates a Round, reset analyzer data related to the current round and set the new round as the current round.
 func (analyzer *Analyzer) createRound() {
+	analyzer.resetBehaviorTracking()
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
@@ -643,6 +649,14 @@ func (analyzer *Analyzer) handleRoundEnd(winnerTeam common.Team) {
 
 func (analyzer *Analyzer) createPlayersEconomies() {
 	match := analyzer.match
+	// Freeze-state transitions (including the match-end transition) may rebuild
+	// this round's economy rows. Preserve its already observed loadout snapshot.
+	armorChecks := make(map[uint64]*PlayerEconomy)
+	for _, economy := range match.PlayerEconomies {
+		if economy.RoundNumber == analyzer.currentRound.Number {
+			armorChecks[economy.SteamID64] = economy
+		}
+	}
 
 	match.PlayerEconomies = slice.Filter(match.PlayerEconomies, func(economy *PlayerEconomy, index int) bool {
 		return economy.RoundNumber != analyzer.currentRound.Number
@@ -650,6 +664,11 @@ func (analyzer *Analyzer) createPlayersEconomies() {
 
 	for _, player := range analyzer.parser.GameState().Participants().Playing() {
 		economy := newPlayerEconomy(analyzer, player)
+		if previous := armorChecks[player.SteamID64]; previous != nil {
+			economy.HasArmorCheckData, economy.ArmorCheckTick = previous.HasArmorCheckData, previous.ArmorCheckTick
+			economy.ArmorAtFreezeEnd, economy.PrimaryWeaponAtFreezeEnd = previous.ArmorAtFreezeEnd, previous.PrimaryWeaponAtFreezeEnd
+			economy.ForgotArmor = previous.ForgotArmor
+		}
 		match.PlayerEconomies = append(match.PlayerEconomies, economy)
 	}
 }
@@ -724,6 +743,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	analyzer.registerUtilityPinHandlers()
 	analyzer.registerUtilityKillHandlers()
 	analyzer.registerUtilityImpactLifecycleHandlers()
+	analyzer.registerBehaviorHandlers()
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()
@@ -874,6 +894,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
+			analyzer.interruptSummonHold(damage.VictimSteamID64)
 			analyzer.captureUtilityImpactCandidates(damage)
 			analyzer.applyPendingBulletDamageToDamage(damage)
 			match.Damages = append(match.Damages, damage)
@@ -973,6 +994,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 
 		analyzer.flushFootsteps()
+		analyzer.captureArmorChecks()
 
 		currentTick := analyzer.currentTick()
 		for _, player := range parser.GameState().Participants().Playing() {
@@ -999,6 +1021,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			match.lastPlayersPosition[player.SteamID64] = player.Position()
 			match.lastPlayersTick[player.SteamID64] = currentTick
 		}
+		analyzer.sampleSummonEnemy()
 	})
 
 	if includePositions {
@@ -1111,6 +1134,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		kill := newKillFromGameEvent(analyzer, event)
 		if kill != nil {
+			analyzer.applySummonEnemyDeath(kill)
 			analyzer.trackUtilityKill(kill, event.Killer != nil && event.Killer.IsAlive())
 			match.Kills = append(match.Kills, kill)
 			analyzer.pendingUtilityImpactKill = kill
@@ -1236,6 +1260,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		if shot == nil {
 			return
 		}
+		delete(analyzer.summonTrackers, shot.PlayerSteamID64)
 
 		if event.Weapon.Class() == common.EqClassGrenade {
 			analyzer.lastGrenadeThrownByPlayer[shot.PlayerSteamID64] = shot

@@ -87,6 +87,22 @@
 - **射击表 (`_shots.csv`)**：
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
 
+### 🔫 使用武器数量
+
+玩家 JSON 新增 `usedWeaponCount`、`usedPrimaryWeaponCount`、`usedSecondaryWeaponCount` 和排序后的 `usedWeapons` 列表，统计整场**实际开火过的不同枪型**，包含主武器及副武器，统一排除 Glock-18、USP-S、P2000。重复开火、拾取、皮肤或同型号不同枪支不重复计数；刀、电击枪、道具、C4 及控 bot 时开火不计。CSV 使用对应的空格分隔列名，`used weapons` 中各枪型用分号分隔。
+
+### 👀 召唤敌人（行为估计）
+
+玩家 `summonEnemyDeathCount` 统计稳定架枪后，转头／切换装备随即被敌人击杀的次数。要求此前至少 **1 秒**持枪、在地面且未致盲，速度不超过 **34 单位/秒**、位置漂移不超过 **16 单位**、朝向漂移不超过 **10°**，期间没有开火或受到伤害。切换武器实例（包括副武器、刀、道具、C4），或朝向开始偏离原架枪方向后，进入 **0.5 秒**死亡窗口；仅转头时，还须在存活采样及死亡时均偏转至少 **60°**。击杀者须位于原架枪朝向的 **30°**以内。恢复原架枪状态、实际开火／投出道具、采样缺失、状态无效或换生命／回合会清理候选；同 tick 动作和控 bot 不计。
+
+击杀 JSON 新增 `isSummonEnemyDeath`，命中时通过 `summonEnemy` 导出触发 tick、死亡间隔、架枪时长、原因（`turn_away`／`weapon_switch`）、切换前后武器及角度。CSV 使用 `is summon enemy death` 和 `summon enemy ...` 列，无明细时留空。这是行为模型，不能证明敌人此前不可见或玩家的主观意图；不依赖 `-positions`。
+
+### 🦺 忘买甲
+
+玩家 `forgotArmorCount` 统计**冻结结束时持有非狙击主武器且护甲为 0**的回合数。步枪、冲锋枪、霰弹枪、机枪符合条件；AWP、SSG 08、G3SG1、SCAR-20 和仅持手枪的情况排除。上一回合继承的剩余护甲也算已有甲。这是冻结结束的装备快照，包含刻意无甲的选择；之后补买或拾枪不会重写该快照。
+
+玩家经济 JSON 新增 `hasArmorCheckData`、`armorCheckTick`、`armorAtFreezeEnd`、`primaryWeaponAtFreezeEnd`、`forgotArmor`，CSV 使用对应的空格分隔列名。护甲数据缺失、主武器清单有歧义、死亡或 bot 玩家不判定。快照会保留至最终导出，不受后续经济刷新或比赛结束时重建记录影响。这三项新增 JSON／CSV 字段，固定列 CSDM 保持原布局。
+
 ### 🕶️ 全白击杀（模型估计）
 
 玩家 CSV 的 `full white kill count`、玩家 JSON 的 `fullWhiteKillCount` 统计击杀者符合选定 CS2 CPU 白罩模型时的敌方击杀。玩家汇总排除队杀、自杀和非玩家受害者。闪光参数在击杀事件发生时保存，无需启用位置导出。

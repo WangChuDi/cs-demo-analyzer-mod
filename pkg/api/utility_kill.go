@@ -46,6 +46,7 @@ func (analyzer *Analyzer) registerUtilityKillHandlers() {
 		player := analyzer.parser.GameState().Participants().ByUserID()[int(event.Data["userid"].GetValShort())]
 		if player != nil {
 			analyzer.clearPosthumousLife(player.SteamID64)
+			delete(analyzer.summonTrackers, player.SteamID64)
 		}
 	})
 }

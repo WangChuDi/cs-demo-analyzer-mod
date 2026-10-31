@@ -90,6 +90,22 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🔫 Weapon Variety
+
+Player JSON exports `usedWeaponCount`, `usedPrimaryWeaponCount`, `usedSecondaryWeaponCount` and the sorted `usedWeapons` list. Count distinct firearm models actually fired during the match, including primary weapons and pistols; exclude Glock-18, USP-S and P2000 on both sides. Repeated shots, pickups, skins and multiple instances of the same model do not increase the count. Knives, Zeus, utilities, C4 and shots while controlling a bot are excluded. CSV uses the corresponding space-separated names; `used weapons` is a semicolon-separated list.
+
+### 👀 Summoning Enemies (Estimated)
+
+`summonEnemyDeathCount` counts deaths to enemies immediately after leaving a stable gun hold. Require at least **1 second** grounded and unblinded, speed at most **34 units/s**, position drift at most **16 units**, and yaw drift at most **10°**, without firing or taking damage. A weapon-instance change (including switching to a pistol, knife, utility or C4) or leaving the held direction starts a **0.5-second** death window; a turn-only match additionally requires at least **60°** of turn in a live sample and at death. The killer must be within **30°** of the previous held direction. Returning to the hold, firing/throwing, missing samples, invalid state or a new life/round clears the candidate. Same-tick actions and bot control are excluded.
+
+Kill JSON adds `isSummonEnemyDeath` and, for a match, `summonEnemy` with the trigger tick, delay, hold duration, reasons (`turn_away` / `weapon_switch`), weapon before/after and angles. CSV exports these as `is summon enemy death` and `summon enemy ...` columns; absent evidence columns are blank. This is a behavior estimate, not proof of enemy visibility or intent, and does not require `-positions`.
+
+### 🦺 Forgotten Armor
+
+`forgotArmorCount` counts rounds where the player holds a **non-sniper primary weapon with 0 armor at freeze end**. Rifles, SMGs, shotguns and machine guns qualify; AWP, SSG 08, G3SG1, SCAR-20 and pistol-only loadouts do not. Any remaining armor from a previous round prevents a match. This describes the freeze-end loadout, including deliberate unarmored buys; later purchases or pickups do not rewrite that snapshot.
+
+Player-economy JSON adds `hasArmorCheckData`, `armorCheckTick`, `armorAtFreezeEnd`, `primaryWeaponAtFreezeEnd` and `forgotArmor`; CSV uses the corresponding space-separated names. Missing armor data, ambiguous primary inventory, dead players and bots are not classified. Freeze-end snapshots survive subsequent economy refreshes, including match-end rebuilding. The three features add JSON/CSV fields; the fixed-column CSDM layout is unchanged.
+
 ### 🕶️ Full-White Kills (Estimated)
 
 `full white kill count` in `_players.csv` and `fullWhiteKillCount` in player JSON count enemy kills while the killer meets the selected CS2 CPU white-overlay model. Team kills, suicides and non-player victims are excluded from the player total. Flash inputs are captured at the kill event; no position export is required.

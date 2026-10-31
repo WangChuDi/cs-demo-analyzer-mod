@@ -83,6 +83,9 @@ type Kill struct {
 	UtilityImpactProjectileID string `json:"utilityImpactProjectileId,omitempty"`
 	UtilityImpactEffectTick   int    `json:"utilityImpactEffectTick,omitempty"`
 	UtilityImpactEffect       string `json:"utilityImpactEffect,omitempty"`
+
+	IsSummonEnemyDeath bool                 `json:"isSummonEnemyDeath"`
+	SummonEnemy        *SummonEnemyEvidence `json:"summonEnemy,omitempty"`
 }
 
 func (kill *Kill) IsSuicide() bool {

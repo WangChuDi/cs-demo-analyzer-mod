@@ -262,11 +262,22 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"utility in hand death count",
 			"posthumous kill count",
 			"utility impact death count",
+			"used weapon count",
+			"used primary weapon count",
+			"used secondary weapon count",
+			"used weapons",
+			"summon enemy death count",
+			"forgot armor count",
 			"match checksum",
 		}
 
 		lines := [][]string{header}
 		for _, player := range match.Players() {
+			usage := player.WeaponUsage()
+			usedWeapons := make([]string, len(usage.UsedWeapons))
+			for i, name := range usage.UsedWeapons {
+				usedWeapons[i] = name.String()
+			}
 			line := []string{
 				player.Name,
 				converters.Uint64ToString(player.SteamID64),
@@ -367,6 +378,12 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.UtilityInHandDeathCount()),
 				converters.IntToString(player.PosthumousKillCount()),
 				converters.IntToString(player.UtilityImpactDeathCount()),
+				converters.IntToString(usage.UsedWeaponCount),
+				converters.IntToString(usage.UsedPrimaryWeaponCount),
+				converters.IntToString(usage.UsedSecondaryWeaponCount),
+				strings.Join(usedWeapons, ";"),
+				converters.IntToString(player.SummonEnemyDeathCount()),
+				converters.IntToString(player.ForgotArmorCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -643,6 +660,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"wasted he",
 			"wasted incendiary",
 			"wasted decoy",
+			"has armor check data",
+			"armor check tick",
+			"armor at freeze end",
+			"primary weapon at freeze end",
+			"forgot armor",
 			"match checksum",
 		}
 
@@ -662,6 +684,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(economy.WastedHE),
 				converters.IntToString(economy.WastedIncendiary),
 				converters.IntToString(economy.WastedDecoy),
+				converters.BoolToString(economy.HasArmorCheckData),
+				converters.IntToString(economy.ArmorCheckTick),
+				converters.IntToString(economy.ArmorAtFreezeEnd),
+				economy.PrimaryWeaponAtFreezeEnd.String(),
+				converters.BoolToString(economy.ForgotArmor),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -1005,6 +1032,15 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"utility impact projectile id",
 			"utility impact effect tick",
 			"utility impact effect",
+			"is summon enemy death",
+			"summon enemy trigger tick",
+			"summon enemy delay seconds",
+			"summon enemy hold seconds",
+			"summon enemy reasons",
+			"summon enemy weapon before",
+			"summon enemy weapon after",
+			"summon enemy turn angle",
+			"summon enemy hold facing killer angle",
 			"match checksum",
 		}
 
@@ -1017,6 +1053,18 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			impactEffectTick := ""
 			if kill.UtilityImpactSource == utilityImpactSourceLifecycle {
 				impactEffectTick = converters.IntToString(kill.UtilityImpactEffectTick)
+			}
+			summonFields := make([]string, 8)
+			if evidence := kill.SummonEnemy; evidence != nil {
+				summonFields = []string{
+					converters.IntToString(evidence.TriggerTick),
+					converters.Float64ToString(evidence.DelaySeconds),
+					converters.Float64ToString(evidence.HoldSeconds),
+					strings.Join(evidence.Reasons, ";"),
+					evidence.WeaponBefore.String(), evidence.WeaponAfter.String(),
+					converters.Float64ToString(evidence.TurnAngle),
+					converters.Float64ToString(evidence.HoldFacingKillerAngle),
+				}
 			}
 			line := []string{
 				converters.IntToString(kill.Tick),
@@ -1084,6 +1132,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				kill.UtilityImpactProjectileID,
 				impactEffectTick,
 				kill.UtilityImpactEffect,
+				converters.BoolToString(kill.IsSummonEnemyDeath),
+				summonFields[0], summonFields[1], summonFields[2], summonFields[3],
+				summonFields[4], summonFields[5], summonFields[6], summonFields[7],
 				match.Checksum,
 			}
 			lines = append(lines, line)
