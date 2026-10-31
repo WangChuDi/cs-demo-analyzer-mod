@@ -28,20 +28,25 @@ func TestPlayerWallbangDamageTaken(t *testing.T) {
 
 func TestMarkHeuristicWallbangDamages(t *testing.T) {
 	match := &Match{
+		NetworkProtocol: 14191,
 		Damages: []*Damage{
 			{
-				RoundNumber:       1,
-				Frame:             100,
-				Tick:              100,
-				AttackerSteamID64: 111,
-				VictimSteamID64:   222,
-				WeaponName:        "AK-47",
-				WeaponUniqueID:    "weapon-1",
-				HitGroup:          events.HitGroupChest,
-				HealthDamage:      12,
-				VictimHealth:      100,
-				VictimArmor:       0,
-				victimPosition:    &PlayerPosition{},
+				RoundNumber:             1,
+				Frame:                   100,
+				Tick:                    100,
+				AttackerSteamID64:       111,
+				AttackerSide:            common.TeamTerrorists,
+				VictimSteamID64:         222,
+				VictimSide:              common.TeamCounterTerrorists,
+				WeaponName:              "AK-47",
+				WeaponUniqueID:          "weapon-1",
+				HitGroup:                events.HitGroupChest,
+				HealthDamage:            12,
+				ReportedHealthDamage:    12,
+				HasReportedHealthDamage: true,
+				VictimHealth:            100,
+				VictimArmor:             0,
+				victimPosition:          &PlayerPosition{},
 			},
 		},
 		Shots: []*Shot{

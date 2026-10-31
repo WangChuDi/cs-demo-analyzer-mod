@@ -59,7 +59,7 @@ func (match *Match) DataQuality() MatchDataQuality {
 		if damage.WallbangDataSource == "kill_event" {
 			quality.KillPenetrationMatchedCount++
 		}
-		if damage.WallbangDataSource == "heuristic" {
+		if damage.HasWallbangHeuristicData {
 			quality.WallbangHeuristicEvaluatedCount++
 		}
 	}

@@ -3,8 +3,10 @@ package api
 import (
 	"math"
 	"sort"
+	"strconv"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
 	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
 )
 
@@ -31,6 +33,9 @@ func markHeuristicWallbangDamages(match *Match) {
 		if damage == nil {
 			continue
 		}
+		damage.HasWallbangHeuristicData = false
+		damage.WallbangExpectedDamage, damage.WallbangDamageDeficit = 0, 0
+		damage.WallbangHeuristicReason, damage.WallbangModelSource = "", ""
 		if damage.HasBulletDamageData {
 			// An observed zero is authoritative too; never override it with a heuristic.
 			damage.IsWallbang = damage.isWallbang()
@@ -47,64 +52,115 @@ func markHeuristicWallbangDamages(match *Match) {
 			damage.WallbangDataSource = "player_bullet_hit"
 			continue
 		}
-		damage.IsWallbang, damage.WallbangDataSource = classifyHeuristicWallbangDamage(damage, shotIndex)
+		damage.IsWallbang, damage.WallbangDataSource = classifyHeuristicWallbangDamage(damage, shotIndex, match.NetworkProtocol)
 	}
 }
 
-func classifyHeuristicWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry) (bool, string) {
+func classifyHeuristicWallbangDamage(damage *Damage, shotIndex map[wallbangShotKey][]shotIndexEntry, protocol int) (bool, string) {
 	if damage == nil {
 		return false, "unavailable"
 	}
-
-	if damage.AttackerSteamID64 == 0 || damage.VictimSteamID64 == 0 {
+	unknown := func(reason string) (bool, string) {
+		damage.WallbangHeuristicReason = reason
 		return false, "unavailable"
 	}
-
-	model, exists := constants.HeuristicWallbangWeaponDamageModels[damage.WeaponName]
+	if damage.AttackerSteamID64 == 0 || damage.VictimSteamID64 == 0 || damage.AttackerSteamID64 == damage.VictimSteamID64 {
+		return unknown("invalid_players")
+	}
+	// Friendly-fire reduction and self damage must not look like penetration.
+	if damage.AttackerSide == damage.VictimSide {
+		return unknown("friendly_fire")
+	}
+	if !damage.HasReportedHealthDamage || damage.ReportedHealthDamage < 0 || damage.VictimHealth <= 0 {
+		return unknown("missing_reported_damage")
+	}
+	if int(damage.HitGroup) < 1 || int(damage.HitGroup) > 7 {
+		return unknown("unsupported_hitgroup")
+	}
+	model, source, exists := constants.HeuristicWallbangModel(damage.WeaponName, protocol)
 	if !exists {
-		return false, "unavailable"
+		return unknown("unsupported_weapon_or_version")
 	}
-
-	if !constants.HeuristicWallbangIncludeHeadshots && isHeadHit(damage.HitGroup) {
-		return false, "unavailable"
+	if damage.wallbangDamageScale != nil {
+		scale := *damage.wallbangDamageScale
+		if math.IsNaN(scale) || math.IsInf(scale, 0) || scale <= 0 {
+			return unknown("invalid_damage_scale")
+		}
+		model.BaseDamage *= scale
 	}
-
-	matchedShot := nearestShotForWallbangDamage(damage, shotIndex)
+	matchedShot := uniqueWallbangShot(damage, shotIndex)
 	if matchedShot == nil {
-		return false, "unavailable"
+		return unknown("missing_or_ambiguous_shot")
 	}
-
 	victimPosition := damage.victimPosition
 	if victimPosition == nil {
-		return false, "unavailable"
+		return unknown("missing_position")
 	}
 	distance := euclideanDistance3D(matchedShot.X, matchedShot.Y, matchedShot.Z, victimPosition.X, victimPosition.Y, victimPosition.Z)
-
-	expected := expectedHealthDamageHeuristic(model, damage.HitGroup, distance, damage.VictimArmor, victimPosition.HasHelmet)
-	expected = capExpectedHealthDamage(expected, damage.VictimHealth)
-	observed := float64(damage.HealthDamage)
-
-	delta := expected - observed
-	if delta <= 0 || expected <= 0 {
-		return false, "heuristic"
+	if math.IsNaN(distance) || math.IsInf(distance, 0) {
+		return unknown("invalid_position")
 	}
-
-	if delta < constants.HeuristicWallbangMinDelta {
-		return false, "heuristic"
+	// Compare like with like: dmg_health is an integer damage report, while
+	// HealthDamage is actual HP removed and can differ by one on CS2 servers.
+	// Flooring here models the report, not the victim's health accumulator.
+	expected := int(capExpectedHealthDamage(math.Floor(expectedHealthDamageHeuristic(model, damage.HitGroup, distance, damage.VictimArmor, victimPosition.HasHelmet)), damage.VictimHealth))
+	observed := damage.ReportedHealthDamage
+	if observed > damage.VictimHealth {
+		observed = damage.VictimHealth // Overkill cannot diagnose penetration.
 	}
-
-	lossRatio := delta / expected
-	if lossRatio < constants.HeuristicWallbangMinLossRatio {
-		return false, "heuristic"
+	damage.HasWallbangHeuristicData = true
+	damage.WallbangExpectedDamage, damage.WallbangDamageDeficit = expected, expected-observed
+	damage.WallbangModelSource = source
+	if observed > expected {
+		return unknown("observed_above_expected")
 	}
+	if expected-observed >= 1 {
+		damage.WallbangHeuristicReason = "damage_deficit"
+		return true, "heuristic"
+	}
+	damage.WallbangHeuristicReason = "consistent_damage"
+	return false, "heuristic"
+}
 
-	return true, "heuristic"
+// Bullets are hitscan. A shot from a previous frame, or multiple shots with
+// the same player/weapon in one frame, cannot support a one-point comparison.
+// The wider nearest-shot window is retained only for the existing first-shot metrics.
+func uniqueWallbangShot(damage *Damage, index map[wallbangShotKey][]shotIndexEntry) *Shot {
+	entries := index[wallbangShotKey{round: damage.RoundNumber, attacker: damage.AttackerSteamID64, weaponID: damage.WeaponUniqueID}]
+	i := sort.Search(len(entries), func(i int) bool { return entries[i].frame >= damage.Frame })
+	if i == len(entries) || entries[i].frame != damage.Frame || (i+1 < len(entries) && entries[i+1].frame == damage.Frame) {
+		return nil
+	}
+	return entries[i].shot
+}
+
+// Snapshot scales at the hurt event; a later ConVar change must not rewrite
+// earlier shots. Missing replicated scales use the standard game default (1),
+// so even a successful comparison remains a heuristic.
+func snapshotWallbangDamageScale(convars map[string]string, side common.Team, hitGroup events.HitGroup) *float64 {
+	team := "t"
+	if side == common.TeamCounterTerrorists {
+		team = "ct"
+	}
+	part := "body"
+	if isHeadHit(hitGroup) {
+		part = "head"
+	}
+	scale := 1.0
+	if text, exists := convars["mp_damage_scale_"+team+"_"+part]; exists {
+		var err error
+		scale, err = strconv.ParseFloat(text, 64)
+		if err != nil {
+			scale = math.NaN()
+		}
+	}
+	return &scale
 }
 
 func buildWallbangHeuristicShotIndex(shots []*Shot) map[wallbangShotKey][]shotIndexEntry {
 	index := make(map[wallbangShotKey][]shotIndexEntry)
 	for _, shot := range shots {
-		if shot.PlayerSteamID64 == 0 || shot.WeaponID == "" {
+		if shot == nil || shot.PlayerSteamID64 == 0 || shot.WeaponID == "" {
 			continue
 		}
 
@@ -175,7 +231,8 @@ func expectedHealthDamageHeuristic(model constants.HeuristicWallbangWeaponDamage
 	healthDamage := postHitgroup * effectiveArmorHealthRatio(model.ArmorRatio)
 	armorDamage := (postHitgroup - healthDamage) * 0.5
 	if armorDamage > float64(victimArmor) {
-		healthDamage = postHitgroup - float64(victimArmor)*effectiveArmorHealthRatio(model.ArmorRatio)
+		// One armor point absorbs 1/0.5 health damage when armor runs out.
+		healthDamage = postHitgroup - float64(victimArmor)/0.5
 	}
 
 	return clampFloat(healthDamage, 0, postHitgroup)

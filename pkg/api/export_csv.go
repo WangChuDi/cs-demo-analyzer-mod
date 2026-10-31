@@ -875,6 +875,13 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"wallbang data source",
 			"has kill penetration data",
 			"has player bullet hit data",
+			"reported health damage",
+			"has reported health damage",
+			"has wallbang heuristic data",
+			"wallbang expected damage",
+			"wallbang damage deficit",
+			"wallbang heuristic reason",
+			"wallbang model source",
 		}
 
 		lines := [][]string{header}
@@ -909,6 +916,13 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				damage.WallbangDataSource,
 				converters.BoolToString(damage.HasKillPenetrationData),
 				converters.BoolToString(damage.HasPlayerBulletHitData),
+				converters.IntToString(damage.ReportedHealthDamage),
+				converters.BoolToString(damage.HasReportedHealthDamage),
+				converters.BoolToString(damage.HasWallbangHeuristicData),
+				converters.IntToString(damage.WallbangExpectedDamage),
+				converters.IntToString(damage.WallbangDamageDeficit),
+				damage.WallbangHeuristicReason,
+				damage.WallbangModelSource,
 			}
 			lines = append(lines, line)
 		}

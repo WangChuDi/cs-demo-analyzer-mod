@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/akiver/cs-demo-analyzer/pkg/api/constants"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
 	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
 )
 
@@ -71,9 +72,10 @@ func TestAwpHoldDeathsUseKillStateRegardlessOfPositionExport(t *testing.T) {
 func TestWallbangUsesHurtPositionAndHonorsObservedZeroPenetrations(t *testing.T) {
 	damage := &Damage{RoundNumber: 1, Frame: 100, Tick: 100, AttackerSteamID64: 1, VictimSteamID64: 2,
 		WeaponName: "AK-47", WeaponUniqueID: "ak", HitGroup: events.HitGroupChest,
+		AttackerSide: common.TeamTerrorists, VictimSide: common.TeamCounterTerrorists, ReportedHealthDamage: 12, HasReportedHealthDamage: true,
 		HealthDamage: 12, VictimHealth: 100, victimPosition: &PlayerPosition{},
 	}
-	match := &Match{Damages: []*Damage{damage}, Shots: []*Shot{
+	match := &Match{NetworkProtocol: 14191, Damages: []*Damage{damage}, Shots: []*Shot{
 		{RoundNumber: 1, Frame: 100, Tick: 100, PlayerSteamID64: 1, WeaponID: "ak"},
 	}}
 	markHeuristicWallbangDamages(match)
@@ -130,10 +132,11 @@ func TestWallbangHeadshotUsesObservedHelmetInsteadOfInferringFromArmor(t *testin
 	// a helmet from armor when the event sample had no recent frame timestamp.
 	damage := &Damage{RoundNumber: 1, Frame: 100, Tick: 100, AttackerSteamID64: 1, VictimSteamID64: 2,
 		WeaponName: "M4A1", WeaponUniqueID: "m4", HitGroup: events.HitGroupHead,
+		AttackerSide: common.TeamTerrorists, VictimSide: common.TeamCounterTerrorists, ReportedHealthDamage: 96, HasReportedHealthDamage: true,
 		HealthDamage: 96, VictimHealth: 100, VictimArmor: 100,
 		victimPosition: &PlayerPosition{HasHelmet: false},
 	}
-	match := &Match{Damages: []*Damage{damage}, Shots: []*Shot{
+	match := &Match{NetworkProtocol: 14191, Damages: []*Damage{damage}, Shots: []*Shot{
 		{RoundNumber: 1, Frame: 100, Tick: 100, PlayerSteamID64: 1, WeaponID: "m4"},
 	}}
 	markHeuristicWallbangDamages(match)

@@ -16,6 +16,10 @@ type Damage struct {
 	RoundNumber  int `json:"roundNumber"`
 	HealthDamage int `json:"healthDamage"`
 	ArmorDamage  int `json:"armorDamage"`
+	// The event's integer dmg_health is distinct from HP removed, which can be
+	// one larger due to server-side fractional damage accounting. Keep both.
+	ReportedHealthDamage    int  `json:"reportedHealthDamage"`
+	HasReportedHealthDamage bool `json:"hasReportedHealthDamage"`
 	// IsWallbang is the outward/public wallbang flag.
 	//
 	// It is true when either:
@@ -25,6 +29,11 @@ type Damage struct {
 	// WallbangDataSource is bullet_damage, player_bullet_hit, kill_event, heuristic, or unavailable. A false
 	// IsWallbang with source unavailable is not evidence of an unobstructed shot.
 	WallbangDataSource       string               `json:"wallbangDataSource"`
+	HasWallbangHeuristicData bool                 `json:"hasWallbangHeuristicData"`
+	WallbangExpectedDamage   int                  `json:"wallbangExpectedDamage"`
+	WallbangDamageDeficit    int                  `json:"wallbangDamageDeficit"`
+	WallbangHeuristicReason  string               `json:"wallbangHeuristicReason"`
+	WallbangModelSource      string               `json:"wallbangModelSource"`
 	HasBulletDamageData      bool                 `json:"hasBulletDamageData"`
 	HasKillPenetrationData   bool                 `json:"hasKillPenetrationData"`
 	HasPlayerBulletHitData   bool                 `json:"hasPlayerBulletHitData"`
@@ -48,6 +57,7 @@ type Damage struct {
 	IsVictimAirborne         bool                 `json:"isVictimAirborne"`
 	IsAttackerAirborne       bool                 `json:"isAttackerAirborne"`
 	victimPosition           *PlayerPosition
+	wallbangDamageScale      *float64
 	isFallDamage             bool
 }
 
@@ -130,16 +140,21 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		victimPosition = &PlayerPosition{X: position.X, Y: position.Y, Z: position.Z, HasHelmet: event.Player.HasHelmet()}
 	}
 
+	frame := analyzer.parser.CurrentFrame()
+	newHealth, newArmor := math.Max(0, event.Health), math.Max(0, event.Armor)
+	armorBefore := armorBeforeHurt(match.Damages, frame, event.Player.SteamID64, event.Player.Armor())
 	return &Damage{
-		Frame:                    analyzer.parser.CurrentFrame(),
+		Frame:                    frame,
 		RoundNumber:              analyzer.currentRound.Number,
 		Tick:                     analyzer.currentTick(),
 		HealthDamage:             math.Max(0, event.HealthDamageTaken),
-		ArmorDamage:              math.Max(0, event.ArmorDamageTaken),
-		VictimHealth:             math.Max(0, event.Player.Health()),
-		VictimArmor:              math.Max(0, event.Player.Armor()),
-		VictimNewHealth:          math.Max(0, event.Health),
-		VictimNewArmor:           math.Max(0, event.Armor),
+		ReportedHealthDamage:     event.HealthDamage,
+		HasReportedHealthDamage:  event.HealthDamage >= 0,
+		ArmorDamage:              math.Max(0, armorBefore-newArmor),
+		VictimHealth:             newHealth + math.Max(0, event.HealthDamageTaken),
+		VictimArmor:              armorBefore,
+		VictimNewHealth:          newHealth,
+		VictimNewArmor:           newArmor,
 		IsVictimControllingBot:   event.Player.IsControllingBot(),
 		AttackerSteamID64:        attackerSteamID,
 		AttackerSide:             attackerSide,
@@ -155,7 +170,26 @@ func newDamageFromGameEvent(analyzer *Analyzer, event events.PlayerHurt) *Damage
 		IsVictimAirborne:         event.Player.IsAirborne(),
 		IsAttackerAirborne:       isAttackerAirborne,
 		victimPosition:           victimPosition,
+		wallbangDamageScale:      snapshotWallbangDamageScale(analyzer.parser.GameState().Rules().ConVars(), event.Player.Team, event.HitGroup),
 	}
+}
+
+// Player entities still expose the start-of-frame armor while game events are
+// dispatched. Use the preceding hurt's post-hit armor for same-frame hits.
+func armorBeforeHurt(damages []*Damage, frame int, victim uint64, entityArmor int) int {
+	for i := len(damages) - 1; i >= 0; i-- {
+		previous := damages[i]
+		if previous == nil {
+			continue
+		}
+		if previous.Frame < frame {
+			break
+		}
+		if previous.Frame == frame && previous.VictimSteamID64 == victim {
+			return math.Max(0, previous.VictimNewArmor)
+		}
+	}
+	return math.Max(0, entityArmor)
 }
 
 func newFallDamageFromGenericPlayerHurt(analyzer *Analyzer, event events.GenericGameEvent) *Damage {
