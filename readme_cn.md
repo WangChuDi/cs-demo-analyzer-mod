@@ -231,7 +231,7 @@ CSV/JSON 提供射击与伤害可用性标记、比赛级样本计数（JSON 的
 ServerInfo 的 VBKV 配置经 CRC 和完整结构验证后读取活动 `c_game_type/c_game_mode`，来源为 `server_info_data`，不使用地图默认值。缺少证据仍返回 unknown。外部日期可通过 `-match-date '2026-10-29T00:00:00+08:00'` 或 `CSDA_MATCH_DATE` 传入；优先级为有效 `.info`、外部日期、文件修改时间，分别标为 `match_info`、`external_metadata`、`file_mtime`。固定列 CSDM 布局保持兼容；旧数据库结果需重跑分析及导入。
 
 ### 倒霉统计
-- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式在同回合匹配同攻击者、同武器的最近先前射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup 和距离衰减估算非穿墙伤害，再判断实际伤害是否明显不足。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 BulletDamage、PlayerBulletHit 或唯一匹配的正穿透击杀的确认路径。
+- **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式要求同回合、同攻击者、同武器且同帧唯一的射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup、距离衰减和伤害倍率估算非穿墙伤害。理论值向下取整后与原始伤害报告比较，至少少 2 点才列为候选；差值恰好为 1 的记录保留诊断及原因 `within_one_point_tolerance`，不计入穿墙伤害汇总。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 BulletDamage、PlayerBulletHit 或唯一匹配的正穿透击杀的确认路径。
 - **CS2 坠落伤害**：此前使用 `demoinfocs-golang v5` 时，在部分 CS2 demo 中发现 typed `PlayerHurt.Weapon` 会把真实 world/fall 伤害误判为 `C4`。当前保留 generic `player_hurt` 环境伤害判断，并排除与 `BombExplode` 同 frame 的候选伤害。
 ## 📝 TODO
 ### 🤡 小丑时刻

@@ -114,7 +114,13 @@ func classifyHeuristicWallbangDamage(damage *Damage, shotIndex map[wallbangShotK
 	if observed > expected {
 		return unknown("observed_above_expected")
 	}
-	if expected-observed >= 1 {
+	if expected-observed == 1 {
+		// Keep diagnostics, but exclude one-point deficits from wallbang totals:
+		// rounding boundaries and approximate range can produce this difference.
+		damage.WallbangHeuristicReason = "within_one_point_tolerance"
+		return false, "heuristic"
+	}
+	if expected-observed >= 2 {
 		damage.WallbangHeuristicReason = "damage_deficit"
 		return true, "heuristic"
 	}

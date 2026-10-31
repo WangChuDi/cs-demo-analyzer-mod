@@ -33,12 +33,13 @@ func TestWallbangIntegerReportComparison(t *testing.T) {
 		wallbang                                   bool
 		reason                                     string
 	}{
-		{"one point loss", 0, 0, 35, 35, 36, 1, true, "damage_deficit"},
+		{"one point loss is ignored", 0, 0, 35, 35, 36, 1, false, "within_one_point_tolerance"},
+		{"two point loss is a candidate", 0, 0, 34, 35, 36, 2, true, "damage_deficit"},
 		{"fractional report is floored", 500, 0, 35, 35, 35, 0, false, "consistent_damage"},
 		{"HP delta can exceed report", 500, 0, 35, 36, 35, 0, false, "consistent_damage"},
-		{"one reported point lost even if HP delta matches baseline", 500, 0, 34, 35, 35, 1, true, "damage_deficit"},
+		{"one reported point lost even if HP delta matches baseline", 500, 0, 34, 35, 35, 1, false, "within_one_point_tolerance"},
 		{"low armor exhausts", 0, 1, 34, 34, 34, 0, false, "consistent_damage"},
-		{"low armor one point loss", 0, 1, 33, 33, 34, 1, true, "damage_deficit"},
+		{"low armor one point loss", 0, 1, 33, 33, 34, 1, false, "within_one_point_tolerance"},
 		{"full armor", 0, 100, 27, 28, 27, 0, false, "consistent_damage"},
 		{"higher observed is a model mismatch", 500, 0, 36, 36, 35, -1, false, "observed_above_expected"},
 		{"observed zero is not missing", 0, 0, 0, 1, 36, 36, true, "damage_deficit"},
@@ -158,11 +159,12 @@ func TestWallbangDiagnosticsExport(t *testing.T) {
 	m.DemoFileName = "wallbang-model"
 	m.TeamA = &Team{CurrentSide: &ct}
 	m.TeamB = &Team{CurrentSide: &tt}
-	d.HealthDamage = 36 // Reported loss is 1; aggregate remains actual HP damage, 36.
+	d.HealthDamage = 36 // A one-point report deficit is retained only as a diagnostic.
 	markHeuristicWallbangDamages(m)
 	p := &Player{SteamID64: 1, match: m}
-	if p.WallbangDamageDealt() != 36 {
-		t.Fatal("damage deficit replaced actual damage in aggregate")
+	victim := &Player{SteamID64: 2, match: m}
+	if p.WallbangDamageDealt() != 0 || victim.WallbangDamageTaken() != 0 || m.DataQuality().WallbangHeuristicEvaluatedCount != 1 {
+		t.Fatal("one-point tolerance changed aggregates or hid the evaluation")
 	}
 	bytes, err := json.Marshal(d)
 	if err != nil {
@@ -172,7 +174,7 @@ func TestWallbangDiagnosticsExport(t *testing.T) {
 	if err = json.Unmarshal(bytes, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded["wallbangDamageDeficit"] != float64(1) || decoded["reportedHealthDamage"] != float64(35) || decoded["hasReportedHealthDamage"] != true {
+	if decoded["wallbangDamageDeficit"] != float64(1) || decoded["reportedHealthDamage"] != float64(35) || decoded["hasReportedHealthDamage"] != true || decoded["isWallbang"] != false || decoded["wallbangHeuristicReason"] != "within_one_point_tolerance" {
 		t.Fatalf("missing JSON diagnostics: %s", bytes)
 	}
 	dir := t.TempDir()
@@ -191,7 +193,7 @@ func TestWallbangDiagnosticsExport(t *testing.T) {
 	if len(rows) != 2 || len(rows[0]) != len(rows[1]) {
 		t.Fatal("misaligned damage export")
 	}
-	want := map[string]string{"health": "36", "reported health damage": "35", "has reported health damage": "1", "has wallbang heuristic data": "1", "wallbang expected damage": "36", "wallbang damage deficit": "1", "wallbang heuristic reason": "damage_deficit", "wallbang model source": "cs2_weapons_14130"}
+	want := map[string]string{"health": "36", "reported health damage": "35", "has reported health damage": "1", "has wallbang heuristic data": "1", "wallbang expected damage": "36", "wallbang damage deficit": "1", "wallbang heuristic reason": "within_one_point_tolerance", "wallbang model source": "cs2_weapons_14130", "is wallbang": "0"}
 	for i, name := range rows[0] {
 		if expected, ok := want[name]; ok {
 			if rows[1][i] != expected {
@@ -202,6 +204,17 @@ func TestWallbangDiagnosticsExport(t *testing.T) {
 	}
 	if len(want) > 0 {
 		t.Fatalf("missing CSV columns: %v", want)
+	}
+	d.ReportedHealthDamage = 34
+	markHeuristicWallbangDamages(m)
+	if !d.IsWallbang || d.WallbangDamageDeficit != 2 || p.WallbangDamageDealt() != 36 || victim.WallbangDamageTaken() != 36 {
+		t.Fatal("two-point candidate did not aggregate actual HP damage")
+	}
+	d.ReportedHealthDamage = 35
+	d.setBulletDamageData(1)
+	markHeuristicWallbangDamages(m)
+	if !d.IsWallbang || d.WallbangDataSource != "bullet_damage" || p.WallbangDamageDealt() != 36 {
+		t.Fatal("one-point tolerance overrode confirmed penetration")
 	}
 	d.setBulletDamageData(0)
 	markHeuristicWallbangDamages(m)
