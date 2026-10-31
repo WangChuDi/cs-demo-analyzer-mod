@@ -87,6 +87,16 @@
 - **射击表 (`_shots.csv`)**：
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
 
+### 🕶️ 全白击杀（模型估计）
+
+玩家 CSV 的 `full white kill count`、玩家 JSON 的 `fullWhiteKillCount` 统计击杀者符合选定 CS2 CPU 白罩模型时的敌方击杀。玩家汇总排除队杀、自杀和非玩家受害者。闪光参数在击杀事件发生时保存，无需启用位置导出。
+
+以有效总时长 D、观测到的 `m_flFlashMaxAlpha` 上限 M 和 `(击杀 tick - FlashTick) / tickrate` 推算经过时间，剩余时间 R = max(0, D - 经过时间)。建立期 B = `0.09444444626569748` 秒内，白罩与残影 Alpha 均为 `clamp(经过时间 / B * M, 0, M) / 255`；建立后白罩 Alpha 为 `(M / 255) * min(1, R / 3)^2`，残影 Alpha 为 `(M / 255) * min(1, R / D)`。假设观战缩放为 1，**已过建立期、M=255 且 R >= 3 秒**时计入全白击杀，包含等号；剩余 2 秒时白罩系数只有 `4/9`。
+
+击杀 JSON 新增可选 `killerFlashEstimate`，包含 `model`、`duration`、`elapsed`、`remaining`、`maxAlpha`、`phase`、`overlayAlpha`、`screenshotAlpha`、`isFullWhite`。击杀 CSV 新增 `has killer flash estimate`、`is killer full white estimated` 和 `killer flash ...` 参数、系数、阶段及模型列。参数缺失或无效时，JSON 不输出该对象，CSV 可用性标记为 0，此时数值零只是占位；实际观测到 Alpha 上限为 0 则属于可用数据。原有致盲布尔字段保留原含义。固定列数的 CSDM 格式保持原布局。
+
+模型 `cs2_client_14194_cpu` 来源为用户提供的 Windows IDA/指令分析：CS2 1.41.9.4、SourceRevision 11191540、client SHA-256 `d618bbf8e6afb36baa09b3a282035996a88300458c55d2aa5cb81f0495c0ec54`。结果为条件估计：尚未重建其他客户端版本的差异、准确客户端时钟/帧相位、观战状态、连续闪光的时长调整、相等值早退和回调瞬态。已分析的是 CPU 参数，GPU shader 和实际像素尚未验证。Cache 样本筛出 2 次：Spinx tick 17129、torzsi tick 83950；不以原始击杀事件的致盲标记代替此模型。
+
 ### 🎯 手撕大狙 / AWP Hold Deaths
 追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向与击杀者夹角不超过 10 度，并且静止或低速移动。
 

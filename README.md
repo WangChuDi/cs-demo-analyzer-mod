@@ -90,6 +90,16 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🕶️ Full-White Kills (Estimated)
+
+`full white kill count` in `_players.csv` and `fullWhiteKillCount` in player JSON count enemy kills while the killer meets the selected CS2 CPU white-overlay model. Team kills, suicides and non-player victims are excluded from the player total. Flash inputs are captured at the kill event; no position export is required.
+
+The model estimates elapsed time as `(kill tick - FlashTick) / tickrate` and remaining time `R = max(0, D - elapsed)`, with effective flash duration `D` and the observed `m_flFlashMaxAlpha` cap `M`. During the first `B = 0.09444444626569748` seconds, overlay and screenshot alpha are `clamp(elapsed / B * M, 0, M) / 255`. After buildup, overlay alpha is `(M / 255) * min(1, R / 3)^2`, and screenshot alpha is `(M / 255) * min(1, R / D)`. Spectator scaling is assumed to be 1. A kill qualifies after buildup when **M = 255 and R >= 3 seconds**, including equality. At two seconds, overlay alpha is only `4/9`.
+
+Kill JSON adds the optional `killerFlashEstimate` object with `model`, `duration`, `elapsed`, `remaining`, `maxAlpha`, `phase`, `overlayAlpha`, `screenshotAlpha` and `isFullWhite`. Kill CSV adds `has killer flash estimate`, `is killer full white estimated`, and `killer flash ...` inputs/coefficients/phase/model columns. Missing or invalid inputs omit the JSON object and set the CSV availability flag to 0; numeric zero placeholders then do not indicate measured zero opacity. An observed zero cap is available data. The existing blinded flags keep their original meaning. The fixed-column CSDM layout is unchanged.
+
+Model `cs2_client_14194_cpu` comes from the supplied Windows IDA/instruction analysis of CS2 1.41.9.4, SourceRevision 11191540, client SHA-256 `d618bbf8e6afb36baa09b3a282035996a88300458c55d2aa5cb81f0495c0ec54`. It is a conditional estimate: other client versions, exact client clock/frame phase, spectator view state, repeated-flash duration adjustments, equal-value early returns and callback transients are not reconstructed. CPU parameters have been analyzed; GPU shader output and actual pixels have not been verified. The Cache sample selects two kills: Spinx at tick 17129 and torzsi at tick 83950; neither the event blinded flag nor a generic duration threshold is used as a substitute for this model.
+
 ### 🎯 AWP Hold Deaths
 Tracks kills where the victim was holding an AWP angle: scoped, facing the killer within 10 degrees, and stationary or moving slowly enough to be considered in a holding posture.
 

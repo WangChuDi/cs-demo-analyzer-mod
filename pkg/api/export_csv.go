@@ -258,6 +258,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"counter-strafing combo delta stddev tick",
 			"counter-strafing combo perfect rate",
 			"counter-strafing perfect rate",
+			"full white kill count",
 			"match checksum",
 		}
 
@@ -359,6 +360,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(player.CounterStrafingComboDeltaStdDevTick()),
 				converters.Float32ToString(player.CounterStrafingComboPerfectRate()),
 				converters.Float32ToString(player.CounterStrafingPerfectRate()),
+				converters.IntToString(player.FullWhiteKillCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -974,11 +976,25 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"is no scope",
 			"is killer running",
 			"distance",
+			"has killer flash estimate",
+			"is killer full white estimated",
+			"killer flash duration",
+			"killer flash elapsed",
+			"killer flash remaining",
+			"killer flash max alpha",
+			"killer flash overlay alpha",
+			"killer flash screenshot alpha",
+			"killer flash phase",
+			"killer flash model",
 			"match checksum",
 		}
 
 		lines := [][]string{header}
 		for _, kill := range match.Kills {
+			flash := kill.KillerFlashEstimate
+			if flash == nil {
+				flash = &FlashEstimate{}
+			}
 			line := []string{
 				converters.IntToString(kill.Tick),
 				converters.IntToString(kill.RoundNumber),
@@ -1022,6 +1038,16 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(kill.IsNoScope),
 				converters.BoolToString(kill.IsKillerRunning),
 				converters.Float32ToString(kill.Distance),
+				converters.BoolToString(kill.KillerFlashEstimate != nil),
+				converters.BoolToString(flash.IsFullWhite),
+				converters.Float64ToString(flash.Duration),
+				converters.Float64ToString(flash.Elapsed),
+				converters.Float64ToString(flash.Remaining),
+				converters.Float64ToString(flash.MaxAlpha),
+				converters.Float64ToString(flash.OverlayAlpha),
+				converters.Float64ToString(flash.ScreenshotAlpha),
+				flash.Phase,
+				flash.Model,
 				match.Checksum,
 			}
 			lines = append(lines, line)

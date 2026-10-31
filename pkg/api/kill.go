@@ -13,23 +13,24 @@ import (
 
 type Kill struct {
 	// Frame is retained internally for fork event correlation, not exported.
-	Frame            int                  `json:"-"`
-	Tick             int                  `json:"tick"`
-	RoundNumber      int                  `json:"roundNumber"`
-	WeaponType       constants.WeaponType `json:"weaponType"`
-	WeaponName       constants.WeaponName `json:"weaponName"`
-	KillerName       string               `json:"killerName"`
-	KillerSteamID64  uint64               `json:"killerSteamId"`
-	KillerSide       common.Team          `json:"killerSide"`
-	KillerTeamName   string               `json:"killerTeamName"`
-	KillerX          float64              `json:"killerX"`
-	KillerY          float64              `json:"killerY"`
-	KillerZ          float64              `json:"killerZ"`
-	KillerVelocityX  float64              `json:"killerVelocityX"`
-	KillerVelocityY  float64              `json:"killerVelocityY"`
-	KillerVelocityZ  float64              `json:"killerVelocityZ"`
-	IsKillerAirborne bool                 `json:"is_killer_airborne"`
-	IsKillerBlinded  bool                 `json:"is_killer_blinded"`
+	Frame               int                  `json:"-"`
+	Tick                int                  `json:"tick"`
+	RoundNumber         int                  `json:"roundNumber"`
+	WeaponType          constants.WeaponType `json:"weaponType"`
+	WeaponName          constants.WeaponName `json:"weaponName"`
+	KillerName          string               `json:"killerName"`
+	KillerSteamID64     uint64               `json:"killerSteamId"`
+	KillerSide          common.Team          `json:"killerSide"`
+	KillerTeamName      string               `json:"killerTeamName"`
+	KillerX             float64              `json:"killerX"`
+	KillerY             float64              `json:"killerY"`
+	KillerZ             float64              `json:"killerZ"`
+	KillerVelocityX     float64              `json:"killerVelocityX"`
+	KillerVelocityY     float64              `json:"killerVelocityY"`
+	KillerVelocityZ     float64              `json:"killerVelocityZ"`
+	IsKillerAirborne    bool                 `json:"is_killer_airborne"`
+	IsKillerBlinded     bool                 `json:"is_killer_blinded"`
+	KillerFlashEstimate *FlashEstimate       `json:"killerFlashEstimate,omitempty"`
 	// Note: JSON tag uses snake_case for backward compatibility with existing
 	// fields is_killer_airborne/is_killer_blinded and external consumers.
 	IsKillerRunning          bool                 `json:"is_killer_running"`
@@ -219,6 +220,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		KillerVelocityZ:          killerVelocity.Z,
 		IsKillerAirborne:         isKillerAirborne,
 		IsKillerBlinded:          isKillerBlinded,
+		KillerFlashEstimate:      analyzer.estimateKillerFlash(event.Killer),
 		IsKillerRunning:          isKillerRunning,
 		VictimX:                  victimPosition.X,
 		VictimY:                  victimPosition.Y,
