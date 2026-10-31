@@ -52,6 +52,8 @@ type PlayerJSON struct {
 	*PlayerAlias
 	KillCount                            int     `json:"killCount"`
 	FullWhiteKillCount                   int     `json:"fullWhiteKillCount"`
+	UtilityInHandDeathCount              int     `json:"utilityInHandDeathCount"`
+	PosthumousKillCount                  int     `json:"posthumousKillCount"`
 	DeathCount                           int     `json:"deathCount"`
 	AssistCount                          int     `json:"assistCount"`
 	KillDeathRatio                       float32 `json:"killDeathRatio"`
@@ -707,6 +709,8 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 		PlayerAlias:                          (*PlayerAlias)(player),
 		KillCount:                            player.KillCount(),
 		FullWhiteKillCount:                   player.FullWhiteKillCount(),
+		UtilityInHandDeathCount:              player.UtilityInHandDeathCount(),
+		PosthumousKillCount:                  player.PosthumousKillCount(),
 		DeathCount:                           player.DeathCount(),
 		AssistCount:                          player.AssistCount(),
 		KillDeathRatio:                       player.KillDeathRatio(),

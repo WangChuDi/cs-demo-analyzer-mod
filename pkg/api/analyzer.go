@@ -63,6 +63,7 @@ type Analyzer struct {
 	lastGrenadeThrownByPlayer map[uint64]*Shot
 	grenadePinPulls           map[grenadeWeaponKey]grenadePinPull
 	destroyedGrenadePins      []grenadeWeaponKey
+	posthumousDeaths          map[uint64]posthumousDeath
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
@@ -718,6 +719,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	parser := analyzer.parser
 	match := analyzer.match
 	analyzer.registerUtilityPinHandlers()
+	analyzer.registerUtilityKillHandlers()
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()
@@ -1103,6 +1105,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		kill := newKillFromGameEvent(analyzer, event)
 		if kill != nil {
+			analyzer.trackUtilityKill(kill, event.Killer != nil && event.Killer.IsAlive())
 			match.Kills = append(match.Kills, kill)
 		}
 

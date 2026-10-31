@@ -259,6 +259,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"counter-strafing combo perfect rate",
 			"counter-strafing perfect rate",
 			"full white kill count",
+			"utility in hand death count",
+			"posthumous kill count",
 			"match checksum",
 		}
 
@@ -361,6 +363,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float32ToString(player.CounterStrafingComboPerfectRate()),
 				converters.Float32ToString(player.CounterStrafingPerfectRate()),
 				converters.IntToString(player.FullWhiteKillCount()),
+				converters.IntToString(player.UtilityInHandDeathCount()),
+				converters.IntToString(player.PosthumousKillCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -986,6 +990,12 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"killer flash screenshot alpha",
 			"killer flash phase",
 			"killer flash model",
+			"victim active weapon name",
+			"has victim active weapon data",
+			"is victim holding utility",
+			"is posthumous kill",
+			"posthumous death tick",
+			"posthumous delay seconds",
 			"match checksum",
 		}
 
@@ -1048,6 +1058,12 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(flash.ScreenshotAlpha),
 				flash.Phase,
 				flash.Model,
+				kill.VictimActiveWeaponName.String(),
+				converters.BoolToString(kill.HasVictimActiveWeaponData),
+				converters.BoolToString(kill.IsVictimHoldingUtility),
+				converters.BoolToString(kill.IsPosthumousKill),
+				converters.IntToString(kill.PosthumousDeathTick),
+				converters.Float64ToString(kill.PosthumousDelaySeconds),
 				match.Checksum,
 			}
 			lines = append(lines, line)

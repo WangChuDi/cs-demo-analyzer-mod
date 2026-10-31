@@ -68,6 +68,12 @@ type Kill struct {
 	IsTradeKill              bool                 `json:"isTradeKill"`  // The attacker did a trade kill
 	IsTradeDeath             bool                 `json:"isTradeDeath"` // The victim did a trade death
 	Distance                 float32              `json:"distance"`
+
+	HasVictimActiveWeaponData bool    `json:"hasVictimActiveWeaponData"`
+	IsVictimHoldingUtility    bool    `json:"isVictimHoldingUtility"`
+	IsPosthumousKill          bool    `json:"isPosthumousKill"`
+	PosthumousDeathTick       int     `json:"posthumousDeathTick"`
+	PosthumousDelaySeconds    float64 `json:"posthumousDelaySeconds"`
 }
 
 func (kill *Kill) IsSuicide() bool {
@@ -139,8 +145,12 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	victimVelocity := getPlayerVelocity(event.Victim, analyzer)
 	victimYaw := event.Victim.ViewDirectionX()
 	victimActiveWeaponName := constants.WeaponUnknown
+	hasVictimActiveWeaponData := false
 	if activeWeapon := event.Victim.ActiveWeapon(); activeWeapon != nil {
-		victimActiveWeaponName = equipmentToWeaponName[activeWeapon.Type]
+		if name, exists := equipmentToWeaponName[activeWeapon.Type]; exists && name != constants.WeaponUnknown {
+			victimActiveWeaponName = name
+			hasVictimActiveWeaponData = true
+		}
 	}
 
 	var isTradeKill bool
@@ -242,5 +252,7 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		IsThroughSmoke:           event.ThroughSmoke,
 		IsNoScope:                event.NoScope,
 		Distance:                 distance,
+
+		HasVictimActiveWeaponData: hasVictimActiveWeaponData,
 	}
 }

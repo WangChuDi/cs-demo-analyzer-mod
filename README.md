@@ -100,6 +100,15 @@ Kill JSON adds the optional `killerFlashEstimate` object with `model`, `duration
 
 Model `cs2_client_14194_cpu` comes from the supplied Windows IDA/instruction analysis of CS2 1.41.9.4, SourceRevision 11191540, client SHA-256 `d618bbf8e6afb36baa09b3a282035996a88300458c55d2aa5cb81f0495c0ec54`. It is a conditional estimate: other client versions, exact client clock/frame phase, spectator view state, repeated-flash duration adjustments, equal-value early returns and callback transients are not reconstructed. CPU parameters have been analyzed; GPU shader output and actual pixels have not been verified. The Cache sample selects two kills: Spinx at tick 17129 and torzsi at tick 83950; neither the event blinded flag nor a generic duration threshold is used as a substitute for this model.
 
+### 💣 Utility-in-Hand Deaths and Posthumous Kills
+
+Player CSV adds `utility in hand death count` and `posthumous kill count`; player JSON exposes `utilityInHandDeathCount` and `posthumousKillCount`.
+
+- **Utility-in-hand death**: the victim's observed active weapon at the death event is a flashbang, smoke, HE, Molotov, incendiary or decoy. The player total counts enemy kills only; inventory contents alone, C4, knives, team kills, suicides and environmental deaths do not qualify. Unavailable/unrecognized active weapons are not inferred from a later position snapshot.
+- **Posthumous kill**: an enemy kill attributed to one of those six throwable utilities while the killer is dead, with an observed death in the same round at a strictly earlier demo tick. This includes HE/fire kills and rare lethal impacts from other utility. Same-tick trades, even across parser frames, firearms, C4, team kills, suicides and kills while controlling a bot are excluded. New rounds and recorded spawn events clear the death index; observing the killer alive also invalidates their previous life. Multiple qualifying victims retain the original death tick. Missing death/clock evidence is not classified.
+
+Kill JSON/CSV exports the active weapon, its availability (`hasVictimActiveWeaponData` / `has victim active weapon data`), the holding-utility flag (`isVictimHoldingUtility` / `is victim holding utility`), and `isPosthumousKill`, `posthumousDeathTick`, `posthumousDelaySeconds` (CSV: `is posthumous kill`, `posthumous death tick`, `posthumous delay seconds`). The holding flag describes the victim's state; the player count additionally requires an enemy kill. Read zero death-tick/delay placeholders together with the posthumous flag. Both metrics use event-time state independently of `-positions`; fixed-column CSDM is unchanged.
+
 ### 🎯 AWP Hold Deaths
 Tracks kills where the victim was holding an AWP angle: scoped, facing the killer within 10 degrees, and stationary or moving slowly enough to be considered in a holding posture.
 

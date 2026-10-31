@@ -81,12 +81,8 @@ func estimateFlashAtTick(duration float64, flashTick, tick int, tickRate, maxAlp
 func (player *Player) FullWhiteKillCount() int {
 	count := 0
 	for _, kill := range player.match.Kills {
-		if kill == nil || kill.KillerSteamID64 != player.SteamID64 || kill.VictimSteamID64 == 0 ||
-			kill.KillerFlashEstimate == nil || !kill.KillerFlashEstimate.IsFullWhite || kill.IsSuicide() || kill.IsTeamKill() {
-			continue
-		}
-		if (kill.KillerSide == common.TeamCounterTerrorists || kill.KillerSide == common.TeamTerrorists) &&
-			(kill.VictimSide == common.TeamCounterTerrorists || kill.VictimSide == common.TeamTerrorists) {
+		if kill.isEnemyKill() && kill.KillerSteamID64 == player.SteamID64 &&
+			kill.KillerFlashEstimate != nil && kill.KillerFlashEstimate.IsFullWhite {
 			count++
 		}
 	}

@@ -97,6 +97,15 @@
 
 模型 `cs2_client_14194_cpu` 来源为用户提供的 Windows IDA/指令分析：CS2 1.41.9.4、SourceRevision 11191540、client SHA-256 `d618bbf8e6afb36baa09b3a282035996a88300458c55d2aa5cb81f0495c0ec54`。结果为条件估计：尚未重建其他客户端版本的差异、准确客户端时钟/帧相位、观战状态、连续闪光的时长调整、相等值早退和回调瞬态。已分析的是 CPU 参数，GPU shader 和实际像素尚未验证。Cache 样本筛出 2 次：Spinx tick 17129、torzsi tick 83950；不以原始击杀事件的致盲标记代替此模型。
 
+### 💣 掏道具暴毙与亡语击杀
+
+玩家 CSV 新增 `utility in hand death count`、`posthumous kill count`；玩家 JSON 对应 `utilityInHandDeathCount`、`posthumousKillCount`。
+
+- **掏道具暴毙**：死亡事件当下，观测到的活动武器是闪光、烟雾、HE、燃烧瓶、燃烧弹或诱饵。玩家汇总只统计被敌方击杀；仅在背包中携带道具、手持 C4/刀、队杀、自杀和环境死亡均不计入。活动武器缺失或无法识别时保留未知，不用死亡后的位置快照推断。
+- **亡语击杀**：上述六种投掷道具造成敌方死亡，击杀者当时已死亡，且同回合存在严格更早 demo tick 的死亡记录；包括 HE/火焰击杀及其他道具罕见的致命碰撞。同 tick 互换（即使解析帧不同）、枪械、C4、队杀、自杀及控 bot 时的击杀不计入。新回合、已记录的重生事件会清理死亡索引；观测到击杀者存活也会使旧死亡记录失效。死后连续击杀多名敌人时保留原死亡 tick；死亡或时钟证据缺失时不判定。
+
+击杀 JSON/CSV 同时导出活动武器及其可用性（`hasVictimActiveWeaponData` / `has victim active weapon data`）、手持道具状态（`isVictimHoldingUtility` / `is victim holding utility`），以及 `isPosthumousKill`、`posthumousDeathTick`、`posthumousDelaySeconds`（CSV：`is posthumous kill`、`posthumous death tick`、`posthumous delay seconds`）。手持道具标记描述受害者状态，玩家汇总另要求敌方击杀；亡语死亡 tick/间隔的零占位需结合亡语标记读取。两项均在事件发生时取值，不依赖 `-positions`。固定列 CSDM 保持原布局。
+
 ### 🎯 手撕大狙 / AWP Hold Deaths
 追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向与击杀者夹角不超过 10 度，并且静止或低速移动。
 
