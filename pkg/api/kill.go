@@ -74,6 +74,10 @@ type Kill struct {
 	IsPosthumousKill          bool    `json:"isPosthumousKill"`
 	PosthumousDeathTick       int     `json:"posthumousDeathTick"`
 	PosthumousDelaySeconds    float64 `json:"posthumousDelaySeconds"`
+
+	RawWeaponName        string `json:"rawWeaponName"`
+	HasUtilityImpactData bool   `json:"hasUtilityImpactData"`
+	IsUtilityImpactKill  bool   `json:"isUtilityImpactKill"`
 }
 
 func (kill *Kill) IsSuicide() bool {

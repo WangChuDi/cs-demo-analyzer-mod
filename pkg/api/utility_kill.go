@@ -31,10 +31,15 @@ func isThrowableUtility(weapon constants.WeaponName) bool {
 func (analyzer *Analyzer) registerUtilityKillHandlers() {
 	analyzer.parser.RegisterEventHandler(func(events.RoundStart) {
 		clear(analyzer.posthumousDeaths)
+		analyzer.pendingUtilityImpactKill = nil
 	})
 	// v6 has no typed PlayerSpawn event. When recorded, this generic event
 	// invalidates the previous life even if the same controller/pawn is reused.
 	analyzer.parser.RegisterEventHandler(func(event events.GenericGameEvent) {
+		if event.Name == "player_death" {
+			analyzer.applyUtilityImpactDeathEvent(event)
+			return
+		}
 		if event.Name != "player_spawn" || event.Data["userid"] == nil {
 			return
 		}

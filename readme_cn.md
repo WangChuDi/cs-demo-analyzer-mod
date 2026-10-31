@@ -106,6 +106,14 @@
 
 击杀 JSON/CSV 同时导出活动武器及其可用性（`hasVictimActiveWeaponData` / `has victim active weapon data`）、手持道具状态（`isVictimHoldingUtility` / `is victim holding utility`），以及 `isPosthumousKill`、`posthumousDeathTick`、`posthumousDelaySeconds`（CSV：`is posthumous kill`、`posthumous death tick`、`posthumous delay seconds`）。手持道具标记描述受害者状态，玩家汇总另要求敌方击杀；亡语死亡 tick/间隔的零占位需结合亡语标记读取。两项均在事件发生时取值，不依赖 `-positions`。固定列 CSDM 保持原布局。
 
+### 🪨 被投掷道具砸死
+
+玩家 JSON 新增 `utilityImpactDeathCount`，玩家 CSV 新增 `utility impact death count`，统计被敌方投掷道具的弹体碰撞击杀的次数。爆炸、燃烧伤害不计入，玩家汇总排除队杀、自杀和非玩家击杀。
+
+在类型化击杀事件之后立即读取原始 `player_death.weapon`。按标准 CS2 事件命名，闪光、烟雾及燃烧瓶/燃烧弹的弹体名称标识碰撞，`inferno` 标识火焰伤害；不能仅看解析器映射后的道具类型。**HE 和诱饵的名称可能同时用于碰撞和爆炸**，缺少伤害类型证据时保留未知，不用“致死伤害只有 1 点”猜测。因此该计数是能识别的碰撞致死次数，不保证覆盖全部道具类型。
+
+击杀 JSON 新增 `rawWeaponName`、`hasUtilityImpactData`、`isUtilityImpactKill`；CSV 对应 `raw weapon name`、`has utility impact data`、`is utility impact kill`。原因未知时，可用性为 false，碰撞标记的 false 也需结合可用性读取；原始通用死亡事件缺失时同样保留未知。无需启用 `-positions`，固定列 CSDM 保持原布局。
+
 ### 🎯 手撕大狙 / AWP Hold Deaths
 追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向与击杀者夹角不超过 10 度，并且静止或低速移动。
 

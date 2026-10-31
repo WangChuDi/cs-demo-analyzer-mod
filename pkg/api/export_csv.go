@@ -261,6 +261,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"full white kill count",
 			"utility in hand death count",
 			"posthumous kill count",
+			"utility impact death count",
 			"match checksum",
 		}
 
@@ -365,6 +366,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.FullWhiteKillCount()),
 				converters.IntToString(player.UtilityInHandDeathCount()),
 				converters.IntToString(player.PosthumousKillCount()),
+				converters.IntToString(player.UtilityImpactDeathCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -996,6 +998,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"is posthumous kill",
 			"posthumous death tick",
 			"posthumous delay seconds",
+			"raw weapon name",
+			"has utility impact data",
+			"is utility impact kill",
 			"match checksum",
 		}
 
@@ -1064,6 +1069,9 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(kill.IsPosthumousKill),
 				converters.IntToString(kill.PosthumousDeathTick),
 				converters.Float64ToString(kill.PosthumousDelaySeconds),
+				kill.RawWeaponName,
+				converters.BoolToString(kill.HasUtilityImpactData),
+				converters.BoolToString(kill.IsUtilityImpactKill),
 				match.Checksum,
 			}
 			lines = append(lines, line)

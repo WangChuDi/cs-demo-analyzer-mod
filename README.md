@@ -109,6 +109,14 @@ Player CSV adds `utility in hand death count` and `posthumous kill count`; playe
 
 Kill JSON/CSV exports the active weapon, its availability (`hasVictimActiveWeaponData` / `has victim active weapon data`), the holding-utility flag (`isVictimHoldingUtility` / `is victim holding utility`), and `isPosthumousKill`, `posthumousDeathTick`, `posthumousDelaySeconds` (CSV: `is posthumous kill`, `posthumous death tick`, `posthumous delay seconds`). The holding flag describes the victim's state; the player count additionally requires an enemy kill. Read zero death-tick/delay placeholders together with the posthumous flag. Both metrics use event-time state independently of `-positions`; fixed-column CSDM is unchanged.
 
+### 🪨 Utility Projectile Impact Deaths
+
+Player JSON adds `utilityImpactDeathCount`; player CSV adds `utility impact death count`. This counts enemy kills from a utility projectile physically hitting the victim, rather than explosive or fire damage. Team kills, suicides and non-player kills are excluded from the player total.
+
+The original `player_death.weapon` is captured immediately after its typed kill event. Under stock CS2 event naming, flashbang/smoke and Molotov/incendiary projectile names identify impacts; `inferno` identifies fire damage. The parser's mapped grenade family alone is insufficient. **HE and decoy names can represent either impact or explosion**, so they remain unclassified when no damage-type evidence exists. A lethal 1 HP hit is not used as proof of impact. The count is therefore a conservative total of identifiable impacts, not guaranteed coverage of every grenade family.
+
+Kill JSON adds `rawWeaponName`, `hasUtilityImpactData`, `isUtilityImpactKill`; CSV adds `raw weapon name`, `has utility impact data`, `is utility impact kill`. An unavailable cause uses `hasUtilityImpactData=false` and an impact flag of false; read both together. Missing generic death data also remains unavailable. This works independently of `-positions`; the fixed-column CSDM layout is unchanged.
+
 ### 🎯 AWP Hold Deaths
 Tracks kills where the victim was holding an AWP angle: scoped, facing the killer within 10 degrees, and stationary or moving slowly enough to be considered in a holding posture.
 
