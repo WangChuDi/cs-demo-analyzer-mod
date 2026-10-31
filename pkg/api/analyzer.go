@@ -65,6 +65,7 @@ type Analyzer struct {
 	destroyedGrenadePins      []grenadeWeaponKey
 	posthumousDeaths          map[uint64]posthumousDeath
 	pendingUtilityImpactKill  *Kill
+	utilityImpactLifetimes    map[common.UniqueID]*utilityImpactLifetime
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
 	// Because several hostages can be untied at the same time, we keep track of players that started untying hostages
 	// to detect which player is untying an hostage in case of consecutive events.
@@ -277,6 +278,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		match.FrameRate = float64(frames) / match.Duration.Seconds()
 	}
 
+	analyzer.resolveUtilityImpactLifecycles()
 	analyzer.postProcess(analyzer)
 	match.deleteIncompleteRounds()
 	match.computeResultStats()
@@ -721,6 +723,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	match := analyzer.match
 	analyzer.registerUtilityPinHandlers()
 	analyzer.registerUtilityKillHandlers()
+	analyzer.registerUtilityImpactLifecycleHandlers()
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()
@@ -871,6 +874,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 		damage := newDamageFromGameEvent(analyzer, event)
 		if damage != nil {
+			analyzer.captureUtilityImpactCandidates(damage)
 			analyzer.applyPendingBulletDamageToDamage(damage)
 			match.Damages = append(match.Damages, damage)
 		}

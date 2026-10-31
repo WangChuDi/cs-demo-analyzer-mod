@@ -1001,6 +1001,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"raw weapon name",
 			"has utility impact data",
 			"is utility impact kill",
+			"utility impact source",
+			"utility impact projectile id",
+			"utility impact effect tick",
+			"utility impact effect",
 			"match checksum",
 		}
 
@@ -1009,6 +1013,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			flash := kill.KillerFlashEstimate
 			if flash == nil {
 				flash = &FlashEstimate{}
+			}
+			impactEffectTick := ""
+			if kill.UtilityImpactSource == utilityImpactSourceLifecycle {
+				impactEffectTick = converters.IntToString(kill.UtilityImpactEffectTick)
 			}
 			line := []string{
 				converters.IntToString(kill.Tick),
@@ -1072,6 +1080,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				kill.RawWeaponName,
 				converters.BoolToString(kill.HasUtilityImpactData),
 				converters.BoolToString(kill.IsUtilityImpactKill),
+				kill.UtilityImpactSource,
+				kill.UtilityImpactProjectileID,
+				impactEffectTick,
+				kill.UtilityImpactEffect,
 				match.Checksum,
 			}
 			lines = append(lines, line)

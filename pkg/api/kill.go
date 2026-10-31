@@ -78,6 +78,11 @@ type Kill struct {
 	RawWeaponName        string `json:"rawWeaponName"`
 	HasUtilityImpactData bool   `json:"hasUtilityImpactData"`
 	IsUtilityImpactKill  bool   `json:"isUtilityImpactKill"`
+
+	UtilityImpactSource       string `json:"utilityImpactSource"`
+	UtilityImpactProjectileID string `json:"utilityImpactProjectileId,omitempty"`
+	UtilityImpactEffectTick   int    `json:"utilityImpactEffectTick,omitempty"`
+	UtilityImpactEffect       string `json:"utilityImpactEffect,omitempty"`
 }
 
 func (kill *Kill) IsSuicide() bool {
@@ -258,5 +263,6 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 		Distance:                 distance,
 
 		HasVictimActiveWeaponData: hasVictimActiveWeaponData,
+		UtilityImpactSource:       utilityImpactSourceUnavailable,
 	}
 }

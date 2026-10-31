@@ -110,9 +110,11 @@
 
 玩家 JSON 新增 `utilityImpactDeathCount`，玩家 CSV 新增 `utility impact death count`，统计被敌方投掷道具的弹体碰撞击杀的次数。爆炸、燃烧伤害不计入，玩家汇总排除队杀、自杀和非玩家击杀。
 
-在类型化击杀事件之后立即读取原始 `player_death.weapon`。按标准 CS2 事件命名，闪光、烟雾及燃烧瓶/燃烧弹的弹体名称标识碰撞，`inferno` 标识火焰伤害；不能仅看解析器映射后的道具类型。**HE 和诱饵的名称可能同时用于碰撞和爆炸**，缺少伤害类型证据时保留未知，不用“致死伤害只有 1 点”猜测。因此该计数是能识别的碰撞致死次数，不保证覆盖全部道具类型。
+在类型化击杀事件之后立即读取原始 `player_death.weapon`。按标准 CS2 事件命名，闪光、烟雾及燃烧瓶/燃烧弹的弹体名称标识碰撞，`inferno` 标识火焰伤害；不能仅看解析器映射后的道具类型，也不用“致死伤害只有 1 点”猜测。
 
-击杀 JSON 新增 `rawWeaponName`、`hasUtilityImpactData`、`isUtilityImpactKill`；CSV 对应 `raw weapon name`、`has utility impact data`、`is utility impact kill`。原因未知时，可用性为 false，碰撞标记的 false 也需结合可用性读取；原始通用死亡事件缺失时同样保留未知。无需启用 `-positions`，固定列 CSDM 保持原布局。
+当原始名称不足以区分 HE／诱饵碰撞时，使用弹体生命周期补充判定：必须观测到投掷，伤害发生时只有一个可匹配弹体，且随后观测到该弹体的 `HeExplode`／`DecoyExpired`。致死伤害与击杀还必须按回合、tick、解析帧、攻击者、受害者和武器类型一一对应，并校验归属、弹体身份和武器实例。效果的 demo tick 与解析帧都必须严格晚于伤害。实体销毁不视为爆炸：HE 爆炸后实体还可能保留五秒。证据缺失、多弹体竞争、同 tick 效果、跨回合证据及控 bot 情况保留未知，因此仍是保守计数。
+
+击杀 JSON 导出 `rawWeaponName`、`hasUtilityImpactData`、`isUtilityImpactKill`，以及来源 `utilityImpactSource`（`raw_weapon`、`projectile_lifecycle` 或 `unavailable`）。生命周期判定另导出 `utilityImpactProjectileId`、`utilityImpactEffectTick`（demo tick）和 `utilityImpactEffect`（`he_explode`／`decoy_expired`）；CSV 使用相应的空格分隔列名。原因未知时，可用性为 false，碰撞标记的 false 也需结合可用性读取；原始通用死亡事件缺失时，仅能通过生命周期证据补充。无需启用 `-positions`，固定列 CSDM 保持原布局。
 
 ### 🎯 手撕大狙 / AWP Hold Deaths
 追踪被击杀者处于“大狙架点”状态时的击杀事件：被击杀者持有 AWP、处于开镜状态、瞄准方向与击杀者夹角不超过 10 度，并且静止或低速移动。

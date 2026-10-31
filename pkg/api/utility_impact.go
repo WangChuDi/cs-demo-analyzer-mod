@@ -26,11 +26,13 @@ func (analyzer *Analyzer) applyUtilityImpactDeathEvent(event events.GenericGameE
 
 // Stock CS2 fire damage is named inferno; the Molotov/incendiary projectile
 // names identify the physical hit. Flashbang/smoke have no damaging detonation.
-// HE and decoy can both explode and hit a player under the same name. Without
-// a damage-type field they remain unknown, even when the lethal damage is 1.
+// HE/decoy cannot be classified from the mapped family or damage amount alone;
+// their lifecycle evidence is resolved after parsing all events.
 func (kill *Kill) setUtilityImpactData(rawWeapon string) {
 	kill.RawWeaponName = rawWeapon
 	kill.HasUtilityImpactData, kill.IsUtilityImpactKill = false, false
+	kill.UtilityImpactSource = utilityImpactSourceUnavailable
+	kill.UtilityImpactProjectileID, kill.UtilityImpactEffectTick, kill.UtilityImpactEffect = "", 0, ""
 	weapon := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(rawWeapon)), "weapon_")
 	switch weapon {
 	case "flashbang", "flashbang_projectile", "flashbangprojectile",
@@ -45,6 +47,9 @@ func (kill *Kill) setUtilityImpactData(rawWeapon string) {
 		if equipment != common.EqUnknown && equipment.Class() != common.EqClassGrenade {
 			kill.HasUtilityImpactData = true
 		}
+	}
+	if kill.HasUtilityImpactData {
+		kill.UtilityImpactSource = utilityImpactSourceRawWeapon
 	}
 }
 

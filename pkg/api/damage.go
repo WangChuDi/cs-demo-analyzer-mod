@@ -59,6 +59,9 @@ type Damage struct {
 	victimPosition           *PlayerPosition
 	wallbangDamageScale      *float64
 	isFallDamage             bool
+
+	utilityImpactCandidates []utilityImpactCandidate
+	utilityImpactLifecycle  *utilityImpactLifecycleEvidence
 }
 
 type damageMatchFrameKey struct {
