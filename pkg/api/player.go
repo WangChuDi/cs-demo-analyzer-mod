@@ -51,6 +51,9 @@ type PlayerAlias Player
 type PlayerJSON struct {
 	*PlayerAlias
 	WeaponUsageStats
+	SelfFlashStats
+	WeaponUpsetKillCount                 int     `json:"weaponUpsetKillCount"`
+	WeaponUpsetDeathCount                int     `json:"weaponUpsetDeathCount"`
 	SummonEnemyDeathCount                int     `json:"summonEnemyDeathCount"`
 	ForgotArmorCount                     int     `json:"forgotArmorCount"`
 	KillCount                            int     `json:"killCount"`
@@ -712,6 +715,9 @@ func (player *Player) MarshalJSON() ([]byte, error) {
 	return json.Marshal(PlayerJSON{
 		PlayerAlias:                          (*PlayerAlias)(player),
 		WeaponUsageStats:                     player.WeaponUsage(),
+		SelfFlashStats:                       player.SelfFlashStats(),
+		WeaponUpsetKillCount:                 player.WeaponUpsetKillCount(),
+		WeaponUpsetDeathCount:                player.WeaponUpsetDeathCount(),
 		SummonEnemyDeathCount:                player.SummonEnemyDeathCount(),
 		ForgotArmorCount:                     player.ForgotArmorCount(),
 		KillCount:                            player.KillCount(),

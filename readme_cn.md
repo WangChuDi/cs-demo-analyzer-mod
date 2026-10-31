@@ -87,6 +87,23 @@
 - **射击表 (`_shots.csv`)**：
   - `is player running`：玩家开枪时是否在移动（速度超过武器精准速度阈值）。
 
+### ⚔️ 以下犯上／阴沟翻船
+
+玩家 JSON 新增 `weaponUpsetKillCount`（以下犯上）和对称的 `weaponUpsetDeathCount`（阴沟翻船）。统计敌方击杀，按受害者**死亡瞬间的活动武器**判断，不用背包中另一把枪代替：
+
+- 手枪（包含默认手枪）击杀持主武器者，主武器包含步枪、狙击枪、冲锋枪、霰弹枪和机枪，不限距离。
+- 冲锋枪击杀持步枪者，且该冲锋枪的模型距离衰减达到 **25%**，即伤害保留比例 **≤75%**，包含等号。按 `保留比例 = rangeModifier^(游戏单位距离/500)` 计算，各枪型门槛为 `500 * log(0.75) / log(rangeModifier)`。例如 MP9 约 **1032.88 单位**、MAC-10 约 **644.61 单位**、UMP-45 为 **500 单位**；MP5-SD／MP7 按 demo 协议版本选取参数。
+
+距离使用击杀事件时双方 XYZ 坐标的三维直线距离估计，保留游戏单位，不复用或改动已有 `distance` 字段。已审计模型支持 CS2 协议 14005–14192；需要的坐标、版本模型或活动武器数据缺失时保留未知。排除队杀、自杀和任一方控 bot 的情况。这是按武器类别及距离定义的规则，不代表完整对枪胜率判断。
+
+击杀 JSON 新增 `hasWeaponUpsetData`、`isWeaponUpsetKill`，可用时 `weaponUpset` 保留 `rule`（`pistol_vs_primary`／`smg_vs_rifle_at_range`）、`distanceUnits`、`rangeThresholdUnits`、`rangeModifier`、`damageRetention`、`damageRetentionThreshold`、`modelSource`。冲锋枪对步枪即使未到门槛也保留衰减明细，是否计数须读标记。CSV 对应 `weapon upset kill count`、`weapon upset death count`、`has weapon upset data`、`is weapon upset kill` 和 `weapon upset ...` 明细列；不可用的数值明细留空。不依赖 `-positions`，固定列 CSDM 不变。
+
+### 💥 自己闪自己
+
+玩家 JSON 新增 `selfFlashCount`、`selfFlashDuration`，CSV 对应 `self flash count`、`self flash duration`。闪光者与被闪者的非零 SteamID 均等于该玩家，且事件有效时长为正、有限数时，计一次自闪；不设 1 秒或全白门槛，排除控 bot 事件。复核明细已包含在原有闪光事件导出中。
+
+时长为**各自闪事件记录的有效致盲时长合计，单位秒**。连续闪光可能覆盖客户端状态，因此这个合计不是重叠区间去重后的白屏时间，也不是全白总时长。不依赖 `-positions`，固定列 CSDM 不变。
+
 ### 🔫 使用武器数量
 
 玩家 JSON 新增 `usedWeaponCount`、`usedPrimaryWeaponCount`、`usedSecondaryWeaponCount` 和排序后的 `usedWeapons` 列表，统计整场**实际开火过的不同枪型**，包含主武器及副武器，统一排除 Glock-18、USP-S、P2000。重复开火、拾取、皮肤或同型号不同枪支不重复计数；刀、电击枪、道具、C4 及控 bot 时开火不计。CSV 使用对应的空格分隔列名，`used weapons` 中各枪型用分号分隔。

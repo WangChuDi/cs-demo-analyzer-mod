@@ -86,6 +86,11 @@ type Kill struct {
 
 	IsSummonEnemyDeath bool                 `json:"isSummonEnemyDeath"`
 	SummonEnemy        *SummonEnemyEvidence `json:"summonEnemy,omitempty"`
+
+	HasWeaponUpsetData      bool                 `json:"hasWeaponUpsetData"`
+	IsWeaponUpsetKill       bool                 `json:"isWeaponUpsetKill"`
+	WeaponUpset             *WeaponUpsetEvidence `json:"weaponUpset,omitempty"`
+	hasWeaponUpsetPositions bool
 }
 
 func (kill *Kill) IsSuicide() bool {
@@ -210,6 +215,10 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 	}
 
 	victimPosition := event.Victim.Position()
+	hasUpsetPositions := event.Killer != nil && event.Killer.Entity != nil && event.Victim.Entity != nil
+	if hasUpsetPositions && analyzer.isSource2 {
+		hasUpsetPositions = event.Killer.PlayerPawnEntity() != nil && event.Victim.PlayerPawnEntity() != nil
+	}
 
 	return &Kill{
 		Frame:                    analyzer.parser.CurrentFrame(),
@@ -267,5 +276,6 @@ func newKillFromGameEvent(analyzer *Analyzer, event events.Kill) *Kill {
 
 		HasVictimActiveWeaponData: hasVictimActiveWeaponData,
 		UtilityImpactSource:       utilityImpactSourceUnavailable,
+		hasWeaponUpsetPositions:   hasUpsetPositions,
 	}
 }

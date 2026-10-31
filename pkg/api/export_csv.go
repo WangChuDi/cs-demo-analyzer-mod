@@ -268,12 +268,17 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"used weapons",
 			"summon enemy death count",
 			"forgot armor count",
+			"weapon upset kill count",
+			"weapon upset death count",
+			"self flash count",
+			"self flash duration",
 			"match checksum",
 		}
 
 		lines := [][]string{header}
 		for _, player := range match.Players() {
 			usage := player.WeaponUsage()
+			selfFlash := player.SelfFlashStats()
 			usedWeapons := make([]string, len(usage.UsedWeapons))
 			for i, name := range usage.UsedWeapons {
 				usedWeapons[i] = name.String()
@@ -384,6 +389,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				strings.Join(usedWeapons, ";"),
 				converters.IntToString(player.SummonEnemyDeathCount()),
 				converters.IntToString(player.ForgotArmorCount()),
+				converters.IntToString(player.WeaponUpsetKillCount()),
+				converters.IntToString(player.WeaponUpsetDeathCount()),
+				converters.IntToString(selfFlash.SelfFlashCount),
+				converters.Float64ToString(selfFlash.SelfFlashDuration),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -1041,6 +1050,15 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"summon enemy weapon after",
 			"summon enemy turn angle",
 			"summon enemy hold facing killer angle",
+			"has weapon upset data",
+			"is weapon upset kill",
+			"weapon upset rule",
+			"weapon upset distance units",
+			"weapon upset range threshold units",
+			"weapon upset range modifier",
+			"weapon upset damage retention",
+			"weapon upset damage retention threshold",
+			"weapon upset model source",
 			"match checksum",
 		}
 
@@ -1064,6 +1082,18 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 					evidence.WeaponBefore.String(), evidence.WeaponAfter.String(),
 					converters.Float64ToString(evidence.TurnAngle),
 					converters.Float64ToString(evidence.HoldFacingKillerAngle),
+				}
+			}
+			upsetFields := make([]string, 7)
+			if evidence := kill.WeaponUpset; evidence != nil {
+				upsetFields[0] = evidence.Rule
+				if evidence.ModelSource != "" {
+					upsetFields[1] = converters.Float64ToString(evidence.DistanceUnits)
+					upsetFields[2] = converters.Float64ToString(evidence.RangeThresholdUnits)
+					upsetFields[3] = converters.Float64ToString(evidence.RangeModifier)
+					upsetFields[4] = converters.Float64ToString(evidence.DamageRetention)
+					upsetFields[5] = converters.Float64ToString(evidence.DamageRetentionThreshold)
+					upsetFields[6] = evidence.ModelSource
 				}
 			}
 			line := []string{
@@ -1135,6 +1165,10 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(kill.IsSummonEnemyDeath),
 				summonFields[0], summonFields[1], summonFields[2], summonFields[3],
 				summonFields[4], summonFields[5], summonFields[6], summonFields[7],
+				converters.BoolToString(kill.HasWeaponUpsetData),
+				converters.BoolToString(kill.IsWeaponUpsetKill),
+				upsetFields[0], upsetFields[1], upsetFields[2], upsetFields[3],
+				upsetFields[4], upsetFields[5], upsetFields[6],
 				match.Checksum,
 			}
 			lines = append(lines, line)

@@ -282,6 +282,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	}
 
 	analyzer.resolveUtilityImpactLifecycles()
+	markWeaponUpsetKills(&match)
 	analyzer.postProcess(analyzer)
 	match.deleteIncompleteRounds()
 	match.computeResultStats()

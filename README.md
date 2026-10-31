@@ -90,6 +90,23 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### ⚔️ Weapon Upsets
+
+Player JSON adds `weaponUpsetKillCount` (以下犯上) and the symmetric `weaponUpsetDeathCount` (阴沟翻船). Count enemy kills under these explicit rules, using the victim's **active weapon at death**, rather than another gun in their inventory:
+
+- Any pistol, including default pistols, kills a player holding a primary weapon (rifle, sniper, SMG, shotgun or machine gun), at any distance.
+- An SMG kills a player holding a rifle at a distance where the SMG's modeled range damage retention is **at most 75%**, including equality. For each model, `retention = rangeModifier^(distanceUnits/500)` and the boundary is `500 * log(0.75) / log(rangeModifier)`. For example, MP9 requires about **1032.88 world units**, MAC-10 about **644.61**, and UMP-45 **500**. MP5-SD/MP7 parameters follow the demo protocol version.
+
+Range is estimated from the event-time player XYZ coordinates in raw world units; the existing `distance` export is not reused or changed. The audited weapon models support CS2 protocols 14005–14192. Missing positions, unknown versions or missing held-weapon data remain unavailable where required. Team kills, suicides and kills while either player controls a bot are excluded. These are category/range rules, not a claim about overall duel odds.
+
+Kill JSON exports `hasWeaponUpsetData`, `isWeaponUpsetKill` and optional `weaponUpset` evidence: `rule` (`pistol_vs_primary` / `smg_vs_rifle_at_range`), `distanceUnits`, `rangeThresholdUnits`, `rangeModifier`, `damageRetention`, `damageRetentionThreshold`, `modelSource`. Range evidence is also retained for known SMG-versus-rifle kills below the boundary; read the flag to determine whether it counts. CSV uses `weapon upset kill count`, `weapon upset death count`, `has weapon upset data`, `is weapon upset kill`, and `weapon upset ...` evidence columns. Unavailable numeric evidence is blank in CSV. Does not require `-positions`; fixed-column CSDM is unchanged.
+
+### 💥 Self-Flashes
+
+Player JSON adds `selfFlashCount` and `selfFlashDuration`; CSV adds `self flash count` and `self flash duration`. A positive, finite-duration flash event counts when its nonzero flasher and victim SteamIDs both identify the player. No one-second or full-white minimum is imposed; events while controlling a bot are excluded. Existing flash-event exports retain the evidence.
+
+Duration is the **sum of effective-duration values recorded in self-flash events, in seconds**. Overlapping flashes may overwrite client state, so this sum is not deduplicated screen-white time or total full-white time. `-positions` is not required; fixed-column CSDM is unchanged.
+
 ### 🔫 Weapon Variety
 
 Player JSON exports `usedWeaponCount`, `usedPrimaryWeaponCount`, `usedSecondaryWeaponCount` and the sorted `usedWeapons` list. Count distinct firearm models actually fired during the match, including primary weapons and pistols; exclude Glock-18, USP-S and P2000 on both sides. Repeated shots, pickups, skins and multiple instances of the same model do not increase the count. Knives, Zeus, utilities, C4 and shots while controlling a bot are excluded. CSV uses the corresponding space-separated names; `used weapons` is a semicolon-separated list.
