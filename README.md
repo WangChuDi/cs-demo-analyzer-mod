@@ -90,6 +90,20 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🎯 AWP Hold-versus-Peek Duels (Estimated)
+
+Player JSON adds `awpPeekKillCount` (**对位处刑**, the peeker's kills) and `awpPeekDeathCount` (**被对位处刑**, the holder's deaths). Both count the same enemy AWP-versus-AWP event, at match level. The `awp_peek_v1` model requires:
+
+- The victim holds the same AWP and remains scoped for a verified window of at least **0.5 s**, horizontal speed **≤10 units/s**, position drift **≤8 units** and 3D aim drift **≤5°**. The original held direction must face the killer's event-time eye position within **10°**, including elevation.
+- The killer holds the same AWP throughout the preceding **0.5 s**, moves a net horizontal distance **≥16 units**, and last moves faster than **10 units/s** at most **0.3 s** before firing. Counter-strafing to zero speed at the shot is allowed; scoping is not required for the killer.
+- A unique AWP fire event matches the kill's demo tick, frame and weapon ID. The holder may have fired within the last **0.3 s**: require the scoped hold before that shot, then keep the same position/aim through death, allowing scope loss after the recorded shot. `holderFiredBeforeDeath` records firing, not whether the shot missed or dealt damage.
+
+Exclude team kills, suicides, bots/bot control, smoke, parser-confirmed penetration, airborne state and flash blindness during the evaluated windows. Histories reset on spawn, death, round, weapon changes and gaps **>0.125 s**. Missing live eye/weapon/state data, incomplete history or missing/ambiguous fire events remain unknown. `hasAwpPeekData=false` means unavailable; `awpPeekReason` distinguishes unavailable, excluded and nonqualifying cases. Known non-AWP kills use `not_awp_duel`.
+
+Kill JSON exports `hasAwpPeekData`, `isAwpPeekKill`, `awpPeekReason` and optional `awpPeek` evidence (model, shot/hold ticks, verified hold duration, speed/drift/angles, peek displacement, stop-to-shot interval, shot speed and holder fire flag). CSV adds `awp peek kill count`, `awp peek death count`, the corresponding flags/reason and `awp peek ...` evidence columns; absent evidence is blank. Sampling does not require `-positions`; fixed-column CSDM is unchanged.
+
+This is a trajectory/aim estimate. It does not trace map geometry or determine first visibility, client render timing, reaction time or peeker's advantage.
+
 ### ⚔️ Weapon Upsets
 
 Player JSON adds `weaponUpsetKillCount` (以下犯上) and the symmetric `weaponUpsetDeathCount` (我软脚了). Count enemy kills under these explicit rules, using the victim's **active weapon at death**, rather than another gun in their inventory:

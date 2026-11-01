@@ -272,6 +272,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"weapon upset death count",
 			"self flash count",
 			"self flash duration",
+			"awp peek kill count",
+			"awp peek death count",
 			"match checksum",
 		}
 
@@ -393,6 +395,8 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.IntToString(player.WeaponUpsetDeathCount()),
 				converters.IntToString(selfFlash.SelfFlashCount),
 				converters.Float64ToString(selfFlash.SelfFlashDuration),
+				converters.IntToString(player.AWPPeekKillCount()),
+				converters.IntToString(player.AWPPeekDeathCount()),
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -1059,6 +1063,22 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"weapon upset damage retention",
 			"weapon upset damage retention threshold",
 			"weapon upset model source",
+			"has awp peek data",
+			"is awp peek kill",
+			"awp peek reason",
+			"awp peek model",
+			"awp peek shot tick",
+			"awp peek hold start tick",
+			"awp peek hold end tick",
+			"awp peek hold seconds",
+			"awp peek hold max speed",
+			"awp peek hold position drift",
+			"awp peek hold view drift degrees",
+			"awp peek facing angle degrees",
+			"awp peek displacement units",
+			"awp peek stop to shot seconds",
+			"awp peek shot speed",
+			"awp peek holder fired before death",
 			"match checksum",
 		}
 
@@ -1094,6 +1114,24 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 					upsetFields[4] = converters.Float64ToString(evidence.DamageRetention)
 					upsetFields[5] = converters.Float64ToString(evidence.DamageRetentionThreshold)
 					upsetFields[6] = evidence.ModelSource
+				}
+			}
+			peekFields := make([]string, 13)
+			if evidence := kill.AWPPeek; evidence != nil {
+				peekFields = []string{
+					evidence.Model,
+					converters.IntToString(evidence.ShotTick),
+					converters.IntToString(evidence.HoldStartTick),
+					converters.IntToString(evidence.HoldEndTick),
+					converters.Float64ToString(evidence.HoldSeconds),
+					converters.Float64ToString(evidence.HoldMaxSpeed),
+					converters.Float64ToString(evidence.HoldPositionDrift),
+					converters.Float64ToString(evidence.HoldViewDriftDegrees),
+					converters.Float64ToString(evidence.FacingAngleDegrees),
+					converters.Float64ToString(evidence.PeekDisplacementUnits),
+					converters.Float64ToString(evidence.StopToShotSeconds),
+					converters.Float64ToString(evidence.ShotSpeed),
+					converters.BoolToString(evidence.HolderFiredBeforeDeath),
 				}
 			}
 			line := []string{
@@ -1169,6 +1207,12 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.BoolToString(kill.IsWeaponUpsetKill),
 				upsetFields[0], upsetFields[1], upsetFields[2], upsetFields[3],
 				upsetFields[4], upsetFields[5], upsetFields[6],
+				converters.BoolToString(kill.HasAWPPeekData),
+				converters.BoolToString(kill.IsAWPPeekKill),
+				kill.AWPPeekReason,
+				peekFields[0], peekFields[1], peekFields[2], peekFields[3], peekFields[4],
+				peekFields[5], peekFields[6], peekFields[7], peekFields[8], peekFields[9],
+				peekFields[10], peekFields[11], peekFields[12],
 				match.Checksum,
 			}
 			lines = append(lines, line)

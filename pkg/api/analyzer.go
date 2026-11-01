@@ -67,6 +67,7 @@ type Analyzer struct {
 	pendingUtilityImpactKill  *Kill
 	utilityImpactLifetimes    map[common.UniqueID]*utilityImpactLifetime
 	summonTrackers            map[uint64]*summonTracker
+	awpPeekHistories          map[uint64][]awpPeekSample
 	armorCheckRound           int
 	armorCheckTick            int
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
@@ -283,6 +284,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 
 	analyzer.resolveUtilityImpactLifecycles()
 	markWeaponUpsetKills(&match)
+	markAWPPeekKills(&match)
 	analyzer.postProcess(analyzer)
 	match.deleteIncompleteRounds()
 	match.computeResultStats()
@@ -1023,6 +1025,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			match.lastPlayersTick[player.SteamID64] = currentTick
 		}
 		analyzer.sampleSummonEnemy()
+		analyzer.sampleAWPPeek()
 	})
 
 	if includePositions {
@@ -1135,6 +1138,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		kill := newKillFromGameEvent(analyzer, event)
 		if kill != nil {
+			analyzer.captureAWPPeek(kill, event.Killer, event.Victim)
 			analyzer.applySummonEnemyDeath(kill)
 			analyzer.trackUtilityKill(kill, event.Killer != nil && event.Killer.IsAlive())
 			match.Kills = append(match.Kills, kill)

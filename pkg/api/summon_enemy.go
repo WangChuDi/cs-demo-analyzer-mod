@@ -145,6 +145,7 @@ func (tracker *summonTracker) evidence(kill *Kill, rate float64) *SummonEnemyEvi
 
 func (analyzer *Analyzer) resetBehaviorTracking() {
 	clear(analyzer.summonTrackers)
+	clear(analyzer.awpPeekHistories)
 	analyzer.armorCheckRound = 0
 }
 

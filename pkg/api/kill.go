@@ -91,6 +91,12 @@ type Kill struct {
 	IsWeaponUpsetKill       bool                 `json:"isWeaponUpsetKill"`
 	WeaponUpset             *WeaponUpsetEvidence `json:"weaponUpset,omitempty"`
 	hasWeaponUpsetPositions bool
+
+	HasAWPPeekData   bool             `json:"hasAwpPeekData"`
+	IsAWPPeekKill    bool             `json:"isAwpPeekKill"`
+	AWPPeekReason    string           `json:"awpPeekReason"`
+	AWPPeek          *AWPPeekEvidence `json:"awpPeek,omitempty"`
+	awpPeekCandidate *awpPeekCandidate
 }
 
 func (kill *Kill) IsSuicide() bool {

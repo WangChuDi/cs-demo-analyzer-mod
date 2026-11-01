@@ -47,6 +47,7 @@ func (analyzer *Analyzer) registerUtilityKillHandlers() {
 		if player != nil {
 			analyzer.clearPosthumousLife(player.SteamID64)
 			delete(analyzer.summonTrackers, player.SteamID64)
+			delete(analyzer.awpPeekHistories, player.SteamID64)
 		}
 	})
 }
