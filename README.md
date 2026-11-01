@@ -92,7 +92,7 @@ Tracks unfortunate events and specific kill/damage circumstances.
 
 ### ⚔️ Weapon Upsets
 
-Player JSON adds `weaponUpsetKillCount` (以下犯上) and the symmetric `weaponUpsetDeathCount` (阴沟翻船). Count enemy kills under these explicit rules, using the victim's **active weapon at death**, rather than another gun in their inventory:
+Player JSON adds `weaponUpsetKillCount` (以下犯上) and the symmetric `weaponUpsetDeathCount` (我软脚了). Count enemy kills under these explicit rules, using the victim's **active weapon at death**, rather than another gun in their inventory:
 
 - Any pistol, including default pistols, kills a player holding a primary weapon (rifle, sniper, SMG, shotgun or machine gun), at any distance.
 - An SMG kills a player holding a rifle at a distance where the SMG's modeled range damage retention is **at most 75%**, including equality. For each model, `retention = rangeModifier^(distanceUnits/500)` and the boundary is `500 * log(0.75) / log(rangeModifier)`. For example, MP9 requires about **1032.88 world units**, MAC-10 about **644.61**, and UMP-45 **500**. MP5-SD/MP7 parameters follow the demo protocol version.
