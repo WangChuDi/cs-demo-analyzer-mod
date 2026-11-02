@@ -68,6 +68,7 @@ type Analyzer struct {
 	utilityImpactLifetimes    map[common.UniqueID]*utilityImpactLifetime
 	summonTrackers            map[uint64]*summonTracker
 	awpPeekHistories          map[uint64][]awpPeekSample
+	smokeTracker              *smokeTracker
 	armorCheckRound           int
 	armorCheckTick            int
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
@@ -285,6 +286,8 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	analyzer.resolveUtilityImpactLifecycles()
 	markWeaponUpsetKills(&match)
 	markAWPPeekKills(&match)
+	analyzer.finishSmokeTracking("parser_end")
+	analyzer.markSmokePasses()
 	analyzer.postProcess(analyzer)
 	match.deleteIncompleteRounds()
 	match.computeResultStats()
@@ -342,6 +345,7 @@ func (analyzer *Analyzer) currentTick() int {
 }
 
 func (analyzer *Analyzer) reset() {
+	analyzer.smokeTracker = nil
 	analyzer.resetBehaviorTracking()
 	analyzer.isFirstRoundOfHalf = true
 	analyzer.isRoundEndDetected = false
@@ -383,6 +387,7 @@ func (analyzer *Analyzer) reset() {
 }
 
 func (analyzer *Analyzer) resetCurrentRound() {
+	analyzer.discardSmokeRound(analyzer.currentRound.Number)
 	analyzer.resetBehaviorTracking()
 	analyzer.resetGrenadePins()
 	analyzer.match.resetRound(analyzer.currentRound.Number)
@@ -565,6 +570,7 @@ func (analyzer *Analyzer) updatePlayersCurrentTeam() {
 
 func (analyzer *Analyzer) processMatchStart() {
 	match := analyzer.match
+	analyzer.discardSmokeRound(1)
 	match.resetRound(1)
 	analyzer.updatePlayersCurrentTeam()
 
@@ -747,6 +753,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 	analyzer.registerUtilityKillHandlers()
 	analyzer.registerUtilityImpactLifecycleHandlers()
 	analyzer.registerBehaviorHandlers()
+	analyzer.registerSmokeStatsHandlers()
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()
@@ -1026,6 +1033,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		analyzer.sampleSummonEnemy()
 		analyzer.sampleAWPPeek()
+		analyzer.sampleSmokeStats()
 	})
 
 	if includePositions {
@@ -1138,6 +1146,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		}
 		kill := newKillFromGameEvent(analyzer, event)
 		if kill != nil {
+			analyzer.smokePlayerDeath(event.Victim)
 			analyzer.captureAWPPeek(kill, event.Killer, event.Victim)
 			analyzer.applySummonEnemyDeath(kill)
 			analyzer.trackUtilityKill(kill, event.Killer != nil && event.Killer.IsAlive())

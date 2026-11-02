@@ -48,6 +48,7 @@ func (analyzer *Analyzer) registerUtilityKillHandlers() {
 			analyzer.clearPosthumousLife(player.SteamID64)
 			delete(analyzer.summonTrackers, player.SteamID64)
 			delete(analyzer.awpPeekHistories, player.SteamID64)
+			analyzer.breakSmokePlayer(player.SteamID64, "spawn")
 		}
 	})
 }

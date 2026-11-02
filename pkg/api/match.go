@@ -82,7 +82,10 @@ type Match struct {
 	ChatMessages                      []*ChatMessage              `json:"chatMessages"`
 	Footsteps                         []*Footstep                 `json:"footsteps"`
 	AwpHoldDeaths                     []*AwpHoldDeath             `json:"awpHoldDeaths"`
+	SmokeClouds                       []*SmokeCloud               `json:"smokeClouds"`
+	SmokeVisits                       []*SmokeVisit               `json:"smokeVisits"`
 	Coaches                           []*Coach                    `json:"coaches"`
+	smokeObservedSeconds              map[roundPlayerKey]float64
 	scoreTeamA                        *int
 	scoreTeamB                        *int
 	lastPlayersPosition               map[uint64]r3.Vector
@@ -466,6 +469,9 @@ func (match *Match) reset() {
 	match.PlayerButtons = []*funData.PlayerButtons{}
 	match.Footsteps = []*Footstep{}
 	match.AwpHoldDeaths = []*AwpHoldDeath{}
+	match.SmokeClouds = nil
+	match.SmokeVisits = nil
+	match.smokeObservedSeconds = nil
 	match.lastPlayersPosition = make(map[uint64]r3.Vector)
 	match.prevPlayersPosition = make(map[uint64]r3.Vector)
 	match.lastPlayersTick = make(map[uint64]int)
@@ -477,6 +483,13 @@ func (match *Match) reset() {
 }
 
 func (match *Match) resetRound(roundNumber int) {
+	match.SmokeVisits = slice.Filter(match.SmokeVisits, func(event *SmokeVisit, _ int) bool { return event.RoundNumber != roundNumber })
+	match.SmokeClouds = slice.Filter(match.SmokeClouds, func(event *SmokeCloud, _ int) bool { return event.RoundNumber != roundNumber })
+	for key := range match.smokeObservedSeconds {
+		if key.roundNumber == roundNumber {
+			delete(match.smokeObservedSeconds, key)
+		}
+	}
 	match.BombsPlantStart = slice.Filter(match.BombsPlantStart, func(event *BombPlantStart, index int) bool {
 		return event.RoundNumber != roundNumber
 	})

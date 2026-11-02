@@ -90,6 +90,18 @@ Tracks unfortunate events and specific kill/damage circumstances.
 - **Shots Table (`_shots.csv`)**:
   - `is player running`: Boolean indicating if the player was moving faster than the weapon's accurate speed threshold when firing.
 
+### 🌫️ Dry Smoke Passes and Smoke Residence (Estimated)
+
+Player JSON adds `drySmokePassCount` (**干拉摸烟次数**) and `smokeStayDuration` (**抽烟时长**, seconds). `smokeObservedSeconds` measures available live trajectory coverage; `hasSmokeTrackingData` distinguishes missing coverage from zero smoke time. `smokeModel` identifies `smoke_sphere_v1`.
+
+- Geometry uses the player's networked eye position and a **144-unit sphere** at each smoke event's center, from **1 second after SmokeStart** until SmokeExpired or the round/parser boundary. These are explicit analysis-model parameters, not decoded engine smoke dimensions or bloom timing. Segment/sphere intersections give fractional-tick time; overlapping clouds count once. All observed visits contribute residence, including retreats and deaths. Death ends at the last live sample; gaps over **0.125 s**, frame/tick reversal, team changes or steps over **128 units** stop interpolation. Bots/bot control and missing eye positions are excluded.
+- A full pass requires movement into and out of the continuous smoke union, net 3D displacement **≥128 units**, approach within **96 units** of the entry cloud's center, and entry/exit radial directions at least **90°** apart. That entry cloud must still exist at exit. Starting inside, formation around the player, shallow edge touches, returning from the same side, death, spawn, missing data and smoke expiry do not count as passes. An uninterrupted stay across overlapping clouds counts at most once.
+- As selected for the conservative assistance rule, any friendly **flash/HE explosion or active inferno origin** within **600 units in 3D of the exit**, during **entry−1 s through exit+0.5 s**, disqualifies a dry pass. Self-thrown utility counts as friendly. InfernoFireOut closes fire assistance; unknown ownership makes assistance unknown. This tests event proximity, not whether the utility actually helped or a nearby enemy was affected.
+
+`smokeClouds` and `smokeVisits` JSON retain lifetimes, model, entry/exit coordinates and fractional demo ticks, reasons, durations, crossing flags and matching assistance. CSV adds the five space-separated player columns and `_smoke_clouds.csv` / `_smoke_visits.csv`; assistance is JSON inside one CSV cell. Sampling does not require `-positions`; fixed-column CSDM is unchanged.
+
+**These are estimates:** the sphere does not trace map walls, reconstruct smoke voxels, growth/fade density, or holes created by bullets/HE. Residence is time inside the modeled region, not verified visual smoke exposure. Coverage is observed live sampling time, not proof that every smoke was recorded.
+
 ### 🎯 AWP Hold-versus-Peek Duels (Estimated)
 
 Player JSON adds `awpPeekKillCount` (**对位处刑**, the peeker's kills) and `awpPeekDeathCount` (**被对位处刑**, the holder's deaths). Both count the same enemy AWP-versus-AWP event, at match level. The `awp_peek_v1` model requires:

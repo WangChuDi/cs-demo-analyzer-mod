@@ -274,6 +274,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"self flash duration",
 			"awp peek kill count",
 			"awp peek death count",
+			"dry smoke pass count",
+			"smoke stay duration",
+			"smoke observed seconds",
+			"has smoke tracking data",
+			"smoke model",
 			"match checksum",
 		}
 
@@ -281,6 +286,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		for _, player := range match.Players() {
 			usage := player.WeaponUsage()
 			selfFlash := player.SelfFlashStats()
+			smoke := player.SmokeStats()
 			usedWeapons := make([]string, len(usage.UsedWeapons))
 			for i, name := range usage.UsedWeapons {
 				usedWeapons[i] = name.String()
@@ -397,6 +403,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(selfFlash.SelfFlashDuration),
 				converters.IntToString(player.AWPPeekKillCount()),
 				converters.IntToString(player.AWPPeekDeathCount()),
+				converters.IntToString(smoke.DrySmokePassCount),
+				converters.Float64ToString(smoke.SmokeStayDuration),
+				converters.Float64ToString(smoke.SmokeObservedSeconds),
+				converters.BoolToString(smoke.HasSmokeTrackingData),
+				smoke.SmokeModel,
 				match.Checksum,
 			}
 			lines = append(lines, line)
@@ -2252,6 +2263,7 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 		writePlayerButtons,
 		writeFootsteps,
 		writeAwpHoldDeaths,
+		func() { writeSmokeStatsCSV(match, outputPath) },
 	}
 	var wg sync.WaitGroup
 
