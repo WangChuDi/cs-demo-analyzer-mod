@@ -279,6 +279,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 			"smoke observed seconds",
 			"has smoke tracking data",
 			"smoke model",
+			"dry smoke pass model",
+			"smoke sphere stay duration",
+			"smoke voxel observed seconds",
+			"has smoke voxel data",
+			"smoke visual effects available",
 			"match checksum",
 		}
 
@@ -408,6 +413,11 @@ func exportMatchToCSV(match *Match, outputPath string) error {
 				converters.Float64ToString(smoke.SmokeObservedSeconds),
 				converters.BoolToString(smoke.HasSmokeTrackingData),
 				smoke.SmokeModel,
+				smoke.DrySmokePassModel,
+				converters.Float64ToString(smoke.SmokeSphereStayDuration),
+				converters.Float64ToString(smoke.SmokeVoxelObservedSeconds),
+				converters.BoolToString(smoke.HasSmokeVoxelData),
+				converters.BoolToString(smoke.SmokeVisualEffectsAvailable),
 				match.Checksum,
 			}
 			lines = append(lines, line)

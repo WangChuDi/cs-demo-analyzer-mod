@@ -35,6 +35,8 @@ func (analyzer *Analyzer) sampleSmokeStats() {
 		analyzer.finishSmokeTracking("round_end")
 		return
 	}
+	analyzer.publishSmokeVoxelGrids()
+	defer analyzer.pruneSmokeVoxelHistory()
 	for _, player := range analyzer.parser.GameState().Participants().Playing() {
 		if player == nil {
 			continue
@@ -58,6 +60,7 @@ func (analyzer *Analyzer) smokePlayerDeath(player *common.Player) {
 }
 
 func (analyzer *Analyzer) registerSmokeStatsHandlers() {
+	analyzer.registerSmokeVoxelHandlers()
 	analyzer.parser.RegisterEventHandler(func(events.RoundStart) { analyzer.finishSmokeTracking("round_end") })
 	analyzer.parser.RegisterEventHandler(func(events.RoundEnd) { analyzer.finishSmokeTracking("round_end") })
 	analyzer.parser.RegisterEventHandler(func(event events.SmokeStart) {
@@ -79,6 +82,7 @@ func (analyzer *Analyzer) registerSmokeStatsHandlers() {
 			StartTick: analyzer.currentTick(), ReadyTick: float64(analyzer.currentTick()) + rate*smokeStatsBloomSeconds,
 			X: event.Position.X, Y: event.Position.Y, Z: event.Position.Z}
 		state.clouds[key] = cloud
+		analyzer.attachSmokeVoxelCloud(cloud, event.GrenadeEvent)
 		analyzer.match.SmokeClouds = append(analyzer.match.SmokeClouds, cloud)
 	})
 	analyzer.parser.RegisterEventHandler(func(event events.SmokeExpired) {

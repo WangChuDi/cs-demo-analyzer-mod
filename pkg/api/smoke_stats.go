@@ -19,15 +19,23 @@ const (
 )
 
 type SmokeCloud struct {
-	ID          string  `json:"id"`
-	RoundNumber int     `json:"roundNumber"`
-	StartTick   int     `json:"startTick"`
-	ReadyTick   float64 `json:"readyTick"`
-	EndTick     int     `json:"endTick"`
-	EndReason   string  `json:"endReason"`
-	X           float64 `json:"x"`
-	Y           float64 `json:"y"`
-	Z           float64 `json:"z"`
+	ID                      string         `json:"id"`
+	RoundNumber             int            `json:"roundNumber"`
+	StartTick               int            `json:"startTick"`
+	ReadyTick               float64        `json:"readyTick"`
+	EndTick                 int            `json:"endTick"`
+	EndReason               string         `json:"endReason"`
+	X                       float64        `json:"x"`
+	Y                       float64        `json:"y"`
+	Z                       float64        `json:"z"`
+	VoxelStatus             string         `json:"voxelStatus,omitempty"`
+	VoxelUpdates            int            `json:"voxelUpdates"`
+	VoxelFrames             int            `json:"voxelFrames"`
+	VoxelUnavailableUpdates int            `json:"voxelUnavailableUpdates"`
+	VoxelUnavailableReasons map[string]int `json:"voxelUnavailableReasons,omitempty"`
+	VoxelFirstTick          int            `json:"voxelFirstTick"`
+	VoxelLastTick           int            `json:"voxelLastTick"`
+	voxel                   *voxelSmokeVolume
 }
 
 func (cloud *SmokeCloud) center() r3.Vector { return r3.Vector{X: cloud.X, Y: cloud.Y, Z: cloud.Z} }
@@ -64,11 +72,16 @@ type SmokeVisit struct {
 }
 
 type SmokeStats struct {
-	DrySmokePassCount    int     `json:"drySmokePassCount"`
-	SmokeStayDuration    float64 `json:"smokeStayDuration"`
-	SmokeObservedSeconds float64 `json:"smokeObservedSeconds"`
-	HasSmokeTrackingData bool    `json:"hasSmokeTrackingData"`
-	SmokeModel           string  `json:"smokeModel"`
+	DrySmokePassCount           int     `json:"drySmokePassCount"`
+	SmokeStayDuration           float64 `json:"smokeStayDuration"`
+	SmokeObservedSeconds        float64 `json:"smokeObservedSeconds"`
+	HasSmokeTrackingData        bool    `json:"hasSmokeTrackingData"`
+	SmokeModel                  string  `json:"smokeModel"`
+	DrySmokePassModel           string  `json:"drySmokePassModel"`
+	SmokeSphereStayDuration     float64 `json:"smokeSphereStayDuration"`
+	SmokeVoxelObservedSeconds   float64 `json:"smokeVoxelObservedSeconds"`
+	HasSmokeVoxelData           bool    `json:"hasSmokeVoxelData"`
+	SmokeVisualEffectsAvailable bool    `json:"smokeVisualEffectsAvailable"`
 }
 
 type smokePlayerSample struct {
@@ -197,6 +210,7 @@ func (analyzer *Analyzer) closeSmokeVisit(track *smokePlayerTrack, reason string
 }
 
 func (analyzer *Analyzer) breakSmokePlayer(id uint64, reason string) {
+	analyzer.breakVoxelSmokePlayer(id, reason)
 	state := analyzer.smokeState()
 	if track := state.players[id]; track != nil {
 		analyzer.closeSmokeVisit(track, reason)
@@ -209,6 +223,7 @@ func (analyzer *Analyzer) updateSmokePlayer(sample smokePlayerSample, rate float
 		analyzer.breakSmokePlayer(sample.id, "unavailable")
 		return
 	}
+	analyzer.updateVoxelSmokePlayer(sample, rate)
 	state := analyzer.smokeState()
 	previous := state.players[sample.id]
 	if previous == nil {
@@ -266,6 +281,7 @@ func (analyzer *Analyzer) updateSmokePlayer(sample smokePlayerSample, rate float
 }
 
 func (analyzer *Analyzer) finishSmokeTracking(reason string) {
+	analyzer.finishVoxelSmokeTracking(reason, 0)
 	state := analyzer.smokeState()
 	for _, track := range state.players {
 		analyzer.closeSmokeVisit(track, reason)
@@ -288,6 +304,7 @@ func (analyzer *Analyzer) finishSmokeTracking(reason string) {
 // Round restarts must discard open visits and auxiliary events as well as the
 // exported match rows; otherwise reused round numbers could inherit assistance.
 func (analyzer *Analyzer) discardSmokeRound(round int) {
+	analyzer.finishVoxelSmokeTracking("discard", round)
 	if analyzer.smokeTracker == nil {
 		return
 	}
@@ -386,12 +403,29 @@ func (player *Player) SmokeStats() SmokeStats {
 	stats.HasSmokeTrackingData = stats.SmokeObservedSeconds > 0
 	if stats.HasSmokeTrackingData {
 		stats.SmokeModel = smokeStatsModel
+		stats.DrySmokePassModel = smokeStatsModel
 	}
 	for _, visit := range player.match.SmokeVisits {
 		if visit.PlayerSteamID64 == player.SteamID64 {
 			stats.SmokeStayDuration += visit.Duration
 			if visit.IsDryPass {
 				stats.DrySmokePassCount++
+			}
+		}
+	}
+	stats.SmokeSphereStayDuration = stats.SmokeStayDuration
+	if player.match.smokeResidenceModel == smokeVoxelModel {
+		stats.SmokeModel = smokeVoxelModel
+		stats.SmokeStayDuration = 0
+		for key, seconds := range player.match.smokeVoxelObservedSeconds {
+			if key.steamID64 == player.SteamID64 {
+				stats.SmokeVoxelObservedSeconds += seconds
+			}
+		}
+		stats.HasSmokeVoxelData = stats.SmokeVoxelObservedSeconds > 0
+		for _, visit := range player.match.SmokeVoxelVisits {
+			if visit.PlayerSteamID64 == player.SteamID64 {
+				stats.SmokeStayDuration += visit.Duration
 			}
 		}
 	}

@@ -81,72 +81,6 @@ func summarize(sim *smokevoxel.Simulation, threshold float64, grid bool) density
 	return result
 }
 
-// Network vectors may be reused and updated in place. Validate and copy only
-// the declared valid prefix; never truncate an out-of-range integer to a byte.
-func voxelBytes(entity *st.Entity) ([]byte, error) {
-	sizeValue, ok := entity.PropertyValue("m_nVoxelFrameDataSize")
-	if !ok {
-		return nil, errors.New("missing voxel valid size")
-	}
-	size, ok := sizeValue.Any.(int32)
-	if !ok || size < 0 {
-		return nil, errors.New("invalid voxel valid size")
-	}
-	if size == 0 {
-		return nil, nil
-	}
-	value, ok := entity.PropertyValue("m_VoxelFrameData")
-	if !ok {
-		return nil, errors.New("missing voxel byte array")
-	}
-	values, ok := value.Any.([]any)
-	if !ok || int(size) > len(values) {
-		return nil, errors.New("voxel valid size exceeds array")
-	}
-	data := make([]byte, int(size))
-	for i := range data {
-		v, ok := values[i].(uint64)
-		if !ok || v > 255 {
-			return nil, fmt.Errorf("voxel element %d is not a byte", i)
-		}
-		data[i] = byte(v)
-	}
-	return data, nil
-}
-
-func vector(entity *st.Entity, name string) ([3]float32, error) {
-	value, ok := entity.PropertyValue(name)
-	if !ok {
-		return [3]float32{}, fmt.Errorf("missing %s", name)
-	}
-	var origin [3]float32
-	switch v := value.Any.(type) {
-	case [3]float32:
-		origin = v
-	case []float32:
-		if len(v) != 3 {
-			return origin, errors.New("invalid origin length")
-		}
-		copy(origin[:], v)
-	default:
-		return origin, errors.New("invalid origin type")
-	}
-	for _, v := range origin {
-		if math.IsNaN(float64(v)) || math.IsInf(float64(v), 0) {
-			return origin, errors.New("non-finite origin")
-		}
-	}
-	return origin, nil
-}
-func integer(entity *st.Entity, name string) int {
-	value, ok := entity.PropertyValue(name)
-	if !ok {
-		return 0
-	}
-	v, _ := value.Any.(int32)
-	return int(v)
-}
-
 func inspect(input io.Reader, output io.Writer, opts options) error {
 	parser := dem.NewParser(input)
 	defer parser.Close()
@@ -185,7 +119,8 @@ func inspect(input io.Reader, output io.Writer, opts options) error {
 				delete(states, entity)
 			})
 			entity.OnUpdateFinished(func() {
-				data, err := voxelBytes(entity)
+				input, err := smokevoxel.ReadEntity(entity)
+				data := input.Journal
 				if len(data) == 0 && err == nil {
 					if state.last != nil {
 						emit(map[string]any{"type": "clear", "lifetime": state.lifetime, "demoTick": parser.GameState().IngameTick()})
@@ -194,11 +129,7 @@ func inspect(input io.Reader, output io.Writer, opts options) error {
 					state.replay.Clear()
 					return
 				}
-				origin, originErr := vector(entity, "m_vSmokeDetonationPos")
-				if err == nil {
-					err = originErr
-				}
-				effect := integer(entity, "m_nSmokeEffectTickBegin")
+				origin, effect := input.Origin, input.EffectTick
 				if err == nil && bytes.Equal(data, state.last) && origin == state.origin && effect == state.effect {
 					return
 				}
@@ -209,7 +140,7 @@ func inspect(input io.Reader, output io.Writer, opts options) error {
 				total.Updates++
 				record := map[string]any{"type": "update", "lifetime": state.lifetime, "entityId": entity.ID(),
 					"demoTick": parser.GameState().IngameTick(), "demoFrame": parser.CurrentFrame(), "origin": origin,
-					"effectTickServer": effect, "networkUpdate": integer(entity, "m_nVoxelUpdate"), "validBytes": len(data)}
+					"effectTickServer": effect, "networkUpdate": input.NetworkUpdate, "validBytes": len(data)}
 				if state.effect != effect {
 					state.replay.Clear()
 				}

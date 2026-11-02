@@ -84,8 +84,11 @@ type Match struct {
 	AwpHoldDeaths                     []*AwpHoldDeath             `json:"awpHoldDeaths"`
 	SmokeClouds                       []*SmokeCloud               `json:"smokeClouds"`
 	SmokeVisits                       []*SmokeVisit               `json:"smokeVisits"`
+	SmokeVoxelVisits                  []*SmokeVoxelVisit          `json:"smokeVoxelVisits"`
 	Coaches                           []*Coach                    `json:"coaches"`
 	smokeObservedSeconds              map[roundPlayerKey]float64
+	smokeVoxelObservedSeconds         map[roundPlayerKey]float64
+	smokeResidenceModel               string
 	scoreTeamA                        *int
 	scoreTeamB                        *int
 	lastPlayersPosition               map[uint64]r3.Vector
@@ -471,7 +474,9 @@ func (match *Match) reset() {
 	match.AwpHoldDeaths = []*AwpHoldDeath{}
 	match.SmokeClouds = nil
 	match.SmokeVisits = nil
+	match.SmokeVoxelVisits = nil
 	match.smokeObservedSeconds = nil
+	match.smokeVoxelObservedSeconds = nil
 	match.lastPlayersPosition = make(map[uint64]r3.Vector)
 	match.prevPlayersPosition = make(map[uint64]r3.Vector)
 	match.lastPlayersTick = make(map[uint64]int)
@@ -483,6 +488,12 @@ func (match *Match) reset() {
 }
 
 func (match *Match) resetRound(roundNumber int) {
+	match.SmokeVoxelVisits = slice.Filter(match.SmokeVoxelVisits, func(event *SmokeVoxelVisit, _ int) bool { return event.RoundNumber != roundNumber })
+	for key := range match.smokeVoxelObservedSeconds {
+		if key.roundNumber == roundNumber {
+			delete(match.smokeVoxelObservedSeconds, key)
+		}
+	}
 	match.SmokeVisits = slice.Filter(match.SmokeVisits, func(event *SmokeVisit, _ int) bool { return event.RoundNumber != roundNumber })
 	match.SmokeClouds = slice.Filter(match.SmokeClouds, func(event *SmokeCloud, _ int) bool { return event.RoundNumber != roundNumber })
 	for key := range match.smokeObservedSeconds {

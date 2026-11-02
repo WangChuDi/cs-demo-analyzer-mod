@@ -69,6 +69,7 @@ type Analyzer struct {
 	summonTrackers            map[uint64]*summonTracker
 	awpPeekHistories          map[uint64][]awpPeekSample
 	smokeTracker              *smokeTracker
+	smokeVoxels               *voxelSmokeTracker
 	armorCheckRound           int
 	armorCheckTick            int
 	// Used to detect which player is untying an hostage when the hostage's state changed to "Being untied".
@@ -345,6 +346,7 @@ func (analyzer *Analyzer) currentTick() int {
 }
 
 func (analyzer *Analyzer) reset() {
+	analyzer.finishVoxelSmokeTracking("discard", 0)
 	analyzer.smokeTracker = nil
 	analyzer.resetBehaviorTracking()
 	analyzer.isFirstRoundOfHalf = true
