@@ -99,6 +99,21 @@
 
 **结果属于范围估计：** 球形模型不检测地图墙体，不还原烟体素、真实生长／消散密度及子弹／HE 造成的洞；抽烟时长是模型烟区内停留秒数，不是经过画面验证的真实烟中暴露时间。观测秒数也不证明 demo 记录了所有烟雾。
 
+### 烟体素记录解码与密度恢复（实验功能）
+
+新增独立诊断命令，通过当前官方 demoinfocs v6 的实体属性接口读取数据，无需修改依赖或使用 fork：
+
+```sh
+go build -o ./bin/smoke-voxels ./cmd/smoke-voxels
+./bin/smoke-voxels -demo-path match.dem -output smoke-voxels.ndjson -players
+```
+
+输出文件必须尚不存在。命令扫描**整个 demo**，包含开局已有实体及热身烟。在实体更新完成后复制 `m_VoxelFrameData` 的有效字节，解码小端序号／长度记录，依次恢复播种点替换、拒绝位图覆盖（包括零值清除）、停止播种和心跳模拟步。每个实体生命周期独立维护状态；记录前缀被替换／缩短、起点或起烟时间改变时，从序号零重新恢复。缺少历史、格式损坏、旧版／未知协议及不支持的辅助记录会明确输出不可用和原始字节，不用球体代替。
+
+NDJSON 包含 `header`、`update`（新增 `frames` 的 base64 载荷、`reset`、密度哈希／汇总）、可选 `clear`／`end` 和最终 `summary`。`-grid` 额外导出超过 `-density-threshold`（默认 **5**，严格大于）的格子坐标及密度；格子中心世界坐标为 `origin + (coordinate - 16) * 20 + 10`。`-players` 在包内实体更新完成后输出超过阈值的存活玩家眼睛 `player_cell` 查询，保留记录序号和状态最后观测 tick。查询使用包含该位置的半开 20 单位格子；它是原始密度，不是原生“在烟内”标记，也不直接累加抽烟时长。demo 观测 tick、服务器起烟 tick、记录序号分别保留。
+
+Go 移植版已逐帧匹配公开原生参考夹具的 **7 组／1061 帧**，Cache 全部更新也与固定版本的 TypeScript 实现交叉一致；当前环境尚未进行原生客户端或像素验证。原始密度不包含渲染插值、生命周期透明度／淡出、光照及子弹／HE 着色器消烟，因此暂未替换 `smoke_sphere_v1` 玩家统计。解码／模拟器及参考数据改编自 [cs2parser](https://github.com/osztenkurden/cs2parser/tree/0c6c22e95251dfd6432d470ee3bbd3be2d61173d)，`internal/smokevoxel` 内保留 MPL-2.0 声明和许可证。
+
 ### 🎯 对位处刑／被对位处刑（行为估计）
 
 玩家 JSON 新增 `awpPeekKillCount`（**对位处刑**，主动搜点者的击杀次数）和 `awpPeekDeathCount`（**被对位处刑**，架枪者的死亡次数）。按整场统计，同一条敌方 AWP 对 AWP 击杀分别记在双方名下。`awp_peek_v1` 的规则为：

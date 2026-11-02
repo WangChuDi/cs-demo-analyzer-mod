@@ -102,6 +102,21 @@ Player JSON adds `drySmokePassCount` (**干拉摸烟次数**) and `smokeStayDura
 
 **These are estimates:** the sphere does not trace map walls, reconstruct smoke voxels, growth/fade density, or holes created by bullets/HE. Residence is time inside the modeled region, not verified visual smoke exposure. Coverage is observed live sampling time, not proof that every smoke was recorded.
 
+### Smoke Voxel Journal and Density Replay (Experimental)
+
+An independent diagnostic command reads the existing official demoinfocs v6 entity APIs; no dependency fork or replacement is required:
+
+```sh
+go build -o ./bin/smoke-voxels ./cmd/smoke-voxels
+./bin/smoke-voxels -demo-path match.dem -output smoke-voxels.ndjson -players
+```
+
+The output file must not already exist. The command scans the **whole demo**, including initial/warmup entities. It copies the valid `m_VoxelFrameData` prefix at entity-update completion, decodes little-endian sequence/length records, and replays seed replacement, rejection-word overwrite (including zero), stop-seeding and heartbeat steps. A separate state belongs to each entity lifetime; replaced/shrunk journals or changed origins/effect start ticks rebuild from sequence zero. Missing history, malformed inputs, legacy/unknown patches and unsupported auxiliary records produce an explicit unavailable update, with raw journal bytes for diagnosis. No sphere fallback is substituted.
+
+NDJSON contains a `header`, `update` records with newly replayed `frames` (base64 payloads), `reset`, density hash/summary, optional `clear`/`end`, and a final `summary`. `-grid` adds grid coordinates/densities above `-density-threshold` (default **5**, strict `>`); world cell centers are `origin + (coordinate - 16) * 20 + 10`. `-players` adds live player-eye `player_cell` queries above that threshold after the packet's entity updates, with journal sequence and the last observed demo tick. These queries use the containing half-open 20-unit cell and report raw density, not a native in-smoke flag or accumulated smoke time. Demo observation ticks, server effect ticks and journal sequences remain separate.
+
+The Go port matches all **1061 frames in seven published native-oracle fixtures**, and every Cache update was cross-checked against the pinned TypeScript implementation. This does not constitute a local native-client or pixel validation. Raw density excludes render interpolation, lifetime opacity/fade, lighting and bullet/HE shader holes; it does **not** replace `smoke_sphere_v1` player statistics yet. The decoder/simulator and oracle data are adapted from [cs2parser](https://github.com/osztenkurden/cs2parser/tree/0c6c22e95251dfd6432d470ee3bbd3be2d61173d), with MPL-2.0 notices/license in `internal/smokevoxel`.
+
 ### 🎯 AWP Hold-versus-Peek Duels (Estimated)
 
 Player JSON adds `awpPeekKillCount` (**对位处刑**, the peeker's kills) and `awpPeekDeathCount` (**被对位处刑**, the holder's deaths). Both count the same enemy AWP-versus-AWP event, at match level. The `awp_peek_v1` model requires:
