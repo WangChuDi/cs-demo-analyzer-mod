@@ -33,12 +33,17 @@ func writeSmokeStatsCSV(match *Match, outputPath string) {
 			visit.EntryReason, visit.EndReason, f(visit.Duration), f(visit.MinCenterDistance), b(visit.IsFullPass), b(visit.HasAssistanceData), b(visit.IsDryPass), visit.Reason, assistance, match.Checksum})
 	}
 	csv.WriteLinesIntoCsvFile(outputPath+"_smoke_visits.csv", visits)
-	voxelVisits := [][]string{{"model", "round number", "steamid", "player name", "smoke ids", "entry tick", "exit tick", "entry x", "entry y", "entry z", "exit x", "exit y", "exit z", "entry reason", "end reason", "duration", "density threshold", "match checksum"}}
+	voxelVisits := [][]string{{"model", "round number", "steamid", "player name", "smoke ids", "entry tick", "exit tick", "entry x", "entry y", "entry z", "exit x", "exit y", "exit z", "entry reason", "end reason", "duration", "density threshold", "side", "is full pass", "has assistance data", "is dry pass", "reason", "assistance", "match checksum"}}
 	for _, visit := range match.SmokeVoxelVisits {
 		ids, _ := json.Marshal(visit.SmokeIDs)
+		assistance := ""
+		if len(visit.Assistance) > 0 {
+			data, _ := json.Marshal(visit.Assistance)
+			assistance = string(data)
+		}
 		voxelVisits = append(voxelVisits, []string{visit.Model, i(visit.RoundNumber), u(visit.PlayerSteamID64), visit.PlayerName, string(ids), f(visit.EntryTick), f(visit.ExitTick),
 			f(visit.EntryPosition.X), f(visit.EntryPosition.Y), f(visit.EntryPosition.Z), f(visit.ExitPosition.X), f(visit.ExitPosition.Y), f(visit.ExitPosition.Z),
-			visit.EntryReason, visit.EndReason, f(visit.Duration), f(float64(visit.DensityThreshold)), match.Checksum})
+			visit.EntryReason, visit.EndReason, f(visit.Duration), f(float64(visit.DensityThreshold)), converters.TeamToString(visit.Side), b(visit.IsFullPass), b(visit.HasAssistanceData), b(visit.IsDryPass), visit.Reason, assistance, match.Checksum})
 	}
 	csv.WriteLinesIntoCsvFile(outputPath+"_smoke_voxel_visits.csv", voxelVisits)
 }

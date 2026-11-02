@@ -362,35 +362,44 @@ func (analyzer *Analyzer) markSmokePasses() {
 			(cloud.EndReason != "" && visit.ExitTick >= float64(cloud.EndTick)) {
 			continue
 		}
-		visit.IsFullPass, visit.HasAssistanceData = true, true
-		for _, support := range analyzer.smokeTracker.supports {
-			if support.round != visit.RoundNumber || float64(support.Tick) > visit.ExitTick+0.5*rate {
-				continue
-			}
-			end := support.EndTick
-			if end == 0 {
-				end = support.Tick
-				if support.Kind == "inferno" {
-					end = int(math.Ceil(visit.ExitTick + 0.5*rate))
-				}
-			}
-			if float64(end) < visit.EntryTick-rate || support.Position.Sub(visit.ExitPosition).Norm() > smokeAssistRadius {
-				continue
-			}
-			if support.Side != common.TeamTerrorists && support.Side != common.TeamCounterTerrorists {
-				visit.HasAssistanceData = false
-			} else if support.Side != visit.Side {
-				continue
-			}
-			visit.Assistance = append(visit.Assistance, support.SmokeAssistance)
-		}
-		visit.Reason = "assisted"
-		if !visit.HasAssistanceData {
-			visit.Reason = "unknown_assistance"
-		} else if len(visit.Assistance) == 0 {
-			visit.IsDryPass, visit.Reason = true, "dry_pass"
-		}
+		visit.IsFullPass = true
+		visit.HasAssistanceData, visit.IsDryPass, visit.Reason, visit.Assistance = analyzer.smokePassAssistance(visit.RoundNumber, visit.Side, visit.EntryTick, visit.ExitTick, visit.ExitPosition)
 	}
+	analyzer.markVoxelSmokePasses()
+}
+
+// Keep the selected utility-assistance rule identical for both geometry models.
+func (analyzer *Analyzer) smokePassAssistance(round int, side common.Team, entryTick, exitTick float64, exit r3.Vector) (known, dry bool, reason string, assistance []SmokeAssistance) {
+	known = true
+	rate := analyzer.match.TickRate
+	for _, support := range analyzer.smokeTracker.supports {
+		if support.round != round || float64(support.Tick) > exitTick+0.5*rate {
+			continue
+		}
+		end := support.EndTick
+		if end == 0 {
+			end = support.Tick
+			if support.Kind == "inferno" {
+				end = int(math.Ceil(exitTick + 0.5*rate))
+			}
+		}
+		if float64(end) < entryTick-rate || support.Position.Sub(exit).Norm() > smokeAssistRadius {
+			continue
+		}
+		if support.Side != common.TeamTerrorists && support.Side != common.TeamCounterTerrorists {
+			known = false
+		} else if support.Side != side {
+			continue
+		}
+		assistance = append(assistance, support.SmokeAssistance)
+	}
+	reason = "assisted"
+	if !known {
+		reason = "unknown_assistance"
+	} else if len(assistance) == 0 {
+		dry, reason = true, "dry_pass"
+	}
+	return
 }
 
 func (player *Player) SmokeStats() SmokeStats {
@@ -416,6 +425,8 @@ func (player *Player) SmokeStats() SmokeStats {
 	stats.SmokeSphereStayDuration = stats.SmokeStayDuration
 	if player.match.smokeResidenceModel == smokeVoxelModel {
 		stats.SmokeModel = smokeVoxelModel
+		stats.DrySmokePassModel = smokeVoxelModel
+		stats.DrySmokePassCount = 0
 		stats.SmokeStayDuration = 0
 		for key, seconds := range player.match.smokeVoxelObservedSeconds {
 			if key.steamID64 == player.SteamID64 {
@@ -426,6 +437,9 @@ func (player *Player) SmokeStats() SmokeStats {
 		for _, visit := range player.match.SmokeVoxelVisits {
 			if visit.PlayerSteamID64 == player.SteamID64 {
 				stats.SmokeStayDuration += visit.Duration
+				if visit.IsDryPass {
+					stats.DrySmokePassCount++
+				}
 			}
 		}
 	}

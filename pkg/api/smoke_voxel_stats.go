@@ -8,6 +8,7 @@ import (
 
 	"github.com/akiver/cs-demo-analyzer/internal/smokevoxel"
 	"github.com/golang/geo/r3"
+	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/common"
 	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/events"
 	"github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/msg"
 	st "github.com/markus-wa/demoinfocs-golang/v6/pkg/demoinfocs/sendtables"
@@ -17,19 +18,25 @@ const smokeVoxelModel = "smoke_voxel_density_v1"
 const smokeVoxelThreshold = float32(5)
 
 type SmokeVoxelVisit struct {
-	Model            string    `json:"model"`
-	RoundNumber      int       `json:"roundNumber"`
-	PlayerSteamID64  uint64    `json:"playerSteamId"`
-	PlayerName       string    `json:"playerName"`
-	SmokeIDs         []string  `json:"smokeIds"`
-	EntryTick        float64   `json:"entryTick"`
-	ExitTick         float64   `json:"exitTick"`
-	EntryPosition    r3.Vector `json:"entryPosition"`
-	ExitPosition     r3.Vector `json:"exitPosition"`
-	EntryReason      string    `json:"entryReason"`
-	EndReason        string    `json:"endReason"`
-	Duration         float64   `json:"duration"`
-	DensityThreshold float32   `json:"densityThreshold"`
+	Model             string            `json:"model"`
+	RoundNumber       int               `json:"roundNumber"`
+	PlayerSteamID64   uint64            `json:"playerSteamId"`
+	PlayerName        string            `json:"playerName"`
+	SmokeIDs          []string          `json:"smokeIds"`
+	EntryTick         float64           `json:"entryTick"`
+	ExitTick          float64           `json:"exitTick"`
+	EntryPosition     r3.Vector         `json:"entryPosition"`
+	ExitPosition      r3.Vector         `json:"exitPosition"`
+	EntryReason       string            `json:"entryReason"`
+	EndReason         string            `json:"endReason"`
+	Duration          float64           `json:"duration"`
+	DensityThreshold  float32           `json:"densityThreshold"`
+	Side              common.Team       `json:"side"`
+	IsFullPass        bool              `json:"isFullPass"`
+	HasAssistanceData bool              `json:"hasAssistanceData"`
+	IsDryPass         bool              `json:"isDryPass"`
+	Reason            string            `json:"reason"`
+	Assistance        []SmokeAssistance `json:"assistance,omitempty"`
 }
 type voxelObservation struct {
 	tick    int
@@ -44,8 +51,9 @@ type voxelSmokeVolume struct {
 	dirty, visible, destroyed bool
 }
 type voxelSmokePlayer struct {
-	last  smokePlayerSample
-	visit *SmokeVoxelVisit
+	last    smokePlayerSample
+	visit   *SmokeVoxelVisit
+	outside bool // A known outside interval is required for a boundary entry.
 }
 type voxelSmokeTracker struct {
 	entities       map[*st.Entity]*voxelSmokeVolume
@@ -277,6 +285,46 @@ func voxelResidenceIntervals(before, after smokePlayerSample, clouds map[string]
 	return intervals
 }
 
+// Use the same held grids and threshold as residence, including its conservative
+// unknown-cloud rule. A point on a cell's upper face belongs to the next cell.
+func voxelSmokePointState(tick float64, round int, eye r3.Vector, clouds map[string]*SmokeCloud) (inside, known bool) {
+	known = true
+	point := [3]float64{eye.X, eye.Y, eye.Z}
+	for _, cloud := range clouds {
+		if cloud.RoundNumber != round || tick < float64(cloud.StartTick) || (cloud.EndReason != "" && tick >= float64(cloud.EndTick)) {
+			continue
+		}
+		if cloud.voxel == nil {
+			return false, false
+		}
+		observation := cloud.voxel.observationAt(tick)
+		if observation == nil || observation.density == nil {
+			return false, false
+		}
+		inside = inside || len(smokevoxel.SegmentSpans(observation.density, observation.origin, point, point, smokeVoxelThreshold)) > 0
+	}
+	return
+}
+
+// At an exact sample/update boundary, require a geometric crossing in both the
+// old and new grid. Growth/expiry or a newly available grid must not masquerade
+// as player movement. The probes only classify a boundary; they add no time.
+func voxelSmokeMovementBoundary(tick float64, round int, eye, delta r3.Vector, entering bool, clouds map[string]*SmokeCloud) bool {
+	length := delta.Norm()
+	if length == 0 {
+		return false
+	}
+	probe := delta.Mul(1e-6 / length)
+	for _, at := range []float64{math.Nextafter(tick, math.Inf(-1)), tick} {
+		behind, behindKnown := voxelSmokePointState(at, round, eye.Sub(probe), clouds)
+		ahead, aheadKnown := voxelSmokePointState(at, round, eye.Add(probe), clouds)
+		if !behindKnown || !aheadKnown || behind == entering || ahead != entering {
+			return false
+		}
+	}
+	return true
+}
+
 func (analyzer *Analyzer) closeVoxelSmokeVisit(player *voxelSmokePlayer, reason string) {
 	if player.visit == nil {
 		return
@@ -310,7 +358,8 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 	}
 	previous := state.players[sample.id]
 	if previous == nil {
-		state.players[sample.id] = &voxelSmokePlayer{last: sample}
+		inside, known := voxelSmokePointState(float64(sample.tick), sample.round, sample.eye, analyzer.smokeState().clouds)
+		state.players[sample.id] = &voxelSmokePlayer{last: sample, outside: known && !inside}
 		return
 	}
 	before := previous.last
@@ -322,6 +371,7 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 	if !summonFinite(rate) || rate <= 0 || dt <= 0 || dt > smokeStatsMaxGap || sample.frame <= before.frame || sample.round != before.round || sample.side != before.side || sample.eye.Sub(before.eye).Norm() > 128 || !state.classAvailable || state.protocol <= 13963 {
 		analyzer.closeVoxelSmokeVisit(previous, "unavailable")
 		previous.last = sample
+		previous.outside = false
 		return
 	}
 	if analyzer.match.smokeVoxelObservedSeconds == nil {
@@ -330,21 +380,28 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 	for _, interval := range voxelResidenceIntervals(before, sample, analyzer.smokeState().clouds) {
 		if !interval.known {
 			analyzer.closeVoxelSmokeVisit(previous, "unavailable")
+			previous.outside = false
 			continue
 		}
 		analyzer.match.smokeVoxelObservedSeconds[roundPlayerKey{sample.round, sample.id}] += (interval.b - interval.a) * dt
 		if previous.visit != nil && (len(interval.spans) == 0 || interval.spans[0].Start > interval.a+1e-12) {
-			analyzer.closeVoxelSmokeVisit(previous, "outside_density")
+			reason := "outside_density"
+			tick := float64(before.tick) + interval.a*float64(sample.tick-before.tick)
+			if math.Abs(previous.visit.ExitTick-tick) < 1e-8 && voxelSmokeMovementBoundary(tick, sample.round, previous.visit.ExitPosition, sample.eye.Sub(before.eye), false, analyzer.smokeState().clouds) {
+				reason = "movement"
+			}
+			analyzer.closeVoxelSmokeVisit(previous, reason)
 		}
 		for _, span := range interval.spans {
 			start, end := smokeLerp(before.eye, sample.eye, span.Start), smokeLerp(before.eye, sample.eye, span.End)
 			if previous.visit == nil {
 				reason := "observed_density"
-				if span.Start > interval.a+1e-12 {
+				tick := float64(before.tick) + span.Start*float64(sample.tick-before.tick)
+				if span.Start > interval.a+1e-12 || (previous.outside && voxelSmokeMovementBoundary(tick, sample.round, start, sample.eye.Sub(before.eye), true, analyzer.smokeState().clouds)) {
 					reason = "movement"
 				}
 				previous.visit = &SmokeVoxelVisit{Model: smokeVoxelModel, RoundNumber: sample.round, PlayerSteamID64: sample.id, PlayerName: sample.name,
-					EntryTick: float64(before.tick) + span.Start*float64(sample.tick-before.tick), EntryPosition: start, EntryReason: reason, DensityThreshold: smokeVoxelThreshold}
+					Side: sample.side, EntryTick: tick, EntryPosition: start, EntryReason: reason, DensityThreshold: smokeVoxelThreshold}
 			}
 			visit := previous.visit
 			visit.SmokeIDs = append(visit.SmokeIDs, span.ids...)
@@ -355,8 +412,34 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 				analyzer.closeVoxelSmokeVisit(previous, "movement")
 			}
 		}
+		previous.outside = len(interval.spans) == 0 || interval.spans[len(interval.spans)-1].End < interval.b-1e-12
 	}
 	previous.last = sample
+}
+
+func (analyzer *Analyzer) markVoxelSmokePasses() {
+	rate := analyzer.match.TickRate
+	sort.Slice(analyzer.match.SmokeVoxelVisits, func(i, j int) bool {
+		a, b := analyzer.match.SmokeVoxelVisits[i], analyzer.match.SmokeVoxelVisits[j]
+		if a.RoundNumber != b.RoundNumber {
+			return a.RoundNumber < b.RoundNumber
+		}
+		if a.EntryTick != b.EntryTick {
+			return a.EntryTick < b.EntryTick
+		}
+		return a.PlayerSteamID64 < b.PlayerSteamID64
+	})
+	for _, visit := range analyzer.match.SmokeVoxelVisits {
+		visit.IsFullPass, visit.IsDryPass, visit.HasAssistanceData = false, false, false
+		visit.Assistance = nil
+		visit.Reason = "not_full_pass"
+		if visit.EntryReason != "movement" || visit.EndReason != "movement" || !summonFinite(rate) || rate <= 0 ||
+			visit.ExitPosition.Sub(visit.EntryPosition).Norm() < smokeStatsMinPassDistance {
+			continue
+		}
+		visit.IsFullPass = true
+		visit.HasAssistanceData, visit.IsDryPass, visit.Reason, visit.Assistance = analyzer.smokePassAssistance(visit.RoundNumber, visit.Side, visit.EntryTick, visit.ExitTick, visit.ExitPosition)
+	}
 }
 
 func (analyzer *Analyzer) pruneSmokeVoxelHistory() {
