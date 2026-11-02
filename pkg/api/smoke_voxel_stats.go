@@ -27,6 +27,8 @@ type SmokeVoxelVisit struct {
 	ExitTick          float64           `json:"exitTick"`
 	EntryPosition     r3.Vector         `json:"entryPosition"`
 	ExitPosition      r3.Vector         `json:"exitPosition"`
+	EntryInwardNormal r3.Vector         `json:"entryInwardNormal"`
+	ExitOutwardNormal r3.Vector         `json:"exitOutwardNormal"`
 	EntryReason       string            `json:"entryReason"`
 	EndReason         string            `json:"endReason"`
 	Duration          float64           `json:"duration"`
@@ -325,6 +327,64 @@ func voxelSmokeMovementBoundary(tick float64, round int, eye, delta r3.Vector, e
 	return true
 }
 
+// Determine which exposed voxel faces were crossed, rather than using movement
+// direction (which can include a large tangent component). At corners, combine
+// the exposed face normals. Internal cell boundaries contribute no normal.
+func voxelSmokeBoundaryNormal(tick float64, round int, eye, delta r3.Vector, entering bool, clouds map[string]*SmokeCloud) r3.Vector {
+	if delta.Norm() == 0 {
+		return r3.Vector{}
+	}
+	probe := delta.Mul(1e-6 / delta.Norm())
+	inside, outside := eye.Add(probe), eye.Sub(probe)
+	if !entering {
+		inside, outside = outside, inside
+	}
+	in, inKnown := voxelSmokePointState(tick, round, inside, clouds)
+	out, outKnown := voxelSmokePointState(tick, round, outside, clouds)
+	if !inKnown || !outKnown || !in || out {
+		return r3.Vector{}
+	}
+	p, q := [3]float64{inside.X, inside.Y, inside.Z}, [3]float64{outside.X, outside.Y, outside.Z}
+	d := [3]float64{delta.X, delta.Y, delta.Z}
+	var normal [3]float64
+	for _, cloud := range clouds {
+		if cloud.RoundNumber != round || tick < float64(cloud.StartTick) || (cloud.EndReason != "" && tick >= float64(cloud.EndTick)) || cloud.voxel == nil {
+			continue
+		}
+		observation := cloud.voxel.observationAt(tick)
+		if observation == nil || len(smokevoxel.SegmentSpans(observation.density, observation.origin, p, p, smokeVoxelThreshold)) == 0 {
+			continue
+		}
+		for axis := range 3 {
+			a := math.Floor((p[axis]-float64(observation.origin[axis]))/smokevoxel.CellSize + 16)
+			b := math.Floor((q[axis]-float64(observation.origin[axis]))/smokevoxel.CellSize + 16)
+			if a == b {
+				continue
+			}
+			across := p
+			across[axis] = q[axis]
+			occupied, known := voxelSmokePointState(tick, round, r3.Vector{X: across[0], Y: across[1], Z: across[2]}, clouds)
+			if known && !occupied {
+				normal[axis] = math.Copysign(1, d[axis])
+			}
+		}
+	}
+	result := r3.Vector{X: normal[0], Y: normal[1], Z: normal[2]}
+	if length := result.Norm(); length > 0 {
+		return result.Mul(1 / length)
+	}
+	return result
+}
+
+// A pass must leave through another side of the occupied volume. Same-face
+// returns fail even when tangential movement makes the endpoints far apart.
+func voxelSmokeOppositeSides(visit *SmokeVoxelVisit) bool {
+	in, out := visit.EntryInwardNormal, visit.ExitOutwardNormal
+	displacement := visit.ExitPosition.Sub(visit.EntryPosition)
+	return in.Norm() > 0 && out.Norm() > 0 && in.Dot(out) >= -1e-9 &&
+		displacement.Dot(in) > 1e-6 && displacement.Dot(out) > 1e-6
+}
+
 func (analyzer *Analyzer) closeVoxelSmokeVisit(player *voxelSmokePlayer, reason string) {
 	if player.visit == nil {
 		return
@@ -389,6 +449,7 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 			tick := float64(before.tick) + interval.a*float64(sample.tick-before.tick)
 			if math.Abs(previous.visit.ExitTick-tick) < 1e-8 && voxelSmokeMovementBoundary(tick, sample.round, previous.visit.ExitPosition, sample.eye.Sub(before.eye), false, analyzer.smokeState().clouds) {
 				reason = "movement"
+				previous.visit.ExitOutwardNormal = voxelSmokeBoundaryNormal(tick, sample.round, previous.visit.ExitPosition, sample.eye.Sub(before.eye), false, analyzer.smokeState().clouds)
 			}
 			analyzer.closeVoxelSmokeVisit(previous, reason)
 		}
@@ -402,6 +463,9 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 				}
 				previous.visit = &SmokeVoxelVisit{Model: smokeVoxelModel, RoundNumber: sample.round, PlayerSteamID64: sample.id, PlayerName: sample.name,
 					Side: sample.side, EntryTick: tick, EntryPosition: start, EntryReason: reason, DensityThreshold: smokeVoxelThreshold}
+				if reason == "movement" {
+					previous.visit.EntryInwardNormal = voxelSmokeBoundaryNormal(tick, sample.round, start, sample.eye.Sub(before.eye), true, analyzer.smokeState().clouds)
+				}
 			}
 			visit := previous.visit
 			visit.SmokeIDs = append(visit.SmokeIDs, span.ids...)
@@ -409,6 +473,7 @@ func (analyzer *Analyzer) updateVoxelSmokePlayer(sample smokePlayerSample, rate 
 			visit.ExitTick = float64(before.tick) + span.End*float64(sample.tick-before.tick)
 			visit.ExitPosition = end
 			if span.End < interval.b-1e-12 {
+				visit.ExitOutwardNormal = voxelSmokeBoundaryNormal(visit.ExitTick, sample.round, end, sample.eye.Sub(before.eye), false, analyzer.smokeState().clouds)
 				analyzer.closeVoxelSmokeVisit(previous, "movement")
 			}
 		}
@@ -435,6 +500,14 @@ func (analyzer *Analyzer) markVoxelSmokePasses() {
 		visit.Reason = "not_full_pass"
 		if visit.EntryReason != "movement" || visit.EndReason != "movement" || !summonFinite(rate) || rate <= 0 ||
 			visit.ExitPosition.Sub(visit.EntryPosition).Norm() < smokeStatsMinPassDistance {
+			continue
+		}
+		if visit.EntryInwardNormal.Norm() == 0 || visit.ExitOutwardNormal.Norm() == 0 {
+			visit.Reason = "unknown_crossing_side"
+			continue
+		}
+		if !voxelSmokeOppositeSides(visit) {
+			visit.Reason = "same_side_return"
 			continue
 		}
 		visit.IsFullPass = true

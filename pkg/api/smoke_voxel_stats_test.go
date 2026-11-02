@@ -143,6 +143,78 @@ func TestVoxelPassAssistance(t *testing.T) {
 	}
 }
 
+func TestVoxelPassExitSide(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		points []r3.Vector
+		full   bool
+	}{
+		{"same face after long lateral movement", []r3.Vector{{X: -200, Y: -180}, {Y: -180}, {Y: 180}, {X: -200, Y: 180}}, false},
+		{"same face with forward tangent velocity", []r3.Vector{{X: -200, Y: -340}, {Y: -40}, {Y: 40}, {X: -200, Y: 340}}, false},
+		{"opposite face after bend", []r3.Vector{{X: -200, Y: -180}, {Y: -180}, {Y: 180}, {X: 200, Y: 180}}, true},
+		{"another face after turn", []r3.Vector{{X: -200}, {}, {Y: 300}}, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			a, _, grid := voxelStatsFixture()
+			for x := 12; x < 20; x++ {
+				for y := 4; y < 28; y++ {
+					grid[smokevoxel.Morton(x, y, 16)] = 10
+				}
+			}
+			// Each segment takes 64 ticks; do not inject duplicate boundary samples.
+			for segment := 1; segment < len(tt.points); segment++ {
+				start := 0
+				if segment > 1 {
+					start = 1
+				}
+				for step := start; step <= 64; step++ {
+					eye := smokeLerp(tt.points[segment-1], tt.points[segment], float64(step)/64)
+					eye.Z = 10
+					tick := (segment-1)*64 + step
+					a.updateSmokePlayer(smokePlayerSample{tick: tick, frame: tick, round: 1, id: 1, name: "walker", side: common.TeamCounterTerrorists, eye: eye}, 64)
+				}
+			}
+			a.markSmokePasses()
+			if len(a.match.SmokeVoxelVisits) != 1 {
+				t.Fatal(a.match.SmokeVoxelVisits)
+			}
+			visit := a.match.SmokeVoxelVisits[0]
+			if visit.ExitPosition.Sub(visit.EntryPosition).Norm() < 128 || visit.EntryReason != "movement" || visit.EndReason != "movement" {
+				t.Fatalf("fixture did not isolate side rejection: %+v", visit)
+			}
+			if visit.IsFullPass != tt.full || visit.IsDryPass != tt.full || (!tt.full && visit.Reason != "same_side_return") {
+				t.Fatalf("%+v", visit)
+			}
+			stats := (&Player{SteamID64: 1, match: a.match}).SmokeStats()
+			if stats.SmokeStayDuration <= 0 || stats.SmokeStayDuration != visit.Duration || (stats.DrySmokePassCount == 1) != tt.full {
+				t.Fatalf("side rejection changed residence or aggregation: %+v", stats)
+			}
+		})
+	}
+}
+
+func TestVoxelBoundaryNormalsIgnoreInternalFaces(t *testing.T) {
+	a, _, grid := voxelStatsFixture()
+	for x := 12; x < 20; x++ {
+		for y := 4; y < 28; y++ {
+			grid[smokevoxel.Morton(x, y, 16)] = 10
+		}
+	}
+	for _, tt := range []struct {
+		eye, delta, want r3.Vector
+		entering         bool
+	}{
+		{r3.Vector{X: -80, Y: -100, Z: 10}, r3.Vector{X: 5, Y: 7.5}, r3.Vector{X: 1}, true},
+		{r3.Vector{X: -80, Y: 100, Z: 10}, r3.Vector{X: -5, Y: 7.5}, r3.Vector{X: -1}, false},
+		{r3.Vector{X: -80, Y: -240, Z: 10}, r3.Vector{X: 1, Y: 1}, r3.Vector{X: 1 / math.Sqrt2, Y: 1 / math.Sqrt2}, true},
+	} {
+		got := voxelSmokeBoundaryNormal(1, 1, tt.eye, tt.delta, tt.entering, a.smokeState().clouds)
+		if got.Sub(tt.want).Norm() > 1e-9 {
+			t.Fatalf("normal=%+v want=%+v", got, tt.want)
+		}
+	}
+}
+
 func TestVoxelObservationTimesAndUnknownCoverage(t *testing.T) {
 	for _, tt := range []struct {
 		name               string
@@ -240,7 +312,7 @@ func TestVoxelResidenceJSONAndCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 || rows[1][0] != smokeVoxelModel || rows[1][15] != "0.800000" || rows[1][16] != "5.000000" || rows[1][18] != "1" || rows[1][19] != "1" || rows[1][20] != "1" || rows[1][21] != "dry_pass" {
+	if len(rows) != 2 || rows[1][0] != smokeVoxelModel || rows[1][15] != "0.800000" || rows[1][16] != "5.000000" || rows[1][18] != "1" || rows[1][19] != "1" || rows[1][20] != "1" || rows[1][21] != "dry_pass" || rows[1][23] != "1.000000" || rows[1][26] != "1.000000" {
 		t.Fatal(rows)
 	}
 }
