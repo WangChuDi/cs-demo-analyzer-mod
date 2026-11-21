@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"slices"
 	"strconv"
@@ -94,13 +95,17 @@ type Analyzer struct {
 	chickenCount int
 	// Cached 2D convex hull of each burning inferno's active fires, only used when positions are included.
 	infernoHulls map[common.UniqueID]*infernoHull
-	// Weapon lists of the last position created for each player, shared with the next positions while the
-	// inventory doesn't change, see internWeapons(). Only used when positions are included.
-	playerWeapons map[*common.Player]*playerWeapons
+	// Weapons of the last position created for each player, shared with the next positions while the
+	// inventory doesn't change, see internPlayerWeapons(). Only used when positions are included.
+	playerWeapons map[*common.Player]*PlayerWeapons
 	// Scratch lists newPlayerPosition() builds the current inventory into before comparing it with playerWeapons.
-	playerWeaponsScratch playerWeapons
+	playerWeaponsScratch PlayerWeapons
 	// Scratch slice for sortedEntityIDs(), re-used across frames.
 	entityIDsScratch []int
+	// Second of the round of the last position samples, see samplePlayerPositions().
+	lastPositionSampleSecond positionSampleSecond
+	// Rounded tick rate used to split rounds into seconds, updated when the tick rate is available.
+	ticksPerSecond int
 }
 
 // sortedEntityIDs returns the keys of a map of entities by entity ID in ascending order, to range over the map in a
@@ -116,6 +121,16 @@ func sortedEntityIDs[T any](scratch []int, entities map[int]T) []int {
 	return ids
 }
 
+// ticksPerSecondFromTickRate returns the number of ticks in a second, 64 when the tick rate is unknown.
+func ticksPerSecondFromTickRate(tickRate float64) int {
+	ticksPerSecond := int(math.Round(tickRate))
+	if ticksPerSecond <= 0 {
+		return 64
+	}
+
+	return ticksPerSecond
+}
+
 type AnalyzeDemoOptions struct {
 	IncludePositions bool
 	Source           constants.DemoSource
@@ -124,7 +139,9 @@ type AnalyzeDemoOptions struct {
 	MatchDate time.Time
 }
 
-func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
+// spoolPositions stores the positions of the rounds that are over in a temporary file instead of keeping them in
+// memory, the returned match must be closed with closePositionsSpool() once exported.
+func analyzeDemo(demoPath string, options AnalyzeDemoOptions, spoolPositions bool) (*Match, error) {
 	if options.Source != "" {
 		err := ValidateDemoSource(options.Source)
 		if err != nil {
@@ -192,7 +209,9 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		pendingBulletDamageByKey:      make(map[damageMatchFrameKey][]int),
 		postProcess:                   defaultPostProcess,
 		infernoHulls:                  map[common.UniqueID]*infernoHull{},
-		playerWeapons:                 map[*common.Player]*playerWeapons{},
+		playerWeapons:                 map[*common.Player]*PlayerWeapons{},
+		lastPositionSampleSecond:      noPositionSampleSecond,
+		ticksPerSecond:                ticksPerSecondFromTickRate(match.TickRate),
 	}
 
 	analyzer.currentRound = &Round{
@@ -252,11 +271,22 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 		return nil, errors.New("unknown demo source, please specify the source with the -source flag (UnknownSource)")
 	}
 
+	if spoolPositions && options.IncludePositions {
+		spool, err := newPositionsSpool()
+		if err != nil {
+			// Fall back to keeping all the positions in memory
+			fmt.Fprintf(os.Stderr, "%v, positions will be kept in memory\n", err)
+		} else {
+			match.positionsSpool = spool
+		}
+	}
+
 	err = parser.ParseToEnd(context.Background())
 	// Do not stop if the demo is corrupted, usually the error occurs at the end of the parsing.
 	// Depending on how far we were able to parse the demo we may still have data.
 	isCorruptedDemo := errors.Is(err, dem.ErrUnexpectedEndOfDemo)
 	if err != nil && !isCorruptedDemo {
+		match.closePositionsSpool()
 		return nil, err
 	}
 
@@ -290,6 +320,11 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 	analyzer.finishSmokeTracking("parser_end")
 	analyzer.markSmokePasses()
 	analyzer.postProcess(analyzer)
+	analyzer.spillPositions()
+	if spool := match.positionsSpool; spool != nil && spool.err != nil {
+		match.closePositionsSpool()
+		return nil, spool.err
+	}
 	match.deleteIncompleteRounds()
 	match.computeResultStats()
 
@@ -297,7 +332,7 @@ func analyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
 }
 
 func AnalyzeDemo(demoPath string, options AnalyzeDemoOptions) (*Match, error) {
-	match, err := analyzeDemo(demoPath, options)
+	match, err := analyzeDemo(demoPath, options, false)
 
 	return match, err
 }
@@ -319,15 +354,18 @@ func AnalyzeAndExportDemo(demoPath string, outputPath string, options AnalyzeAnd
 		}
 	}
 
+	// The positions of the rounds that are over are spooled to disk rather than kept in memory, the exporters read
+	// them back a round at a time.
 	match, err := analyzeDemo(demoPath, AnalyzeDemoOptions{
 		IncludePositions: options.IncludePositions,
 		Source:           options.Source,
 		MatchDate:        options.MatchDate,
-	})
+	}, true)
 
 	if err != nil {
 		return err
 	}
+	defer match.closePositionsSpool()
 
 	switch options.Format {
 	case "csv":
@@ -364,6 +402,7 @@ func (analyzer *Analyzer) reset() {
 	analyzer.pendingFireBulletAimPunch = nil
 	analyzer.pendingPlayerBulletHits = nil
 	analyzer.lastGrenadeProjectilePosition = make(map[common.UniqueID]grenadeProjectilePositionSample)
+	analyzer.lastPositionSampleSecond = noPositionSampleSecond
 	analyzer.chickenEntities = nil
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
@@ -587,6 +626,7 @@ func (analyzer *Analyzer) processMatchStart() {
 // This creates a Round, reset analyzer data related to the current round and set the new round as the current round.
 func (analyzer *Analyzer) createRound() {
 	analyzer.resetBehaviorTracking()
+	analyzer.spillPositions()
 	analyzer.clutch1 = nil
 	analyzer.clutch2 = nil
 	analyzer.lastGrenadeThrownByPlayer = make(map[uint64]*Shot)
@@ -759,6 +799,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 
 	parser.RegisterEventHandler(func(event events.TickRateInfoAvailable) {
 		match.TickRate = parser.TickRate()
+		analyzer.ticksPerSecond = ticksPerSecondFromTickRate(match.TickRate)
 	})
 
 	parser.RegisterEventHandler(func(event events.POVRecordingPlayerDetected) {
@@ -896,7 +937,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		currentRound.weaponsBoughtUniqueIds = append(currentRound.weaponsBoughtUniqueIds, event.Weapon.UniqueID().String())
 		// Mark this player as the owner of this newly bought weapon
 		analyzer.roundWeaponOwners[event.Weapon.UniqueID()] = event.Player.SteamID64
-		match.PlayersBuy = append(match.PlayersBuy, newPlayerBuy(analyzer, event))
+		match.PlayersBuy = append(match.PlayersBuy, newPlayerBuy(analyzer, event.Player, event.Weapon))
 	})
 
 	parser.RegisterEventHandler(func(event events.PlayerHurt) {
@@ -1036,6 +1077,8 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 		analyzer.sampleSummonEnemy()
 		analyzer.sampleAWPPeek()
 		analyzer.sampleSmokeStats()
+		analyzer.detectFlashbangBuys()
+		analyzer.samplePlayerPositions()
 	})
 
 	if includePositions {
@@ -1044,9 +1087,17 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 				return
 			}
 
+			// Several frames may have the same tick, only the first position of an entity is captured for a tick.
+			captured := &match.tickPositions
+			captured.startFrame(analyzer.currentTick(), analyzer.currentRound.Number)
+
 			for _, chicken := range analyzer.chickenEntities {
+				if hasPosition(captured, captured.chickens, chicken) {
+					continue
+				}
 				chickenPosition := newChickenPositionFromEntity(analyzer, chicken)
 				match.ChickenPositions = append(match.ChickenPositions, chickenPosition)
+				captured.chickens = append(captured.chickens, chicken)
 			}
 
 			// GrenadeProjectiles() and Infernos() are maps, ranging them yields a different order on every run.
@@ -1054,29 +1105,53 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			projectiles := parser.GameState().GrenadeProjectiles()
 			analyzer.entityIDsScratch = sortedEntityIDs(analyzer.entityIDsScratch, projectiles)
 			for _, entityID := range analyzer.entityIDsScratch {
-				position := newGrenadePositionFromProjectile(analyzer, projectiles[entityID])
+				projectile := projectiles[entityID]
+				if hasPosition(captured, captured.projectiles, projectile) {
+					continue
+				}
+				position := newGrenadePositionFromProjectile(analyzer, projectile)
 				if position != nil {
 					match.GrenadePositions = append(match.GrenadePositions, position)
+					captured.projectiles = append(captured.projectiles, projectile)
 				}
 			}
 
 			infernos := parser.GameState().Infernos()
 			analyzer.entityIDsScratch = sortedEntityIDs(analyzer.entityIDsScratch, infernos)
 			for _, entityID := range analyzer.entityIDsScratch {
-				infernoPosition := newInfernoPositionFromInferno(analyzer, infernos[entityID])
+				inferno := infernos[entityID]
+				if hasPosition(captured, captured.infernos, inferno) {
+					continue
+				}
+				infernoPosition := newInfernoPositionFromInferno(analyzer, inferno)
 				if infernoPosition != nil {
 					match.InfernoPositions = append(match.InfernoPositions, infernoPosition)
+					captured.infernos = append(captured.infernos, inferno)
 				}
 			}
 
 			for _, player := range parser.GameState().Participants().Playing() {
+				if hasPosition(captured, captured.players, player) {
+					continue
+				}
 				playerPosition := newPlayerPosition(analyzer, player)
 				match.PlayerPositions = append(match.PlayerPositions, playerPosition)
+				captured.players = append(captured.players, player)
 			}
 
 			for _, hostage := range parser.GameState().Hostages() {
+				if hasPosition(captured, captured.hostages, hostage) {
+					continue
+				}
 				hostagePosition := newHostagePositionFromHostage(analyzer, hostage)
 				match.HostagePositions = append(match.HostagePositions, hostagePosition)
+				captured.hostages = append(captured.hostages, hostage)
+			}
+
+			// A round is spooled once it's over but a very long one (practice demo, long warmup) would keep all its
+			// positions in memory, so it's spooled in parts to bound the memory whatever the demo.
+			if len(match.PlayerPositions)+len(match.GrenadePositions) >= maxPositionsInMemory {
+				analyzer.spillPositions()
 			}
 		})
 
@@ -1555,20 +1630,7 @@ func (analyzer *Analyzer) registerCommonHandlers(includePositions bool) {
 			return
 		}
 
-		// Loop in reverse order to find the last purchase of the player and flag it as refunded.
-		for i := len(match.PlayersBuy) - 1; i >= 0; i-- {
-			buy := match.PlayersBuy[i]
-
-			if buy.PlayerSteamID64 != event.Player.SteamID64 || buy.WeaponName != equipmentToWeaponName[event.Weapon.Type] {
-				continue
-			}
-
-			if buy.RoundNumber != analyzer.currentRound.Number {
-				break
-			}
-
-			buy.HasRefunded = true
-		}
+		analyzer.flagLastBuyAsRefunded(event.Player, event.Weapon)
 	})
 
 	parser.RegisterEventHandler(func(event events.OvertimeNumberChanged) {
@@ -1937,4 +1999,33 @@ func defaultPostProcess(analyzer *Analyzer) {
 	generateAwpHoldDeaths(match)
 	matchKillPenetrations(match)
 	markHeuristicWallbangDamages(match)
+}
+
+// maxPositionsInMemory is the number of positions above which the positions of the current round are spooled before
+// it's over. A regular round has up to ~100k player positions at 64 ticks per second and ~200k at 128.
+const maxPositionsInMemory = 250_000
+
+// spillPositions moves the positions of the current round to the positions spool when positions are spooled, see
+// positionsSpool. It's called when a round is over, and during a round that has too many positions, so that only
+// the positions of the current round are in memory.
+func (analyzer *Analyzer) spillPositions() {
+	match := analyzer.match
+	spool := match.positionsSpool
+	if spool == nil {
+		return
+	}
+
+	spool.writeRound(analyzer.currentRound.Number, match)
+
+	// The backing arrays are kept for the next round, cleared so that the spooled positions can be collected.
+	clear(match.PlayerPositions)
+	match.PlayerPositions = match.PlayerPositions[:0]
+	clear(match.GrenadePositions)
+	match.GrenadePositions = match.GrenadePositions[:0]
+	clear(match.InfernoPositions)
+	match.InfernoPositions = match.InfernoPositions[:0]
+	clear(match.ChickenPositions)
+	match.ChickenPositions = match.ChickenPositions[:0]
+	clear(match.HostagePositions)
+	match.HostagePositions = match.HostagePositions[:0]
 }

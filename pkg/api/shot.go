@@ -61,9 +61,8 @@ type AimPunchBase struct {
 	UnpredictableAngle       r3.Vector `json:"unpredictableAngle"`
 }
 
-// demoinfocs v6.0.0-rc.1 falls back to unsigned varints for GameTick_t.
-// These fields are sent as signed int32 (ZigZag); retaining the unsigned wire
-// value doubles positive ticks. Accept an already decoded int32 as well.
+// GameTick_t fields are sent as signed int32 (ZigZag). Some parser paths expose
+// the unsigned wire value, so decode it while accepting an already decoded int32.
 func aimPunchGameTick(value st.PropertyValue) (int, bool) {
 	switch tick := value.Any.(type) {
 	case int32:

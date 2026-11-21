@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	github.com/golang/geo v0.0.0-20261029132150-f51d36688936
-	github.com/markus-wa/demoinfocs-golang/v6 v6.0.0-rc.1
+	github.com/markus-wa/demoinfocs-golang/v6 v6.0.0-rc.2
 	github.com/markus-wa/gobitread v0.2.5
 	github.com/pkg/errors v0.9.1
 	google.golang.org/protobuf v1.36.12

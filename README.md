@@ -282,7 +282,7 @@ The utility throw analysis involves three core systems: **velocity calculation**
 
 Uses the synchronized parser's `Player.Velocity()`. Upstream now resolves the networked velocity properties and derives velocity from snapshot server ticks for older demos. The parser enables `EagerVelocityTracking` so velocity history is available before grenade creation events. This replaces the fork's older manual position-delta workaround.
 
-The fork used demoinfocs v5.2.0 before the upstream v1.13.0 merge, then briefly adopted a patched v4 dependency. It now uses official [demoinfocs v6.0.0-rc.1](https://github.com/markus-wa/demoinfocs-golang/tree/v6.0.0-rc.1), a release candidate at commit `4c79f7b51239`, with no v4 or local replacement dependency. v6 provides button-only decoding, full-packet command baseline seeding, and velocity tracking natively. The migration uses constructor options, context-aware parsing, and pointer entity/property callbacks. v6 supports CS2 only; use an earlier analyzer revision for legacy CS:GO demos.
+The fork used demoinfocs v5.2.0 before the upstream v1.13.0 merge, then briefly adopted a patched v4 dependency. It now uses official [demoinfocs v6.0.0-rc.2](https://github.com/markus-wa/demoinfocs-golang/tree/v6.0.0-rc.2), commit `b656b987e900`, while keeping the v6 API line instead of upstream v1.14.3's v4 replacement. v6 provides button-only decoding, full-packet command baseline seeding, and velocity tracking natively. The migration uses constructor options, context-aware parsing, and pointer entity/property callbacks. v6 supports CS2 only; use an earlier analyzer revision for legacy CS:GO demos.
 
 **2. Button Detection System (`utility.go: applyUtilityThrowButtons`)**
 
@@ -373,7 +373,7 @@ Ready-to-use binaries are available on the [releases page](https://github.com/Wa
 
 ## ⚠️ Known Issues
 
-The pin-time clock mismatch found in the 2026-10-30 audit is fixed by recording observed demo ticks directly. Pin times remain unknown when no pull update was observed. Official v6.0.0-rc.1 seeds command baselines from full packets before decoding live deltas; the extra v4 patch is no longer needed for this sample. Command-number and ring validation remain enforced. The Aurora–MOUZ Cache sample exports 4,421 first-round button-state changes for all ten players, recovering mouse input for all five first-round throws. Missing raw footsteps, aim-punch properties, or bullet-penetration events must also be distinguished from real zero values.
+The pin-time clock mismatch found in the 2026-10-30 audit is fixed by recording observed demo ticks directly. Pin times remain unknown when no pull update was observed. The v6.0.0-rc.1 parser seeded command baselines from full packets before decoding live deltas, so the extra v4 patch was unnecessary for that sample. The dependency is now v6.0.0-rc.2; the Cache sample has not been rerun against rc.2. Command-number and ring validation remain enforced. The Aurora–MOUZ Cache sample exports 4,421 first-round button-state changes for all ten players, recovering mouse input for all five first-round throws. Missing raw footsteps, aim-punch properties, or bullet-penetration events must also be distinguished from real zero values.
 
 The follow-up audit fixes player/opponent filtering in 1vX totals and makes AWP holds use kill-event state. Wallbang heuristics retain victim position/helmet state at the hurt event, independently of `-positions`; this flag only controls trajectory export. With one-point deficits excluded, the damage model reports 20 heuristic candidates totaling 332 actual HP damage in the Cache sample. Two one-point differences remain available as diagnostics and do not contribute to wallbang totals. These are model classifications, not video-verified labels.
 
@@ -381,7 +381,7 @@ CSV and JSON expose shot/damage availability and match sample counts (`dataQuali
 
 SoS messages recover known CT/T footstep sounds, resolving pawn entity IDs at frame end and preferring game events when both exist. Land/gear sounds and unknown hashes are excluded. `data source` and `sound event name` identify the origin. The sample has 8,999 recovered steps across ten players; this does not guarantee completeness or prove what each opponent heard.
 
-Newer CS2 versions network AimPunchServices base angles, velocity and server ticks. These values are exported separately as `aimPunchBase` in JSON and `aim punch ... base ...` CSV columns (1,899 samples here). Base state is not an instantaneous angle. The base GameTick_t fields are ZigZag-decoded for v6.0.0-rc.1, and `serverTick` uses explicit net/snapshot ticks with `hasServerTickData`; earlier fork exports accidentally used demo ticks and unsigned wire values. Compare decoded base ticks with an available server clock, not demo ticks.
+Newer CS2 versions network AimPunchServices base angles, velocity and server ticks. These values are exported separately as `aimPunchBase` in JSON and `aim punch ... base ...` CSV columns (1,899 samples here). Base state is not an instantaneous angle. The base GameTick_t fields are ZigZag-decoded, accepting signed or unsigned parser values, and `serverTick` uses explicit net/snapshot ticks with `hasServerTickData`; earlier fork exports accidentally used demo ticks and unsigned wire values. Compare decoded base ticks with an available server clock, not demo ticks.
 
 When recorded, `FireBullets.Extra.aim_punch` now supplies instantaneous angles (`aimPunchDataSource=fire_bullets`); older entity angles use `entity`, absent data uses `unavailable`. Matching requires a unique round/frame/player/weapon and counts incomplete messages as ambiguous. `PlayerBulletHit.penetration_count`, including explicit zero, can recover nonlethal penetration with `hasPlayerBulletHitData` and source `player_bullet_hit`. A unique same-frame hurt must agree on participants, damage, and any supplied hitgroup/kill flag; BulletDamage remains authoritative. These messages are absent in the audited Cache demo, so its two precise signals remain unavailable. CSV adds availability/source columns; fixed-column CSDM remains unchanged.
 
@@ -629,7 +629,33 @@ make test ARGS="-update -run TestDemos/cs2/Esportal_6008132_2023_Mirage"
 
 Review the resulting snapshot diff before committing.
 
-#### VSCode debugger
+### Benchmarks
+
+`scripts/bench` compares the speed (wall time) and RAM usage (peak memory) of 2 versions of the analyzer on a few demos downloaded by `./download-demos.sh`.
+It builds both versions, interleaves their runs and prints the median, min and max of each one.
+By default it compares `HEAD~1` with the current working tree, uncommitted changes included.
+It works on macOS, Linux and Windows, compare results from the same OS only because each OS measures memory differently.
+
+```bash
+# Compare HEAD~1 with the working tree
+make bench
+
+# Compare 2 git refs
+make bench ARGS="v1.14.2 main"
+
+# 10 runs per demo, with positions, on a single demo (<path relative to cs-demos>:<source>), flags go before the refs
+make bench ARGS="-runs 10 -positions -demos cs2/esplay_ntfNCNcmKCQc_2025_mirage.dem:esplay"
+
+# Without make (e.g. on Windows)
+go run ./scripts/bench -runs 3 v1.14.2 main
+
+# All flags
+go run ./scripts/bench -h
+```
+
+Differences of a few percent are usually noise, compare them with the min-max spread of each version.
+
+### VSCode debugger
 
 1. Inside the `.vscode` folder, copy/paste the file `launch.template.json` and name it `launch.json`
 2. Place a demo in the `debug` folder

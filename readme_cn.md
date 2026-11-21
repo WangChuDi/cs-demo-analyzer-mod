@@ -240,7 +240,7 @@ Go 移植版已逐帧匹配公开原生参考夹具的 **7 组／1061 帧**，Ca
 
 2026-10-30 同步原版 v1.13.0 后，改用解析器的 `Player.Velocity()`。上游已经修复速度属性解析，并为旧 demo 提供基于快照服务器 tick 的速度推导。构造解析器时启用 `EagerVelocityTracking`，确保手雷创建事件之前已有位置历史。构建要求 Go 1.27+；标准事件导出采用上游的 tick 字段，二开事件关联所需的 frame 仅保留在内部。
 
-依赖版本说明：同步前使用 demoinfocs v5.2.0，同步原版时曾采用带首回合按键补丁的 v4。现在按要求升级为官方 [demoinfocs v6.0.0-rc.1](https://github.com/markus-wa/demoinfocs-golang/tree/v6.0.0-rc.1)（候选发布版，提交 `4c79f7b51239`），不再引用 v4 或本地替换依赖。v6 已原生提供按键专用解码、完整数据包基线播种及速度跟踪。构造器使用 `option.EagerVelocityTracking(true)`，解析需要显式 context，实体和属性回调适配为指针类型。v6 仅支持 CS2；旧 CS:GO demo 需使用此前版本。
+依赖版本说明：同步上游 v1.14.3 时保留 demoinfocs v6 API 线，并将官方依赖从 v6.0.0-rc.1 更新到 [v6.0.0-rc.2](https://github.com/markus-wa/demoinfocs-golang/tree/v6.0.0-rc.2)，提交 `b656b987e900`。上游 v1.14.3 仍使用 v4，并替换到较新的 v4 预发布提交；该依赖不能直接用于当前 v6 API。当前 go.mod 不含 v4 或本地替换依赖。v6 已原生提供按键专用解码、完整数据包基线播种及速度跟踪。构造器使用 `option.EagerVelocityTracking(true)`，解析需要显式 context，实体和属性回调适配为指针类型。v6 仅支持 CS2；旧 CS:GO demo 需使用此前版本。
 
 **2. 按键检测系统 (`utility.go: applyUtilityThrowButtons`)**
 
@@ -319,7 +319,7 @@ GrenadeProjectileThrow 事件
 ### 使用方法
 预编译的二进制文件可在 [releases 页面](https://github.com/WangChuDi/cs-demo-analyzer-mod/releases) 下载。
 ## ⚠️ 已知问题
-2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。官方 v6.0.0-rc.1 的完整数据包基线播种已恢复本次样本的首回合按键，无需移植 v4 的额外补丁；Aurora–MOUZ Cache 样本首回合有 4,421 条按键状态变化，覆盖全部 10 名玩家及 5 次投掷。不能恢复的输入片段仍保留未知。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
+2026-10-30 审计发现的拔栓时钟问题已通过直接记录观测到的 demo tick 修复。未观测到拔栓变化时仍输出未知值 0。v6.0.0-rc.1 的完整数据包基线播种恢复了当时 Cache 样本的首回合按键，无需移植 v4 的额外补丁；此次同步升级到 rc.2 后尚未重跑该样本；Aurora–MOUZ Cache 样本首回合有 4,421 条按键状态变化，覆盖全部 10 名玩家及 5 次投掷。不能恢复的输入片段仍保留未知。脚步、准星后坐力和穿透事件若未出现在原始输入中，也应标注不可用，不能把导出的零值当作真实统计。
 
 后续修复了 1vX 汇总的玩家与对手人数过滤，并让 AWP 判定使用击杀事件当时的状态。穿墙启发式直接保存伤害事件时的受害者位置及头盔状态，不再依赖 `-positions`；该开关只控制轨迹导出。样本两种模式均为 2 条 AWP 架枪死亡、424 点启发式穿墙伤害，这些仍是模型判定，未逐条回看录像。
 
@@ -327,11 +327,18 @@ CSV/JSON 提供射击与伤害可用性标记、比赛级样本计数（JSON 的
 
 脚步新增 SoS 声音恢复：只接受游戏资源中已知 CT/T 脚步声，按 pawn 实体编号映射玩家，帧末与旧游戏事件去重；排除落地声、装备声和未知哈希。`data source`、`sound event name` 标明来源。样本恢复 8,999 条、覆盖 10 人，不保证每份 demo 完整，也不能据此判断某个敌人实际听到了什么。
 
-新版 AimPunchServices 的基准角度、角速度及服务器 tick 单独导出为 `aimPunchBase`（CSV 的 `aim punch ... base ...`），样本 1,899 条。基准状态不等于开火瞬时后坐力。现对 v6.0.0-rc.1 返回的 GameTick_t 无符号线值做 ZigZag 解码；`serverTick` 改为显式网络/快照 tick，并带 `hasServerTickData`。早期 fork 导出误用了 demo tick 和未解码的基准 tick，旧结果需要重导；解码后的基准 tick 只能与有可用标记的服务器时钟比较。
+新版 AimPunchServices 的基准角度、角速度及服务器 tick 单独导出为 `aimPunchBase`（CSV 的 `aim punch ... base ...`），样本 1,899 条。基准状态不等于开火瞬时后坐力。对 GameTick_t 字段按 ZigZag 规则解码，同时兼容解析器返回的有符号和无符号整数；`serverTick` 改为显式网络/快照 tick，并带 `hasServerTickData`。早期 fork 导出误用了 demo tick 和未解码的基准 tick，旧结果需要重导；解码后的基准 tick 只能与有可用标记的服务器时钟比较。
 
 原始流若包含 `FireBullets.Extra.aim_punch`，现可直接恢复瞬时角度，来源 `aimPunchDataSource=fire_bullets`；旧实体属性标为 `entity`，缺失为 `unavailable`。匹配要求回合、帧、玩家和武器唯一，缺字段消息也计入歧义。`PlayerBulletHit.penetration_count`（包括显式零）可补非致命穿透，带 `hasPlayerBulletHitData` 和来源 `player_bullet_hit`；要求同帧唯一 hurt 的双方、伤害及消息提供的命中部位/致命标记一致，已有 BulletDamage 始终优先。Cache 样本没有这些消息，两项精确信号仍不可用。CSV 增加来源及可用标记，固定列 CSDM 不变。
 
 ServerInfo 的 VBKV 配置经 CRC 和完整结构验证后读取活动 `c_game_type/c_game_mode`，来源为 `server_info_data`，不使用地图默认值。缺少证据仍返回 unknown。外部日期可通过 `-match-date '2026-10-29T00:00:00+08:00'` 或 `CSDA_MATCH_DATE` 传入；优先级为有效 `.info`、外部日期、文件修改时间，分别标为 `match_info`、`external_metadata`、`file_mtime`。固定列 CSDM 布局保持兼容；旧数据库结果需重跑分析及导入。
+
+### 上游 v1.14.3 同步更新
+
+- 新增逐秒存活玩家位置样本：每回合从冻结时间结束（若未知则从回合开始）起，每秒首个可用帧记录一次。输出到 JSON 的 `playerPositionSamples`、CSV 的 `_player_position_samples.csv` 和 CSDM 对应表；不需要开启 `-positions`。
+- 修复持有闪光弹时再次购买及退款的识别。第二颗闪光不会触发常规 `item_pickup`，分析器改为结合买区内的闪光数量和金钱变化补记购买，并只把最近一笔匹配购买标为退款。
+- `AnalyzeAndExportDemo` 在带 `-positions` 导出时，会把已结束回合的轨迹暂存到临时文件，再按段写入 CSV、JSON 或 CSDM，降低长 demo 的峰值内存；临时文件不可用时回退到内存。
+- 新增 `make bench`，可比较两个版本的分析耗时和峰值内存；结果应在相同操作系统上比较。
 
 ### 倒霉统计
 - **穿墙伤害**：对外穿墙统计（`Damage.IsWallbang`、`wallbang damage dealt`、`wallbang damage taken`）优先采用解析器确认信号，否则使用启发式。启发式要求同回合、同攻击者、同武器且同帧唯一的射击，采用伤害事件当时的位置、头盔及护甲，根据武器模型、hitgroup、距离衰减和伤害倍率估算非穿墙伤害。理论值向下取整后与原始伤害报告比较，至少少 2 点才列为候选；差值恰好为 1 的记录保留诊断及原因 `within_one_point_tolerance`，不计入穿墙伤害汇总。缺少事件位置或匹配射击时标记 `unavailable`，不再假定距离为零。`true wallbang damage taken` 仅保留 BulletDamage、PlayerBulletHit 或唯一匹配的正穿透击杀的确认路径。

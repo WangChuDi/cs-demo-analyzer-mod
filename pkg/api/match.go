@@ -76,6 +76,7 @@ type Match struct {
 	ChickenDeaths                     []*ChickenDeath             `json:"chickenDeaths"`
 	Damages                           []*Damage                   `json:"damages"`
 	PlayerPositions                   []*PlayerPosition           `json:"playerPositions"`
+	PlayerPositionSamples             []*PlayerPositionSample     `json:"playerPositionSamples"`
 	PlayersBuy                        []*PlayerBuy                `json:"playersBuy"`
 	PlayerEconomies                   []*PlayerEconomy            `json:"playerEconomies"`
 	PlayerButtons                     []*funData.PlayerButtons    `json:"playerButtons"`
@@ -98,6 +99,10 @@ type Match struct {
 	hasCounterStrafeRoundIndexes      bool
 	counterStrafeShotsByRoundPlayer   map[roundPlayerKey][]*Shot
 	counterStrafeButtonsByRoundPlayer map[roundPlayerKey][]*funData.PlayerButtons
+	// Positions of completed rounds are spooled to disk during export analysis, nil otherwise.
+	positionsSpool *positionsSpool
+	// Entities whose positions have been captured during the current tick.
+	tickPositions tickPositions
 }
 
 type MatchAlias Match
@@ -403,6 +408,7 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 		PlayersBuy:                        []*PlayerBuy{},
 		PlayerEconomies:                   []*PlayerEconomy{},
 		PlayerPositions:                   []*PlayerPosition{},
+		PlayerPositionSamples:             []*PlayerPositionSample{},
 		GrenadePositions:                  []*GrenadePosition{},
 		GrenadeBounces:                    []*GrenadeBounce{},
 		InfernoPositions:                  []*InfernoPosition{},
@@ -438,6 +444,10 @@ func newMatch(source constants.DemoSource, demoInfo *demo.Demo) Match {
 }
 
 func (match *Match) reset() {
+	if match.positionsSpool != nil {
+		match.positionsSpool.reset()
+	}
+	match.tickPositions.reset()
 	match.PlayersBySteamID = make(map[uint64]*Player)
 	match.Coaches = []*Coach{}
 	match.Rounds = []*Round{}
@@ -453,6 +463,7 @@ func (match *Match) reset() {
 	match.PlayersFlashed = []*PlayerFlashed{}
 	match.PlayersBuy = []*PlayerBuy{}
 	match.PlayerPositions = []*PlayerPosition{}
+	match.PlayerPositionSamples = []*PlayerPositionSample{}
 	match.GrenadePositions = []*GrenadePosition{}
 	match.GrenadeBounces = []*GrenadeBounce{}
 	match.InfernoPositions = []*InfernoPosition{}
@@ -488,6 +499,10 @@ func (match *Match) reset() {
 }
 
 func (match *Match) resetRound(roundNumber int) {
+	if match.positionsSpool != nil {
+		match.positionsSpool.deleteRound(roundNumber)
+	}
+	match.tickPositions.reset()
 	match.SmokeVoxelVisits = slice.Filter(match.SmokeVoxelVisits, func(event *SmokeVoxelVisit, _ int) bool { return event.RoundNumber != roundNumber })
 	for key := range match.smokeVoxelObservedSeconds {
 		if key.roundNumber == roundNumber {
@@ -569,6 +584,9 @@ func (match *Match) resetRound(roundNumber int) {
 	})
 	match.PlayerPositions = slice.Filter(match.PlayerPositions, func(position *PlayerPosition, index int) bool {
 		return position.RoundNumber != roundNumber
+	})
+	match.PlayerPositionSamples = slice.Filter(match.PlayerPositionSamples, func(sample *PlayerPositionSample, index int) bool {
+		return sample.RoundNumber != roundNumber
 	})
 	match.PlayersBuy = slice.Filter(match.PlayersBuy, func(event *PlayerBuy, index int) bool {
 		return event.RoundNumber != roundNumber
